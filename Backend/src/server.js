@@ -4,6 +4,8 @@ import { clerkMiddleware} from '@clerk/express';
 import { ENV } from "./config/env.js";
 import { connectDB } from "./config/db.js";
 
+import userRoutes from "./routes/user.routes.js"
+
 
 const app = express()
 const PORT = ENV.PORT || 3000 
@@ -19,10 +21,12 @@ app.use(clerkMiddleware())
 app.use(express.json());
 
 
-
 app.get("/api/health", (req, res) => {
     res.status(200).json({ message: "Success App"})
 })
+
+app.use("/api/users", userRoutes)
+
 
 const connectServer = async () => {
   try {
