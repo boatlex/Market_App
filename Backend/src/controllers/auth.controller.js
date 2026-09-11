@@ -285,7 +285,94 @@ export const protectRoute = async (req, res, next) => {
     return res.status(500).json({ success: false, message: "Server auth processing failure." });
   }
 };
+ 
 
+export const sendOTP = async (req, res, next) => {
+  const { userId } = req
+
+  const new_otp = OtpGenerator.generate(6, {
+    upperCaseAlphabets: false,
+    lowerCaseAlphabets: false,
+    specialChars: false
+  })
+
+  const otp_expiry_time = Date.now() + 10 * 60 * 1000// 10 min after otp is sent
+
+  const user = await User.findByIdAndUpdate(userId, {
+    otp: new_otp,
+    otp_expiry_time,
+  })
+  await user.save({ new: true, validateModifiedOnly: true });
+
+  
+const transporter = nodemailer.createTransport({
+      service: 'Gmail', 
+      auth: {
+        user: ENV.EMAIL_USER,
+        pass: ENV.EMAIL_PASS,
+      },
+    });
+
+
+    const mailOptions = {
+      to: user.email,
+      from: ENV.EMAIL_USER,
+      subject: 'Market App - Your New OTP',
+      text: `Your Now OTP:\n\n
+             ${user.name, new_otp}\n\n`,
+    };
+
+    await transporter.sendMail(mailOptions);
+}
+
+
+export const verifyOTP = async (req, res, next) => {
+  // verify otp and update user accordingly
+  const { email, otp } = req.body;
+  const user = await User.findOne({
+    email,
+    otp_expiry_time: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    return res.status(400).json({
+      status: "error",
+      message: "Email is invalid or OTP expired",
+    });
+  }
+
+  if (user.verified) {
+    return res.status(400).json({
+      status: "error",
+      message: "Email is already verified",
+    });
+  }
+
+  if (otp !== user.otp) {
+    return res.status(400).json({
+      status: "error",
+      message: "OTP is incorrect",
+    });
+
+    
+  }
+
+  // OTP is correct
+
+  user.verified = true;
+  user.otp = undefined;
+  await user.save({ new: true, validateModifiedOnly: true });
+  
+  const token = signToken(user._id);
+  console.log(token)
+  res.status(200).json({
+    status: "success",
+    message: "OTP verified Successfully!",
+    token,
+    user_id: user._id,
+
+  });
+}
 
 
 

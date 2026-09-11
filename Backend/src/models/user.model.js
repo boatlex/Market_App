@@ -16,18 +16,18 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-   email: {
-    type: String,
-    required: [true, "Email is required"],
-    unique: true, 
-    lowercase: true, 
-    trim: true, 
-    
-    match: [
-        /^[^\s@]+@[^\s@]+\.[^\s@]+$/, 
-        "Please provide a valid email address!"
-    ]
-},
+    email: {
+        type: String,
+        required: [true, "Email is required"],
+        unique: true,
+        lowercase: true,
+        trim: true,
+
+        match: [
+            /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+            "Please provide a valid email address!"
+        ]
+    },
 
     password: {
         type: String,
@@ -43,7 +43,7 @@ const userSchema = new mongoose.Schema({
         },
         sparse: true // 👈 CRITICAL: Allows multiple manual users to have NO clerkId without crashing
     },
-    
+
     resetPasswordToken: {
         type: String,
         required: false
@@ -52,7 +52,12 @@ const userSchema = new mongoose.Schema({
         type: Date,
         required: false
     },
-
+    otp: {
+        type: String,
+    },
+    otp_expiry_time: {
+        type: Date,
+    },
 
     imageUrl: {
         type: String,
