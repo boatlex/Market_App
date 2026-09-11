@@ -6,9 +6,9 @@ import { connectDB } from "./config/db.js";
 
 import userRoutes from "./routes/user.routes.js"
 
-
 const app = express()
 const PORT = ENV.PORT || 3000 
+
 app.use(cors({
   origin: true, 
   credentials: true,
@@ -20,13 +20,23 @@ app.use(cors({
 app.use(clerkMiddleware())
 app.use(express.json());
 
-
 app.get("/api/health", (req, res) => {
     res.status(200).json({ message: "Success App"})
 })
 
 app.use("/api/users", userRoutes)
 
+
+app.use((err, req, res, next) => {
+  console.error("❌ Backend Error:", err.stack || err.message)
+  const statusCode = err.status || 500
+  
+  res.status(statusCode).json({
+    success: false,
+    message: err.message || "Something went wrong on the server.",
+    ...(ENV.NODE_ENV === "development" && { stack: err.stack })
+  });
+});
 
 const connectServer = async () => {
   try {
@@ -43,7 +53,3 @@ connectServer()
 
 // export for vercel
 export default app
-
-
-
-

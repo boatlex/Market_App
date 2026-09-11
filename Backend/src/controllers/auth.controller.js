@@ -4,7 +4,8 @@ import { User } from '../models/user.model.js'
 import { ENV } from '../config/env.js';
 import nodemailer from "nodemailer"; 
 
-
+ const signToken = (id, role) => 
+  jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: '7d' })
 
 export const registerUser = async (req, res) => {
   try {
@@ -46,7 +47,7 @@ export const registerUser = async (req, res) => {
     return res.status(201).json({ success: true, message: "Manual user created successfully!" });
 
   } catch (error) {
-    return res.status(500).json({ success: false, error: error.message });
+    next(error)
   }
 }
 
@@ -92,7 +93,7 @@ export const loginUserClerk = async (req, res) => {
 
     } catch (error) {
         console.error("Error in syncUser controller:", error)
-        return res.status(500).json({ message: "Internal Server Error", error: error.message })
+        next(error)
     }
 }
 
@@ -120,11 +121,7 @@ export const loginUserManual = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid Credentials." });
     }
 
-    const token = jwt.sign(
-      { userId: user._id, role: user.role },
-      ENV.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+      const token = signToken(user._id, user.role);
 
 
     return res.status(200).json({
@@ -141,7 +138,7 @@ export const loginUserManual = async (req, res) => {
     });
 
   } catch (error) {
-    return res.status(500).json({ success: false, error: error.message });
+    next(error)
   }
 }
 
@@ -288,24 +285,30 @@ export const protectRoute = async (req, res, next) => {
  
 
 export const sendOTP = async (req, res, next) => {
-  const { userId } = req
+  try {
+    const { userId } = req;
 
-  const new_otp = OtpGenerator.generate(6, {
-    upperCaseAlphabets: false,
-    lowerCaseAlphabets: false,
-    specialChars: false
-  })
+    // 1. Generate a 6-digit OTP
+    const new_otp = OtpGenerator.generate(6, {
+      upperCaseAlphabets: false,
+      lowerCaseAlphabets: false,
+      specialChars: false
+    });
 
-  const otp_expiry_time = Date.now() + 10 * 60 * 1000// 10 min after otp is sent
+    const otp_expiry_time = Date.now() + 10 * 60 * 1000; // 10 minutes from now
 
-  const user = await User.findByIdAndUpdate(userId, {
-    otp: new_otp,
-    otp_expiry_time,
-  })
-  await user.save({ new: true, validateModifiedOnly: true });
+    // 2. Update the user and get the NEW updated data back
+    const user = await User.findByIdAndUpdate(
+      userId, 
+      { otp: new_otp, otp_expiry_time },
+      { new: true, runValidators: true } // { new: true } gives us the updated user
+    );
 
-  
-const transporter = nodemailer.createTransport({
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const transporter = nodemailer.createTransport({
       service: 'Gmail', 
       auth: {
         user: ENV.EMAIL_USER,
@@ -313,67 +316,74 @@ const transporter = nodemailer.createTransport({
       },
     });
 
-
     const mailOptions = {
       to: user.email,
       from: ENV.EMAIL_USER,
       subject: 'Market App - Your New OTP',
-      text: `Your Now OTP:\n\n
-             ${user.name, new_otp}\n\n`,
+      text: `Hello ${user.name},\n\nYour New OTP is: ${new_otp}\n\nIt will expire in 10 minutes.`,
     };
 
     await transporter.sendMail(mailOptions);
+
+    return res.status(200).json({ message: "OTP sent successfully!" });
+
+  } catch (error) {
+    next(error);
+  }
 }
+
 
 
 export const verifyOTP = async (req, res, next) => {
-  // verify otp and update user accordingly
-  const { email, otp } = req.body;
-  const user = await User.findOne({
-    email,
-    otp_expiry_time: { $gt: Date.now() },
-  });
-
-  if (!user) {
-    return res.status(400).json({
-      status: "error",
-      message: "Email is invalid or OTP expired",
-    });
-  }
-
-  if (user.verified) {
-    return res.status(400).json({
-      status: "error",
-      message: "Email is already verified",
-    });
-  }
-
-  if (otp !== user.otp) {
-    return res.status(400).json({
-      status: "error",
-      message: "OTP is incorrect",
-    });
+  try {
+    const { email, otp } = req.body;
 
     
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      const error = new Error("Account with this email does not exist");
+      error.status = 404;
+      return next(error);
+    }
+
+    if (user.verified) {
+      const error = new Error("Email is already verified");
+      error.status = 400;
+      return next(error);
+    }
+
+    
+    if (otp !== user.otp) {
+      const error = new Error("OTP is incorrect");
+      error.status = 400;
+      return next(error);
+    }
+
+    
+    if (Date.now() > user.otp_expiry_time) {
+      const error = new Error("OTP has expired. Please request a new one.");
+      error.status = 400;
+      return next(error);
+    }
+
+    user.verified = true;
+    user.otp = undefined;
+    user.otp_expiry_time = undefined; 
+    
+    await user.save({ validateModifiedOnly: true });
+    
+    
+      const token = signToken(user._id, user.role);
+
+    return res.status(200).json({
+      status: "success",
+      message: "OTP verified successfully!",
+      token,
+      userId: user._id,
+    });
+
+  } catch (error) {
+    next(error);
   }
-
-  // OTP is correct
-
-  user.verified = true;
-  user.otp = undefined;
-  await user.save({ new: true, validateModifiedOnly: true });
-  
-  const token = signToken(user._id);
-  console.log(token)
-  res.status(200).json({
-    status: "success",
-    message: "OTP verified Successfully!",
-    token,
-    user_id: user._id,
-
-  });
 }
-
-
-
-
