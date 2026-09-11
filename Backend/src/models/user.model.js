@@ -16,31 +16,34 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    email: {
-        type: String,
-        required: true,
-        unique: true,
-        lowercase: true,
-        trim: true
-    },
-    // --- MANUAL LOGIN FIELDS ---
+   email: {
+    type: String,
+    required: [true, "Email is required"],
+    unique: true, 
+    lowercase: true, 
+    trim: true, 
+    
+    match: [
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/, 
+        "Please provide a valid email address!"
+    ]
+},
+
     password: {
         type: String,
         required: function () {
-            // Only required if there is no Clerk ID
             return !this.clerkId;
         }
     },
-    // --- CLERK LOGIN FIELDS ---
+
     clerkId: {
         type: String,
         required: function () {
-            // Only required if there is no manual password
             return !this.password;
         },
         sparse: true // 👈 CRITICAL: Allows multiple manual users to have NO clerkId without crashing
     },
-    // Add these two fields inside your userSchema object in your model file:
+    
     resetPasswordToken: {
         type: String,
         required: false

@@ -10,7 +10,7 @@ import userRoutes from "./routes/user.routes.js"
 const app = express()
 const PORT = ENV.PORT || 3000 
 app.use(cors({
-  //origin: ENV.CLIENT_URL, 
+  origin: true, 
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "x-cid-error"], 
@@ -31,7 +31,7 @@ app.use("/api/users", userRoutes)
 const connectServer = async () => {
   try {
     await connectDB()
-    if (process.env.NODE_ENV !== "production") {
+    if (ENV.NODE_ENV !== "production" && !ENV.IS_VERCEL) {
      app.listen(PORT, () => console.log(`Server is Running At Port: ${PORT}`))
     }
   } catch (error) {
@@ -42,7 +42,7 @@ const connectServer = async () => {
 connectServer()
 
 // export for vercel
-//export default app
+export default app
 
 
 

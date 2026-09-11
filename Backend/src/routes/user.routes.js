@@ -8,8 +8,8 @@ import {loginUserClerk,
 const router = express.Router()
 
 router.post("/register", registerUser )
-router.post("/loginclerk", loginUserClerk )
-router.post("/loginmanual", loginUserManual )
+router.post("/login-clerk", loginUserClerk )
+router.post("/login-manual", loginUserManual )
 
 router.post("/forgot-password", forgotPassword )
 router.post("/reset-password", resetPassword )

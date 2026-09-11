@@ -1,4 +1,5 @@
 import bcrypt from 'bcrypt';
+import jwt from "jsonwebtoken"
 import { User } from '../models/user.model.js'
 import { ENV } from '../config/env.js';
 import nodemailer from "nodemailer"; 
@@ -121,7 +122,7 @@ export const loginUserManual = async (req, res) => {
 
     const token = jwt.sign(
       { userId: user._id, role: user.role },
-      process.env.JWT_SECRET,
+      ENV.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
@@ -178,7 +179,7 @@ export const forgotPassword = async (req, res) => {
     });
 
     // Create the deep link or web link for your Expo App
-    const resetUrl = `myapp://users/reset-password/${resetToken}`; 
+    const resetUrl = `market://users/reset-password/${resetToken}`; 
 
     const mailOptions = {
       to: user.email,
