@@ -1,24 +1,19 @@
 import express from "express"
-import {loginUserClerk,
-     registerUser,
-      loginUserManual,
-       forgotPassword,
-        resetPassword,
-        sendOTP,
-        verifyOTP,
-} from "../controllers/auth.controller.js"
+import { protectRoute } from "../controllers/auth.controller.js"
+import { getMe, updateUserProfile } from "../controllers/user.controller.js"
+
 
 const router = express.Router()
 
-router.post("/register", registerUser )
-router.post("/login-clerk", loginUserClerk )
-router.post("/login-manual", loginUserManual )
+router.get("/get-user", protectRoute, getMe )
+router.patch("/update-user", protectRoute, updateUserProfile )
+router.post("/",  )
 
-router.post("/forgot-password", forgotPassword )
-router.post("/reset-password", resetPassword )
+router.post("/", )
+router.post("/",  )
 
-router.post("/send-otp", sendOTP )
+router.post("/", )
 
-router.post("/verify-otp", verifyOTP )
+router.post("/",  )
 
 export default router

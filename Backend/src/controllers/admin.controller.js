@@ -8,6 +8,7 @@ export const getAllUsers = async (req, res, next) => {
         if (users.length === 0) {
             return res.status(404).json({ message: "No User is Found" })
         }
+
         res.status(200).json({ users })
     } catch (error) {
         console.error("Error Fetching Customers", error)

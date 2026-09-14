@@ -5,6 +5,10 @@ import { ENV } from "./config/env.js";
 import { connectDB } from "./config/db.js";
 
 import userRoutes from "./routes/user.routes.js"
+import authRoutes from "./routes/auth.routes.js"
+import commentRoutes from "./routes/comment.routes.js"
+import productRoutes from "./routes/product.routes.js"
+import adminRoutes from "./routes/admin.routes.js"
 
 const app = express()
 const PORT = ENV.PORT || 3000 
@@ -25,6 +29,10 @@ app.get("/api/health", (req, res) => {
 })
 
 app.use("/api/users", userRoutes)
+app.use("/api/auths", authRoutes)
+app.use("/api/comments", commentRoutes)
+app.use("/api/products", productRoutes)
+app.use("/api/admin", adminRoutes)
 
 
 app.use((err, req, res, next) => {
