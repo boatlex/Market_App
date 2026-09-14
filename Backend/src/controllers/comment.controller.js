@@ -1,7 +1,7 @@
-import Comment from "../models/comment.model"
-import { Product } from "../models/product.model"
+import Comment from "../models/comment.model.js"
+import { Product } from "../models/product.model.js"
 import { getAuth } from "@clerk/express"
-import { User } from "../models/user.model";
+import { User } from "../models/user.model.js";
 
 
 export const getProductComments = async (req, res, next) => {

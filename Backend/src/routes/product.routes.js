@@ -1,5 +1,6 @@
 import express from "express"
 import { protectRoute } from "../controllers/auth.controller.js"
+import { upload } from "../middleware/multer.middleware.js";
 import { 
     getFilteredProducts, 
     getProducts, 

@@ -7,13 +7,8 @@ const router = express.Router()
 
 router.get("/get-user", protectRoute, getMe )
 router.patch("/update-user", protectRoute, updateUserProfile )
-router.post("/",  )
 
-router.post("/", )
-router.post("/",  )
 
-router.post("/", )
 
-router.post("/",  )
 
 export default router

@@ -12,4 +12,4 @@ const filterObj =(obj, ...allowedFields)=>{
 
 }
 
-module.exports = filterObj
+export default filterObj

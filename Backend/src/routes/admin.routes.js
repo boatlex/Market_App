@@ -1,3 +1,4 @@
+import express from "express"
 import { protectRoute } from "../controllers/auth.controller.js"
 import {adminOnly} from "../middleware/auth.middleware.js"
 import { adminDeleteProduct, getAllUsers, getAllProducts, getDashboardStats  } from "../controllers/admin.controller.js"

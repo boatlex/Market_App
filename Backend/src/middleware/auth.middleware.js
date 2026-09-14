@@ -1,4 +1,4 @@
-import { ENV } from "../config/env";
+import { ENV } from "../config/env.js";
 
 export const adminOnly = async (req, res, next) => {
     if (!req.user) {

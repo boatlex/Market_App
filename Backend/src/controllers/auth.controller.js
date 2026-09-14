@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt';
 import jwt from "jsonwebtoken"
 import { User } from '../models/user.model.js'
-import { clerkClient } from "@clerk/clerk-sdk-node"
+import { clerkClient, getAuth } from "@clerk/express"
 import { ENV } from '../config/env.js';
 import nodemailer from "nodemailer";
 

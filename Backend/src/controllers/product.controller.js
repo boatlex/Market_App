@@ -1,11 +1,8 @@
-import { Product } from "../models/product.model";
+import { Product } from "../models/product.model.js";
 import { User } from "../models/user.model.js";
 import cloudinary from "../config/cloudinary.js"
-import { Product } from "./path/to/your/productModel.js";
-
-
 import { promises as fsPromises } from 'fs';
-import { Product } from "./path-to-your-product-model.js";
+
 
 export const createProduct = async (req, res, next) => {
     try {
