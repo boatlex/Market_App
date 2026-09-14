@@ -1,22 +1,23 @@
 import bcrypt from 'bcrypt';
 import jwt from "jsonwebtoken"
 import { User } from '../models/user.model.js'
+import { clerkClient } from "@clerk/clerk-sdk-node"
 import { ENV } from '../config/env.js';
-import nodemailer from "nodemailer"; 
+import nodemailer from "nodemailer";
 
- const signToken = (id, role) => 
+const signToken = (id, role) =>
   jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: '7d' })
 
-export const registerUser = async (req, res) => {
+export const registerUser = async (req, res, next) => {
   try {
     const { name, email, password, confirmPassword } = req.body;
 
-    
+
     if (!name || !email || !password || !confirmPassword) {
       return res.status(400).json({ success: false, message: "All fields are required." });
     }
 
-    
+
     if (password !== confirmPassword) {
       return res.status(400).json({ success: false, message: "Passwords do not match." });
     }
@@ -32,11 +33,11 @@ export const registerUser = async (req, res) => {
       return res.status(400).json({ success: false, message: "Email is already registered." });
     }
 
-    
+
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    
+
     const newUser = new User({
       name,
       email,
@@ -51,57 +52,55 @@ export const registerUser = async (req, res) => {
   }
 }
 
-export const loginUserClerk = async (req, res) => {
-    try {
-        const { userId } = getAuth(req)
+export const loginUserClerk = async (req, res, next) => {
+  try {
+    const { userId } = getAuth(req);
 
-        if (!userId) {
-            return res.status(401).json({ message: "Unauthorized. Missing token." })
-        }
-
-        const existingUser = await User.findOne({ clerkId: userId })
-        if (existingUser) {
-            return res.status(200).json({ user: existingUser, message: "User Already Exists!" })
-        }
-
-        const clerkUser = await clerkClient.users.getUser(userId)
-
-        let asignedRole = "user"
-
-        if (ENV.ADMIN_EMAIL === clerkUser.emailAddresses[0]?.emailAddress) {
-            asignedRole = "admin"
-        }
-
-        const fullName = `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim()
-
-        const userData = {
-            clerkId: userId,
-            email: clerkUser.emailAddresses[0]?.emailAddress || "",
-            name: fullName || "Anonymous User",
-            imageUrl: clerkUser.imageUrl || "",
-            addresses: [],
-            role: asignedRole,
-        }
-
-        // 6. Save the new user record
-        const user = await User.create(userData)
-
-        return res.status(201).json({
-            user,
-            message: "User Created Successfully"
-        })
-
-    } catch (error) {
-        console.error("Error in syncUser controller:", error)
-        next(error)
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized. Missing token." });
     }
-}
+    const existingUser = await User.findOne({ clerkId: userId });
+    if (existingUser) {
+      return res.status(200).json({ user: existingUser, message: "User Already Exists!" });
+    }
 
-export const loginUserManual = async (req, res) => {
+    const clerkUser = await clerkClient.users.getUser(userId);
+
+
+    let assignedRole = "seller"
+    const userEmail = clerkUser.emailAddresses[0]?.emailAddress || "";
+
+    if (process.env.ADMIN_EMAIL === userEmail.toLowerCase()) { 
+      assignedRole = "admin";
+    }
+
+    const userData = {
+      clerkId: userId,
+      email: userEmail,
+      firstName: clerkUser.firstName || "Anonymous", 
+      lastName: clerkUser.lastName || "User",       
+      profilePicture: clerkUser.imageUrl || "",    
+      role: assignedRole,
+      verified: true
+    };
+
+    const user = await User.create(userData);
+
+    return res.status(201).json({
+      user,
+      message: "User Created Successfully"
+    });
+
+  } catch (error) {
+    console.error("Error in syncUser controller:", error);
+    next(error);
+  }
+};
+
+export const loginUserManual = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
       return res.status(400).json({ success: false, message: "Invalid email or password." });
@@ -109,41 +108,50 @@ export const loginUserManual = async (req, res) => {
 
 
     if (!user.password) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "This account uses Google/Social login. Please sign in via Google or Apple." 
+      return res.status(400).json({
+        success: false,
+        message: "This account uses Google/Social login. Please sign in via Google or Apple."
       });
     }
-
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ success: false, message: "Invalid Credentials." });
     }
 
-      const token = signToken(user._id, user.role);
+    let currentRole = user.role;
+    
+  
+    if (ENV.ADMIN_EMAIL === user.email && user.role !== "admin") {
+      user.role = "admin";
+      await user.save(); 
+      currentRole = "admin";
+    }
 
+    const token = signToken(user._id, currentRole);
 
+    
     return res.status(200).json({
       success: true,
       message: "Logged in successfully!",
-      token, // 👈 Save this token in SecureStore on the mobile side
+      token, // Save this token in SecureStore on the mobile device
       user: {
         id: user._id,
-        name: user.name,
+        firstName: user.firstName, 
+        lastName: user.lastName,
         email: user.email,
-        role: user.role,
-        addresses: user.addresses
+        role: currentRole,
+        profilePicture: user.profilePicture || ""
       }
     });
 
   } catch (error) {
-    next(error)
+    next(error);
   }
-}
+};
 
 
-export const forgotPassword = async (req, res) => {
+export const forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
 
@@ -153,15 +161,13 @@ export const forgotPassword = async (req, res) => {
     }
 
     if (user.clerkId && !user.password) {
-      return res.status(400).json({ 
-        message: "This account uses Google/Social login via Clerk. Please manage your account through Clerk." 
+      return res.status(400).json({
+        message: "This account uses Google/Social login via Clerk. Please manage your account through Clerk."
       });
     }
 
-    // 2. Generate a secure, temporary random token
     const resetToken = crypto.randomBytes(20).toString('hex');
-    
-    // 3. Hash the token before saving to database for security, set expiry to 1 hour
+
     user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
     user.resetPasswordExpires = Date.now() + 3600000; // 1 hour from now
 
@@ -175,8 +181,7 @@ export const forgotPassword = async (req, res) => {
       },
     });
 
-    // Create the deep link or web link for your Expo App
-    const resetUrl = `market://users/reset-password/${resetToken}`; 
+    const resetUrl = `market://auths/reset-password/${resetToken}`;
 
     const mailOptions = {
       to: user.email,
@@ -194,7 +199,7 @@ export const forgotPassword = async (req, res) => {
 
   } catch (error) {
     console.error("Forgot Password Error:", error);
-    res.status(500).json({ error: error.message });
+    next(error)
   }
 }
 
@@ -203,17 +208,17 @@ export const resetPassword = async (req, res) => {
     const { token } = req.params;
     const { newPassword, confirmNewPassword } = req.body;
 
-    
+
     if (!newPassword || !confirmNewPassword) {
       return res.status(400).json({ success: false, message: "Please fill out all fields." });
     }
 
-    
+
     if (newPassword !== confirmNewPassword) {
       return res.status(400).json({ success: false, message: "Passwords do not match." });
     }
 
-    
+
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
     const user = await User.findOne({
       resetPasswordToken: hashedToken,
@@ -224,7 +229,7 @@ export const resetPassword = async (req, res) => {
       return res.status(400).json({ success: false, message: "Token is invalid or has expired." });
     }
 
-    
+
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(newPassword, salt);
     user.resetPasswordToken = undefined;
@@ -239,50 +244,49 @@ export const resetPassword = async (req, res) => {
 }
 
 
-
 export const protectRoute = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ success: false, message: "Authorization denied. No token found." });
-    }
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
 
-    const token = authHeader.split(' ')[1];
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // --- CHECK 1: Is it a Manual JWT Token? ---
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      
-      const user = await User.findById(decoded.userId);
-      if (!user) {
-        return res.status(404).json({ success: false, message: "User profile not found." });
+        const user = await User.findById(decoded.userId);
+        if (!user) {
+          return res.status(404).json({ success: false, message: "User profile not found." });
+        }
+
+        req.user = user;
+        return next();
+
+      } catch (jwtError) {
+        console.log("Standard JWT verification skipped/failed, checking Clerk auth...");
       }
-
-      req.user = user; // Pass the MongoDB user file to the route handler
-      return next();   // Proceed smoothly to the next step
-
-    } catch (jwtError) {
-      // If the JWT fails validation, we drop down to verify if it's a Clerk Token
     }
 
-    // --- CHECK 2: Is it a Clerk Token? ---
-    // If you pass the Clerk token from frontend using: const token = await getToken()
-    // You can parse it or query your database directly using the Clerk internal identifier matching your sync profiles
-    const clerkUser = await User.findOne({ clerkId: req.headers['x-clerk-user-id'] || '' });
+    const clerkAuth = typeof getAuth === 'function' ? getAuth(req) : {};
+    const verifiedClerkId = clerkAuth?.userId || req.auth?.userId;
 
-    if (clerkUser) {
-      req.user = clerkUser;
-      return next();
+    if (verifiedClerkId) {
+      const clerkUser = await User.findOne({ clerkId: verifiedClerkId });
+
+      if (clerkUser) {
+        req.user = clerkUser;
+        return next();
+      }
     }
 
-    return res.status(401).json({ success: false, message: "Invalid or expired token." });
+    return res.status(401).json({ success: false, message: "Authentication denied. Invalid or expired session." });
 
   } catch (error) {
+    console.error("Auth Middleware Error:", error);
     return res.status(500).json({ success: false, message: "Server auth processing failure." });
   }
-};
- 
+}
+
 
 export const sendOTP = async (req, res, next) => {
   try {
@@ -299,7 +303,7 @@ export const sendOTP = async (req, res, next) => {
 
     // 2. Update the user and get the NEW updated data back
     const user = await User.findByIdAndUpdate(
-      userId, 
+      userId,
       { otp: new_otp, otp_expiry_time },
       { new: true, runValidators: true } // { new: true } gives us the updated user
     );
@@ -309,7 +313,7 @@ export const sendOTP = async (req, res, next) => {
     }
 
     const transporter = nodemailer.createTransport({
-      service: 'Gmail', 
+      service: 'Gmail',
       auth: {
         user: ENV.EMAIL_USER,
         pass: ENV.EMAIL_PASS,
@@ -338,7 +342,7 @@ export const verifyOTP = async (req, res, next) => {
   try {
     const { email, otp } = req.body;
 
-    
+
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -353,14 +357,14 @@ export const verifyOTP = async (req, res, next) => {
       return next(error);
     }
 
-    
+
     if (otp !== user.otp) {
       const error = new Error("OTP is incorrect");
       error.status = 400;
       return next(error);
     }
 
-    
+
     if (Date.now() > user.otp_expiry_time) {
       const error = new Error("OTP has expired. Please request a new one.");
       error.status = 400;
@@ -369,12 +373,12 @@ export const verifyOTP = async (req, res, next) => {
 
     user.verified = true;
     user.otp = undefined;
-    user.otp_expiry_time = undefined; 
-    
+    user.otp_expiry_time = undefined;
+
     await user.save({ validateModifiedOnly: true });
-    
-    
-      const token = signToken(user._id, user.role);
+
+
+    const token = signToken(user._id, user.role);
 
     return res.status(200).json({
       status: "success",

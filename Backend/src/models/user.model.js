@@ -1,18 +1,11 @@
 import mongoose from "mongoose";
 
-const addressSchema = new mongoose.Schema({
-    label: { type: String, required: true },
-    fullName: { type: String, required: true },
-    streetAddress: { type: String, required: true },
-    city: { type: String, required: true },
-    state: { type: String, required: true },
-    zipCode: { type: String, default: "" },
-    phoneNumber: { type: String, required: true },
-    isDefault: { type: Boolean, default: false },
-});
-
 const userSchema = new mongoose.Schema({
-    name: {
+    firstName: {
+        type: String,
+        required: true
+    },
+    lastName: {
         type: String,
         required: true
     },
@@ -63,17 +56,17 @@ const userSchema = new mongoose.Schema({
         type: Date,
     },
 
-    imageUrl: {
+    profilePicture: {
         type: String,
         default: "",
     },
     role: {
         type: String,
-        enum: ["user", "admin"],
-        default: "user",
+        enum: ["seller", "admin"],
+        default: "seller",
         index: true
     },
-    addresses: [addressSchema],
+
 }, { timestamps: true });
 
 export const User = mongoose.model("User", userSchema);
