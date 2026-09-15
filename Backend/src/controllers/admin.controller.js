@@ -68,7 +68,7 @@ export const getAllProducts = async (req, res,next) => {
 export const getDashboardStats = async (req, res, next) => {
     try {
         const [totalUsers, totalProducts] = await Promise.all([
-            User.countDocuments({ role: "seller" }),
+            User.countDocuments({ role: "user" }),
             
             Product.countDocuments(),
         ]);

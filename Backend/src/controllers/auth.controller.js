@@ -6,7 +6,7 @@ import { ENV } from '../config/env.js';
 import nodemailer from "nodemailer";
 
 const signToken = (id, role) =>
-  jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: '7d' })
+  jwt.sign({ id, role }, ENV.JWT_SECRET, { expiresIn: '7d' })
 
 export const registerUser = async (req, res, next) => {
   try {
@@ -67,10 +67,10 @@ export const loginUserClerk = async (req, res, next) => {
     const clerkUser = await clerkClient.users.getUser(userId);
 
 
-    let assignedRole = "seller"
+    let assignedRole = "user"
     const userEmail = clerkUser.emailAddresses[0]?.emailAddress || "";
 
-    if (process.env.ADMIN_EMAIL === userEmail.toLowerCase()) { 
+    if (ENV.ADMIN_EMAIL === userEmail.toLowerCase()) { 
       assignedRole = "admin";
     }
 
@@ -252,7 +252,7 @@ export const protectRoute = async (req, res, next) => {
       const token = authHeader.split(' ')[1];
 
       try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, ENV.JWT_SECRET);
 
         const user = await User.findById(decoded.userId);
         if (!user) {
