@@ -1,7 +1,5 @@
 import Comment from "../models/comment.model.js"
 import { Product } from "../models/product.model.js"
-import { getAuth } from "@clerk/express"
-import { User } from "../models/user.model.js";
 
 
 export const getProductComments = async (req, res, next) => {
@@ -22,35 +20,30 @@ export const getProductComments = async (req, res, next) => {
     }
 }
 
-export const createComment = async (req, res,next) => {
+export const createComment = async (req, res, next) => {
   try {
-    const clerkAuth = typeof getAuth === 'function' ? getAuth(req) : {};
-    const clerkUserId = clerkAuth?.userId; 
-    const m_userId = req.user?._id;
-
     const { productId } = req.params;
     const { content } = req.body;
 
+    const databaseUser = req.user;
+
+    if (!databaseUser) {
+      return res.status(401).json({ success: false, error: "Unauthorized: User session missing." });
+    }
     
     if (!content) {
-        return res.status(400).json({ error: "Comment content is required" });
-    }
-
-    let databaseUser;
-    if (m_userId) {
-        databaseUser = await User.findById(m_userId);
-    } else if (clerkUserId) {
-        databaseUser = await User.findOne({ clerkId: clerkUserId });
+        return res.status(400).json({ success: false, error: "Comment content is required" });
     }
 
     const product = await Product.findById(productId);
 
-    if (!databaseUser || !product) {
-        return res.status(404).json({ error: "User or Product Not Found" });
+    if (!product) {
+        return res.status(404).json({ success: false, error: "Product Not Found" });
     }
 
     if (product.seller.equals(databaseUser._id)) {
         return res.status(403).json({ 
+            success: false,
             error: "Forbidden: You cannot comment on your own product." 
         });
     }
@@ -61,59 +54,55 @@ export const createComment = async (req, res,next) => {
         content
     });
 
+    // 5. Update the product's comment reference array list link
     await Product.findByIdAndUpdate(productId, {
         $push: { comments: comment._id } 
     });
 
-    return res.status(201).json({ comment });
+    // Standardized consistent response layout formatting structure
+    return res.status(201).json({ success: true, comment });
   } catch (error) {
-    next(error)
+    console.error("Error Creating Comment:", error);
+    next(error);
   }
-}
+};
 
 
 export const deleteComment = async (req, res, next) => { 
     try {
-        
-        const clerkAuth = typeof getAuth === 'function' ? getAuth(req) : {};
-        const clerkUserId = clerkAuth?.userId; 
-        const m_userId = req.user?._id;
-
         const { commentId } = req.params;
 
-        
-        let databaseUser;
-        if (m_userId) {
-            databaseUser = await User.findById(m_userId);
-        } else if (clerkUserId) {
-            databaseUser = await User.findOne({ clerkId: clerkUserId });
-        }
+        const databaseUser = req.user;
 
-        
+        if (!databaseUser) {
+            return res.status(401).json({ success: false, error: "Unauthorized: User session missing." });
+        }
         const comment = await Comment.findById(commentId);
-
-        if (!databaseUser || !comment) {
-            return res.status(404).json({ error: "User or Comment Not Found" });
+        if (!comment) {
+            return res.status(404).json({ success: false, error: "Comment Not Found" });
         }
 
-      
         if (!comment.user.equals(databaseUser._id)) {
-            return res.status(403).json({ error: "You can only delete your own comment" })     }
+            return res.status(403).json({ success: false, error: "You can only delete your own comment" });
+        }
 
-    
+        
         await Product.findByIdAndUpdate(comment.product, {
             $pull: { comments: commentId }
         });
         
-
+        
         await Comment.findByIdAndDelete(commentId);
 
         return res.status(200).json({
+            success: true,
             message: "Comment Deleted Successfully"
         });
 
     } catch (error) {
+        console.error("Error Deleting Comment:", error);
         next(error);  
     }
 };
+
 

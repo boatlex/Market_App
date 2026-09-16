@@ -90,6 +90,13 @@ const productSchema = new mongoose.Schema({
             ref: "Comment",
         }
     ],
+
+    isAvailable: {
+        type: Boolean,
+        default: true,
+        index: true // Accelerates public marketplace search queries
+    },
+
 }, { timestamps: true });
 
 export const Product = mongoose.model("Product", productSchema);

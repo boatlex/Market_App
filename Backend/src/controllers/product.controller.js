@@ -1,5 +1,4 @@
 import { Product } from "../models/product.model.js";
-import { User } from "../models/user.model.js";
 import cloudinary from "../config/cloudinary.js"
 import { promises as fsPromises } from 'fs';
 
@@ -7,7 +6,6 @@ import { promises as fsPromises } from 'fs';
 export const createProduct = async (req, res, next) => {
     try {
         const {
-            seller,
             name,
             description,
             price,
@@ -18,37 +16,44 @@ export const createProduct = async (req, res, next) => {
             location
         } = req.body;
 
-        if (!seller || !name || !description || !price || !phoneNumber || !category || !productType || !region || !location) {
+        const sellerId = req.user?._id;
+
+        if (!sellerId) {
+            return res.status(401).json({ success: false, message: "Unauthorized: Missing user session." });
+        }
+
+        if (!name || !description || !price || !phoneNumber || !category || !productType || !region || !location) {
             if (req.files) {
                 for (const file of req.files) await fsPromises.unlink(file.path).catch(() => { });
             }
-            return res.status(400).json({ message: "All text fields are required" });
+            return res.status(400).json({ success: false, message: "All text fields are required" });
         }
 
         if (!req.files || req.files.length === 0) {
-            return res.status(400).json({ message: "At least one image file is required" });
+            return res.status(400).json({ success: false, message: "At least one image file is required" });
         }
 
         const uploadPromises = req.files.map(async (file) => {
             const normalizedPath = file.path.replace(/\\/g, '/');
             return await cloudinary.uploader.upload(normalizedPath, {
                 folder: "products",
-                upload_preset: "images"
+                upload_preset: "images" 
             });
         });
 
         const uploadResults = await Promise.all(uploadPromises);
         const imageUrls = uploadResults.map((result) => result.secure_url);
 
-
+        
         for (const file of req.files) {
             await fsPromises.unlink(file.path).catch((err) =>
                 console.error("Failed to delete local temp file:", err.message)
             );
         }
 
+        
         const product = await Product.create({
-            seller,
+            seller: sellerId, 
             name,
             description,
             price: parseFloat(price),
@@ -60,7 +65,7 @@ export const createProduct = async (req, res, next) => {
             images: imageUrls
         });
 
-        return res.status(201).json({ product });
+        return res.status(201).json({ success: true, product });
 
     } catch (error) {
         console.error("Error Creating Product:", error);
@@ -71,10 +76,9 @@ export const createProduct = async (req, res, next) => {
             }
         }
 
-        next(error)
+        next(error);
     }
 };
-
 
 export const getFilteredProducts = async (req, res, next) => {
     try {
@@ -162,25 +166,17 @@ export const getProduct = async (req, res, next) => {
     }
 }
 
+
 export const getUserProducts = async (req, res, next) => {
     try {
-        const clerkAuth = typeof getAuth === 'function' ? getAuth(req) : {};
-        const clerkUserId = clerkAuth?.userId;
-        const m_userId = req.user?._id;
 
-        let databaseUser;
-        if (m_userId) {
-            databaseUser = await User.findById(m_userId);
-        } else if (clerkUserId) {
-            databaseUser = await User.findOne({ clerkId: clerkUserId });
-        }
-
+        const databaseUser = req.user;
 
         if (!databaseUser) {
-            return res.status(404).json({ error: "User Not Found" });
+            return res.status(404).json({ success: false, error: "User Not Found" });
         }
 
-
+        // 2. Query products using the cleanly available database User ID
         const products = await Product.find({ seller: databaseUser._id })
             .sort({ createdAt: -1 })
             .populate("seller", "firstName lastName profilePicture")
@@ -192,18 +188,19 @@ export const getUserProducts = async (req, res, next) => {
                 }
             });
 
-
-        return res.status(200).json({ products });
+        return res.status(200).json({ success: true, products });
 
     } catch (error) {
+        console.error("Error Fetching User Products:", error);
         next(error);
     }
-}
+};
+
+
 
 export const updateProduct = async (req, res, next) => {
     try {
         const {
-            seller,
             name,
             description,
             price,
@@ -212,21 +209,40 @@ export const updateProduct = async (req, res, next) => {
             productType,
             region,
             location,
-            existingImages
+            existingImages // An array of image URLs the user wants to KEEP
         } = req.body;
 
         const { id } = req.params;
+        const databaseUser = req.user; 
 
+        if (!databaseUser) {
+            if (req.files) {
+                for (const file of req.files) await fsPromises.unlink(file.path).catch(() => { });
+            }
+            return res.status(401).json({ success: false, message: "Unauthorized: Session missing." });
+        }
 
         const product = await Product.findById(id);
         if (!product) {
             if (req.files) {
                 for (const file of req.files) await fsPromises.unlink(file.path).catch(() => { });
             }
-            return res.status(404).json({ message: "Product Not Found" });
+            return res.status(404).json({ success: false, message: "Product Not Found" });
         }
 
-        if (seller) product.seller = seller;
+        const isOwner = product.seller.equals(databaseUser._id);
+        const isAdmin = databaseUser.role === "admin";
+
+        if (!isOwner && !isAdmin) {
+            if (req.files) {
+                for (const file of req.files) await fsPromises.unlink(file.path).catch(() => { });
+            }
+            return res.status(403).json({ 
+                success: false, 
+                message: "Forbidden: You do not have permission to modify this product." 
+            });
+        }
+
         if (name) product.name = name;
         if (description) product.description = description;
         if (price !== undefined) product.price = parseFloat(price);
@@ -236,11 +252,23 @@ export const updateProduct = async (req, res, next) => {
         if (region) product.region = region;
         if (location) product.location = location;
 
+        
+        let finalImages = [];
+
+        // Parse images the user decided to keep from the front-end choice checkboxes
+        if (existingImages !== undefined) {
+            finalImages = Array.isArray(existingImages) ? existingImages : [existingImages];
+        } else {
+        
+            finalImages = product.images || [];
+        }
 
         if (req.files && req.files.length > 0) {
-            if (req.files.length > 3) {
+            // Count validation check (Merged images must not exceed limits)
+            const totalImageCount = finalImages.length + req.files.length;
+            if (totalImageCount > 3) {
                 for (const file of req.files) await fsPromises.unlink(file.path).catch(() => { });
-                return res.status(400).json({ message: "Maximum 3 images allowed" });
+                return res.status(400).json({ success: false, message: `Maximum 3 images allowed. You tried to upload ${req.files.length} new photos but kept ${finalImages.length} old ones.` });
             }
 
             const uploadPromises = req.files.map((file) => {
@@ -252,26 +280,27 @@ export const updateProduct = async (req, res, next) => {
             });
 
             const uploadResults = await Promise.all(uploadPromises);
+            const newImageUrls = uploadResults.map((result) => result.secure_url);
 
-            product.images = uploadResults.map((result) => result.secure_url);
+            // Merge your kept items together with the fresh network secure image paths
+            finalImages = [...finalImages, ...newImageUrls];
 
+            
             for (const file of req.files) {
                 await fsPromises.unlink(file.path).catch((err) =>
                     console.error("Failed to delete local temp file:", err.message)
                 );
             }
-
-        } else if (existingImages !== undefined) {
-            product.images = Array.isArray(existingImages) ? existingImages : [existingImages];
         }
 
+        
+        product.images = finalImages;
 
         await product.save();
-        return res.status(200).json({ product });
+        return res.status(200).json({ success: true, product });
 
     } catch (error) {
         console.error("Error Updating Product", error);
-
 
         if (req.files) {
             for (const file of req.files) {
@@ -283,29 +312,22 @@ export const updateProduct = async (req, res, next) => {
     }
 };
 
+
+
 export const deleteProduct = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const clerkAuth = typeof getAuth === 'function' ? getAuth(req) : {};
-        const clerkUserId = clerkAuth?.userId;
-        const m_userId = req.user?._id; 
 
-        
-        const product = await Product.findById(id);
-        if (!product) {
-            return res.status(404).json({ message: "Product Not Found" });
-        }
-
-        let databaseUser;
-        if (m_userId) {
-            databaseUser = await User.findById(m_userId);
-        } else if (clerkUserId) {
-            databaseUser = await User.findOne({ clerkId: clerkUserId });
-        }
-
+        const databaseUser = req.user; 
         
         if (!databaseUser) {
-            return res.status(401).json({ message: "Unauthorized: User not found." });
+            return res.status(401).json({ success: false, message: "Unauthorized: User session missing." });
+        }
+
+    
+        const product = await Product.findById(id);
+        if (!product) {
+            return res.status(404).json({ success: false, message: "Product Not Found" });
         }
 
         const isOwner = product.seller.equals(databaseUser._id);
@@ -313,6 +335,7 @@ export const deleteProduct = async (req, res, next) => {
 
         if (!isOwner && !isAdmin) {
             return res.status(403).json({ 
+                success: false, 
                 message: "Forbidden: You do not have permission to delete this product." 
             });
         }
@@ -331,15 +354,48 @@ export const deleteProduct = async (req, res, next) => {
             await Promise.all(deletePromises.filter(Boolean));
         }
 
-        
         await Product.findByIdAndDelete(id);
 
-        return res.status(200).json({ message: "Product Deleted Successfully" });
+        return res.status(200).json({ success: true, message: "Product Deleted Successfully" });
 
     } catch (error) {
         console.error("Error Deleting Product:", error);
         next(error);
     }
+};
+
+
+
+
+
+export const toggleAvailability = async (req, res, next) => {
+  try {
+    const { productId } = req.params;
+    const userId = req.user._id; 
+
+    const product = await Product.findById(productId);
+
+    if (!product) {
+      return res.status(404).json({ success: false, message: "Product listing not found." });
+    }
+
+    
+     if (!product.seller.equals(userId)) {
+      return res.status(403).json({ success: false, message: "Action denied. You do not own this listing." });
+    }
+
+    // 3. Reverse the boolean flag status
+    product.isAvailable = !product.isAvailable;
+    await product.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `Product successfully marked as ${product.isAvailable ? "available" : "unavailable"}.`,
+      product
+    });
+  } catch (error) {
+    next(error)
+  }
 };
 
 

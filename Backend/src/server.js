@@ -12,7 +12,8 @@ import commentRoutes from "./routes/comment.routes.js";
 import productRoutes from "./routes/product.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import messageRoutes from "./routes/message.routes.js";
-import notificationgeRoutes from "./routes/notification.routes.js";
+import notificationRoutes from "./routes/notification.routes.js";
+import reportRoutes from "./routes/report.routes.js";
 
 const app = express();
 const PORT = ENV.PORT || 3000;
@@ -49,7 +50,8 @@ app.use("/api/comments", commentRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/messages", messageRoutes);
-app.use("/api/notifications", notificationgeRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/reports", reportRoutes);
 
 // 7. Error Handling
 app.use((err, req, res, next) => {
