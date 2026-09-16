@@ -4,7 +4,6 @@ import { getMyNotifications, markAsRead, markAllAsRead } from "../controllers/no
 
 const router = express.Router();
 
-// 1. Fixed route ordering: Put static routes BEFORE dynamic routes with parameters (:id)
 router.put("/mark-all", protectRoute, markAllAsRead);
 
 // 2. Fetch all user notifications

@@ -1,47 +1,54 @@
-import { User } from "../models/user.model.js"
-import { Product } from "../models/product.model.js"
+import { User } from "../models/user.model.js";
+import { Product } from "../models/product.model.js";
+import { Report} from "../models/report.model.js";
 import cloudinary from "../config/cloudinary.js";
 
 export const getAllUsers = async (req, res, next) => {
     try {
-        const users = await User.find({verified:true}).sort({ createdAt: -1 })
+        const users = await User.find({ verified: true })
+            .select("-password") 
+            .sort({ createdAt: -1 });
+
         if (users.length === 0) {
-            return res.status(404).json({ message: "No User is Found" })
+            return res.status(404).json({ success: false, message: "No Users Found" });
         }
 
-        res.status(200).json({ users })
+        return res.status(200).json({ 
+            success: true, 
+            users 
+        });
     } catch (error) {
-        console.error("Error Fetching Customers", error)
-        next(error)
+        console.error("Error Fetching Customers:", error);
+        next(error);
     }
-}
+};
 
 export const adminDeleteProduct = async (req, res, next) => {
     try {
         const { id } = req.params;
 
-        
         const product = await Product.findById(id);
         if (!product) {
-            return res.status(404).json({ message: "Product Not Found" });
+            return res.status(404).json({ success: false, message: "Product Not Found" });
         }
 
-        
         if (product.images && product.images.length > 0) {
             const deletePromises = product.images.map((imageUrl) => {
                 const parts = imageUrl.split("/upload/");
                 if (parts.length > 1) {
                     const pathAfterUpload = parts[1].replace(/^v\d+\//, ""); 
-                    const publicId = pathAfterUpload.split(".")[0];
+                    const publicId = pathAfterUpload.substring(0, pathAfterUpload.lastIndexOf("."));
                     return cloudinary.uploader.destroy(publicId);
                 }
             });
             await Promise.all(deletePromises.filter(Boolean));
         }
 
+    
         await Product.findByIdAndDelete(id);
         
         return res.status(200).json({ 
+            success: true,
             message: "Administrative Action: Product removed successfully." 
         });
 
@@ -49,39 +56,54 @@ export const adminDeleteProduct = async (req, res, next) => {
         console.error("Admin Delete Error:", error);
         next(error);
     }
-}
-export const getAllProducts = async (req, res,next) => {
+};
 
+export const getAllProducts = async (req, res, next) => {
     try {
         const products = await Product.find()
-            .sort({ createdAt: -1 }).lean()
-        res.status(200).json({ products })
+            .sort({ createdAt: -1 })
+            .lean();
+
+        if (!products || products.length === 0) {
+            return res.status(200).json({ 
+                success: true, 
+                products: [], 
+                message: "No product listings have been created yet." 
+            });
+        }
+
+        return res.status(200).json({ 
+            success: true, 
+            products 
+        });
     } catch (error) {
-        console.error("Error Fetching Products", error)
-        next(error)
+        console.error("Error Fetching Products:", error);
+        next(error);
     }
-
-
-}
-
+};
 
 export const getDashboardStats = async (req, res, next) => {
     try {
-        const [totalUsers, totalProducts] = await Promise.all([
+        const [totalUsers, totalProducts, totalReports] = await Promise.all([
             User.countDocuments({ role: "user" }),
-            
             Product.countDocuments(),
+            Report.countDocuments({ status: "pending" }) 
         ]);
-
+   
         return res.status(200).json({
-            totalUsers,
-            totalProducts,
+            success: true,
+            stats: {
+                totalUsers,
+                totalProducts,
+                totalReports,
+            }
         });
     } catch (error) {
         console.error("Error Fetching DashBoard Stats:", error);
         next(error);
     }
 };
+
 
 
 
