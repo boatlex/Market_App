@@ -6,7 +6,7 @@ import { adminDeleteProduct, getAllUsers, getAllProducts, getDashboardStats  } f
 
 const router = express.Router()
 
-router.delete("/delete", protectRoute, adminOnly, adminDeleteProduct )
+router.delete("/delete/:id", protectRoute, adminOnly, adminDeleteProduct )
 router.get("/users", protectRoute, adminOnly, getAllUsers )
 router.get("/all-products", protectRoute, adminOnly, getAllProducts  )
 router.get("/stats", protectRoute, adminOnly, getDashboardStats )
