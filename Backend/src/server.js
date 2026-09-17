@@ -14,6 +14,12 @@ import adminRoutes from "./routes/admin.routes.js";
 import messageRoutes from "./routes/message.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import reportRoutes from "./routes/report.routes.js";
+import jobRoutes from "./routes/jobs.routes.js";
+import applicationRoutes from "./routes/application.routes.js";
+import jobseekerprofileRoutes from "./routes/jobseekerprofile.routes.js";
+import resumeRoutes from "./routes/resume.routes.js";
+import serviceproviderRoutes from "./routes/serviceprovider.routes.js";
+import serviceproviderReviewRoutes from "./routes/serviceproviderReview.route.js";
 
 const app = express();
 const PORT = ENV.PORT || 3000;
@@ -52,6 +58,12 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/jobs", jobRoutes);
+app.use("/api/applications", applicationRoutes);
+app.use("/api/jobseekerprofiles", jobseekerprofileRoutes);
+app.use("/api/resumes", resumeRoutes);
+app.use("/api/serviceproviders", serviceproviderRoutes);
+app.use("/api/reviews", serviceproviderReviewRoutes);
 
 // 7. Error Handling
 app.use((err, req, res, next) => {

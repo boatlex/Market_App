@@ -15,10 +15,10 @@ const router = express.Router();
 
 // 1. SPECIFIC STATIC PATHS FIRST
 router.get("/query", protectRoute, getFilteredProducts);
-router.get("/user", protectRoute, getUserProducts); // Moved ABOVE the root "/" path
+router.get("/user", protectRoute, getUserProducts); 
 
 // 2. GENERAL ROOT PATH SECOND
-router.get("/", protectRoute, getProducts);
+router.get("/", getProducts);
 
 // 3. DATA MUTATION PATHS
 router.post("/products", protectRoute, upload.array("images", 3), createProduct);

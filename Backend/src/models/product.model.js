@@ -30,19 +30,21 @@ const productSchema = new mongoose.Schema({
     category: {
         type: String,
         required: true,
-        trim: true
+        trim: true,
+         lowercase:true
     },
     productType: {
         type: String,
         required: true,
-        trim: true
+        trim: true,
+        lowercase:true
     },
     region: {
         type: String,
         required: true,
         trim: true
     },
-    location: {
+    district: {
         type: String,
         required: true,
         trim: true
