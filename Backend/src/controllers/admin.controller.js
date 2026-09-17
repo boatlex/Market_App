@@ -1,21 +1,21 @@
 import { User } from "../models/user.model.js";
 import { Product } from "../models/product.model.js";
-import { Report} from "../models/report.model.js";
+import { Report } from "../models/report.model.js";
 import cloudinary from "../config/cloudinary.js";
 
 export const getAllUsers = async (req, res, next) => {
     try {
         const users = await User.find({ verified: true })
-            .select("-password") 
+            .select("-password")
             .sort({ createdAt: -1 });
 
         if (users.length === 0) {
             return res.status(404).json({ success: false, message: "No Users Found" });
         }
 
-        return res.status(200).json({ 
-            success: true, 
-            users 
+        return res.status(200).json({
+            success: true,
+            users
         });
     } catch (error) {
         console.error("Error Fetching Customers:", error);
@@ -36,7 +36,7 @@ export const adminDeleteProduct = async (req, res, next) => {
             const deletePromises = product.images.map((imageUrl) => {
                 const parts = imageUrl.split("/upload/");
                 if (parts.length > 1) {
-                    const pathAfterUpload = parts[1].replace(/^v\d+\//, ""); 
+                    const pathAfterUpload = parts[1].replace(/^v\d+\//, "");
                     const publicId = pathAfterUpload.substring(0, pathAfterUpload.lastIndexOf("."));
                     return cloudinary.uploader.destroy(publicId);
                 }
@@ -44,12 +44,12 @@ export const adminDeleteProduct = async (req, res, next) => {
             await Promise.all(deletePromises.filter(Boolean));
         }
 
-    
+
         await Product.findByIdAndDelete(id);
-        
-        return res.status(200).json({ 
+
+        return res.status(200).json({
             success: true,
-            message: "Administrative Action: Product removed successfully." 
+            message: "Administrative Action: Product removed successfully."
         });
 
     } catch (error) {
@@ -65,16 +65,16 @@ export const getAllProducts = async (req, res, next) => {
             .lean();
 
         if (!products || products.length === 0) {
-            return res.status(200).json({ 
-                success: true, 
-                products: [], 
-                message: "No product listings have been created yet." 
+            return res.status(200).json({
+                success: true,
+                products: [],
+                message: "No product listings have been created yet."
             });
         }
 
-        return res.status(200).json({ 
-            success: true, 
-            products 
+        return res.status(200).json({
+            success: true,
+            products
         });
     } catch (error) {
         console.error("Error Fetching Products:", error);
@@ -84,24 +84,53 @@ export const getAllProducts = async (req, res, next) => {
 
 export const getDashboardStats = async (req, res, next) => {
     try {
-        const [totalUsers, totalProducts, totalReports] = await Promise.all([
+        
+        const [totalUsers, totalProducts, statusCounts] = await Promise.all([
             User.countDocuments({ role: "user" }),
             Product.countDocuments(),
-            Report.countDocuments({ status: "pending" }) 
+            Report.aggregate([
+                {
+                    $group: {
+                        _id: "$status", 
+                        count: { $sum: 1 } // Add 1 for every matching document
+                    }
+                }
+            ])
         ]);
-   
+
+        
+        const reportStats = {
+            pending: 0,
+            under_review: 0,
+            resolved: 0,
+            dismissed: 0
+        };
+
+        // 3. Map the database results into our default object
+        statusCounts.forEach(item => {
+            if (item._id in reportStats) {
+                reportStats[item._id] = item.count;
+            }
+        });
+
+        
+        const totalReports = reportStats.pending + reportStats.under_review + reportStats.resolved + reportStats.dismissed;
+
         return res.status(200).json({
             success: true,
             stats: {
                 totalUsers,
                 totalProducts,
-                totalReports,
+                totalReports, 
+                reportBreakdown: reportStats 
             }
         });
+
     } catch (error) {
         console.error("Error Fetching DashBoard Stats:", error);
         next(error);
     }
+
 };
 
 

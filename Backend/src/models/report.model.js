@@ -34,7 +34,7 @@ const reportSchema = new mongoose.Schema(
       enum: ["pending", "under_review", "resolved", "dismissed"], 
       default: "pending",
       index: true
-    }
+    },
   },
   { timestamps: true }
 );

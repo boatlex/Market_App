@@ -124,24 +124,45 @@ export const getFilteredProducts = async (req, res, next) => {
 }
 
 export const getProducts = async (req, res, next) => {
+try {
+const page = parseInt(req.query.page) || 1
+const limit = parseInt(req.query.limit) || 10
+const skip = (page - 1) * limit
 
-    try {
-        const products = await Product.find()
-            .sort({ createdAt: -1 })
-            .populate("seller", "firstName lastName profilePicture")
-            .populate({
-                path: "comments",
-                populate: {
-                    path: "user",
-                    select: "firstName lastName profilePicture"
-                }
-            })
+const filter = { isAvailable: true };
 
-        res.status(200).json({ products })
-    } catch (error) {
-        next(error)
+const [products, totalProducts] = await Promise.all([
+    Product.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate("seller", "firstName lastName profilePicture")
+        .populate({
+            path: "comments",
+            populate: {
+                path: "user",
+                select: "firstName lastName profilePicture"
+            }
+        }),
+    Product.countDocuments(filter)
+]);
+
+return res.status(200).json({ 
+    success: true, 
+    products,
+    pagination: {
+        totalProducts,
+        currentPage: page,
+        totalPages: Math.ceil(totalProducts / limit),
+        hasNextPage: skip + products.length < totalProducts
     }
+});
+
+} catch (error) {
+next(error);
 }
+
+};
 
 export const getProduct = async (req, res, next) => {
     try {
@@ -195,8 +216,6 @@ export const getUserProducts = async (req, res, next) => {
         next(error);
     }
 };
-
-
 
 export const updateProduct = async (req, res, next) => {
     try {
