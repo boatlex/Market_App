@@ -16,7 +16,7 @@ export default function RootApp() {
 
  
 
-  // 2. Once loaded, mount your application navigation tree safely
+  // 2. Once load, mount your application navigation tree safely
   // return <MainNavigation isSignedIn={isSignedIn} />;
   return null; 
 }
