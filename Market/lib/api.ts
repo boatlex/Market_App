@@ -1,82 +1,48 @@
-
-import axios from "axios";
+import axios, { AxiosInstance } from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API = axios.create({
-  // Use your computer's local IP for emulator testing, or your live Sevalla URL
-  baseURL: "http://192.168.1", 
-  timeout: 10000,
+// Update this with your machine's local IP when testing on physical devices or Android emulators (e.g., 'http://192.168.1.X:3000/api')
+const API_URL = "http://localhost:3000/api";
+
+export const api: AxiosInstance = axios.create({
+  baseURL: API_URL,
+  headers: {
+    "Content-Type": "application/json"
+  }
 });
 
-// Create a globally accessible variable or state to hold the Clerk token getter
-let getClerkTokenInstance = null;
-export const setClerkTokenGetter = (getterFn) => {
+// Holds the reference to Clerk's getToken function passed from the UI layer
+let getClerkTokenInstance: (() => Promise<string | null>) | null = null;
+
+export const setClerkTokenGetter = (getterFn: () => Promise<string | null>) => {
   getClerkTokenInstance = getterFn;
 };
 
-// This function automatically figures out which token to use
-API.interceptors.request.use(
+/**
+ * Global Request Interceptor
+ * Runs outside of a hook context so it attache exactly ONCE globally.
+ */
+api.interceptors.request.use(
   async (config) => {
-    let token = null;
+    try {
+      // 1. Try pulling the manual auth token first
+      let token = await AsyncStorage.getItem("manual_token");
 
-    // 1. Check if there is a manual login token saved in local storage
-    token = await AsyncStorage.getItem("manual_token");
+      // 2. Fallback to Clerk if no manual token exists
+      if (!token && getClerkTokenInstance) {
+        token = await getClerkTokenInstance();
+      }
 
-    // 2. If no manual token exists, try to grab the token from Clerk
-    if (!token && getClerkTokenInstance) {
-      token = await getClerkTokenInstance();
+      // 3. Attach the active token to your protected route middleware
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (error) {
+      console.error("Failed to intercept and inject auth token:", error);
     }
-
-    // 3. If a token is found (either manual or Clerk), inject it into the headers
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-
     return config;
   },
   (error) => {
     return Promise.reject(error);
   }
 );
-
-export default API;
-
-
-
-
-// import axios from "axios";
-// import { useAuth } from "@clerk/expo";
-// import { useEffect } from "react";
-
-// const API_URL = "http://localhost:3000/api";
-// //const API_URL = "http://localhost:3000/api";
-// const api = axios.create({
-//     baseURL: API_URL,
-//     headers: {
-//         "Content-Type": "application/json"
-//     }
-// });
-
-// export const useApi = () => {
-//     const { getToken } = useAuth();
-    
-//     useEffect(() => {
-//         const interceptor = api.interceptors.request.use(async (config) => {
-//             try {
-//                 const token = await getToken(); 
-//                 if (token) {
-//                     config.headers.Authorization = `Bearer ${token}`;
-//                 }
-//             } catch (error) {
-//                 console.error("Failed to fetch Clerk token:", error);
-//             }
-//             return config;
-//         }, (error) => {
-//             return Promise.reject(error);
-//         });
-//         return () => {
-//             api.interceptors.request.eject(interceptor);
-//         };
-//     }, [getToken]);
-//     return api;
-// };
