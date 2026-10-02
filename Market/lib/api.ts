@@ -20,7 +20,7 @@ export const setClerkTokenGetter = (getterFn: () => Promise<string | null>) => {
 
 /**
  * Global Request Interceptor
- * Runs outside of a hook context so it attaches exactly ONCE globally.
+ * Runs outside of a hook context so it attache exactly ONCE globally.
  */
 api.interceptors.request.use(
   async (config) => {
