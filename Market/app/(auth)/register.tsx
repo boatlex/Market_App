@@ -12,25 +12,27 @@ import SafeScreen from '../../components/SafeScreen'
 //import { userAuths } from '../../contexts/authContext'
 
 const Register = () => {
-  const [focusedField, setFocusedField] = useState<'name' | 'email' | 'password' | 'confirmPassword' | null>(null)
+  const [focusedField, setFocusedField] = useState<'firstName' |'lastName'| 'email' | 'password' | 'confirmPassword' | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const router = useRouter()
   // const { signUp } = userAuths()
   const [isLoading, setIsLoading] = useState(false)
 
-  const nameInputRef = useRef<TextInput>(null)
+  const firstNameInputRef = useRef<TextInput>(null)
+  const lastNameInputRef = useRef<TextInput>(null)
   const emailInputRef = useRef<TextInput>(null)
   const passwordInputRef = useRef<TextInput>(null)
   const confirmPasswordInputRef = useRef<TextInput>(null)
 
-  const nameRef = useRef("")
+  const firstNameRef = useRef("")
+  const lastNameRef = useRef("")
   const emailRef = useRef("")
   const passwordRef = useRef("")
   const confirmPasswordRef = useRef("")
 
   const handleSubmit = async () => {
-    if (!nameRef.current || !emailRef.current || !passwordRef.current || !confirmPasswordRef.current) {
+    if (!firstNameRef.current ||!lastNameRef.current || !emailRef.current || !passwordRef.current || !confirmPasswordRef.current) {
       Alert.alert('Sign Up', 'Please Fill all the Fields')
       return
     }
@@ -76,7 +78,7 @@ const Register = () => {
 
           <View className="flex-1 bg-white rounded-t-[50px] pt-3 px-5 shadow-sm">
             <ScrollView
-              contentContainerStyle={{ gap: 15, marginTop: 20 }}
+              contentContainerStyle={{ gap: 15,  marginBottom:100 }}
               showsVerticalScrollIndicator={false}
             >
               <View className="gap-1 mb-5">
@@ -88,17 +90,32 @@ const Register = () => {
                 </Text>
               </View>
 
-              <View className={`flex-row items-center h-14 bg-gray-200 rounded-2xl px-4 gap-3 border ${focusedField === 'name' ? 'border-orange-500' : 'border-transparent'
+              <View className={`flex-row items-center h-14 bg-gray-200 rounded-2xl px-4 gap-3 border ${focusedField === 'firstName' ? 'border-orange-500' : 'border-transparent'
                 }`}>
-                <Ionicons name='person-circle' size={24} color={focusedField === 'name' ? 'orange' : 'gray'} />
+                <Ionicons name='person-circle' size={24} color={focusedField === 'firstName' ? 'orange' : 'gray'} />
                 <TextInput
-                  onFocus={() => setFocusedField('name')}
+                  onFocus={() => setFocusedField('firstName')}
                   onBlur={() => setFocusedField(null)}
                   placeholderTextColor={'gray'}
-                  ref={nameInputRef}
+                  ref={firstNameInputRef}
                   className="flex-1 text-black text-base"
                   placeholder='Enter Your Name'
-                  onChangeText={(value) => nameRef.current = value}
+                  onChangeText={(value) => firstNameRef.current = value}
+                  returnKeyType="next"
+                  onSubmitEditing={() => lastNameInputRef.current?.focus()}
+                />
+              </View>
+              <View className={`flex-row items-center h-14 bg-gray-200 rounded-2xl px-4 gap-3 border ${focusedField === 'lastName' ? 'border-orange-500' : 'border-transparent'
+                }`}>
+                <Ionicons name='person-circle' size={24} color={focusedField === 'lastName' ? 'orange' : 'gray'} />
+                <TextInput
+                  onFocus={() => setFocusedField('lastName')}
+                  onBlur={() => setFocusedField(null)}
+                  placeholderTextColor={'gray'}
+                  ref={lastNameInputRef}
+                  className="flex-1 text-black text-base"
+                  placeholder='Enter Your Name'
+                  onChangeText={(value) => lastNameRef.current = value}
                   returnKeyType="next"
                   onSubmitEditing={() => emailInputRef.current?.focus()}
                 />
@@ -182,12 +199,12 @@ const Register = () => {
               )}
 
               {/* Redirect Footer */}
-              <View className="flex-row justify-center items-center gap-1.5 mt-5">
+              <View className="flex-row justify-center items-center gap-1.5 mt-2 ">
                 <Text className="text-gray-500 text-sm">
                   Already Have an Account ?
                 </Text>
                 <Pressable onPress={() => router.push('/')}>
-                  <Text className="font-bold text-blue-600 text-sm">
+                  <Text className="font-bold text-blue-700 text-sm">
                     Login Here
                   </Text>
                 </Pressable>
