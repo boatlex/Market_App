@@ -177,7 +177,7 @@ export const forgotPassword = async (req, res, next) => {
       },
     });
 
-    const resetUrl = `market://auths/reset-password/${resetToken}`;
+    const resetUrl = `market://auth/reset-password/${resetToken}`;
 
     const mailOptions = {
       to: user.email,
