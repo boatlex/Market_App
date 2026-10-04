@@ -70,7 +70,9 @@ const Login = () => {
       </View>
 
       {/* Forgot Password Link */}
-      <TouchableOpacity className="align-end items-end mt-2 self-end">
+      <TouchableOpacity
+        onPress={()=>router.push("/forgot-password")} 
+      className="align-end items-end mt-2 self-end">
         <Text className="text-blue-500 text-sm font-medium">Forgot Your Password?</Text>
       </TouchableOpacity>
 
