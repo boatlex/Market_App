@@ -1,6 +1,6 @@
 import { View, Text, Image, TouchableOpacity, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform } from 'react-native'
 import React from 'react'
-import useSocialAuth from '../hooks/useSocialAuth'
+import useSocialAuth from '../../hooks/useSocialAuth'
 import * as WebBrowser from "expo-web-browser"
 import Login from '../../components/Login'
 

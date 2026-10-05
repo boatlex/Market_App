@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import SafeScreen from '../../components/SafeScreen';
-import { useAuth } from '../../app/contexts/authContext'; 
+import { useAuth } from '../../contexts/authContext'; 
 
 const ResetPasswordScreen = () => {
     const router = useRouter();

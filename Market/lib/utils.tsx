@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { useAuth as useClerkAuth, useUser as useClerkUser } from "@clerk/expo";
 import { setClerkTokenGetter } from "./api"; 
-import { useAuth as useCustomAuth } from "../app/contexts/authContext"; 
+import { useAuth as useCustomAuth } from "../contexts/authContext"; 
 import { User } from "../types"; 
 
 export default function RootApp() {

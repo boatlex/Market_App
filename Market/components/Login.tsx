@@ -2,7 +2,7 @@ import { Text, View, TextInput, TouchableOpacity, Pressable, ActivityIndicator, 
 import React, { useState, useRef } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { useAuth } from '../app/contexts/authContext' 
+import { useAuth } from '../contexts/authContext' 
 
 const Login = () => {
   const [isEmailFocus, setIsEmailFocus] = useState(false)

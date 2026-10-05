@@ -1,8 +1,8 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useMutation, UseMutationResult } from '@tanstack/react-query';
-import { User } from '../../types';
-import { api } from '../../lib/api';
+import { User } from '../types';
+import { api } from '../lib/api';
 
 interface AuthContextType {
   user: User | null;
