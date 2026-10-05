@@ -13,31 +13,25 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import SafeScreen from '../../components/SafeScreen';
-//import { useVerifyOTP } from '../../hooks/useVerifyOTP';
+import { useAuth } from '../../app/contexts/authContext'; 
 
 const VerifyOTPScreen = () => {
     const router = useRouter();
 
-    // 1. Get the email passed forward from the register/login screen context
     const { email } = useLocalSearchParams<{ email: string }>();
 
-    // State array tracking our 4-digit OTP code values
     const [otp, setOtp] = useState(['', '', '', '']);
 
     // References for shifting focus automatically across inputs
     const inputs = useRef<Array<TextInput | null>>([]);
 
-    //const { mutate, isPending } = useVerifyOTP();
-    const handleOtpChange = (text: string, index: number) => {
-        // Clean the text to ensure it only contains digits
-        const cleanedText = text.replace(/[^0-9]/g, '');
+    const { verifyOTPMutation } = useAuth();
 
-        // Check if the user is pasting a multi-digit string (e.g., "1234")
+    const handleOtpChange = (text: string, index: number) => {
+        const cleanedText = text.replace(/[^0-9]/g, '');
         if (cleanedText.length > 1) {
-            // Split the pasted string into an array of single characters
             const pastedDigits = cleanedText.split('').slice(0, 4);
 
-            // Create a new array, keeping existing values but overlaying the pasted ones
             const newOtp = [...otp];
             for (let i = 0; i < pastedDigits.length; i++) {
                 if (index + i < 4) {
@@ -46,37 +40,29 @@ const VerifyOTPScreen = () => {
             }
             setOtp(newOtp);
 
-            // Automatically focus the last filled input box or dismiss keyboard if full
             const targetIndex = Math.min(index + pastedDigits.length - 1, 3);
             inputs.current[targetIndex]?.focus();
             return;
         }
 
-        // Standard single-digit entry logic
         const newOtp = [...otp];
         newOtp[index] = cleanedText;
         setOtp(newOtp);
 
-        // Automatically move focus forward if a digit was entered
         if (cleanedText && index < 3) {
             inputs.current[index + 1]?.focus();
         }
     };
 
-
     const handleKeyPress = (e: any, index: number) => {
-        // If the user hits Backspace and the current box is already empty, move backward
         if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
-            // 1. Move keyboard focus to the previous input box
             inputs.current[index - 1]?.focus();
 
-            // 2. Clear out the value of that previous box so they can re-type it
             const newOtp = [...otp];
             newOtp[index - 1] = '';
             setOtp(newOtp);
         }
     };
-
 
     const handleVerification = () => {
         const fullOtpString = otp.join('');
@@ -91,13 +77,22 @@ const VerifyOTPScreen = () => {
 
         Keyboard.dismiss();
 
-        // 2. Dispatch payload matching the backend structure
-        // mutate({
-        //   email: email.toLowerCase().trim(),
-        //   otp: fullOtpString
-        // });
+        verifyOTPMutation.mutate({
+            email: email.toLowerCase().trim(),
+            otp: fullOtpString
+        }, {
+            onSuccess: (data) => {  
+                Alert.alert('Success', data.message || 'OTP verified successfully!');
+            },
+            onError: (error: any) => {
+                const backendMessage = error.response?.data?.message || 'OTP verification failed. Please check the code and try again.';
+                Alert.alert('Verification Failed', backendMessage);
+            }
+        });
     };
-    const isPending = false
+
+    const isPending = verifyOTPMutation.isPending;
+
     return (
         <SafeScreen>
             <KeyboardAvoidingView
@@ -134,8 +129,9 @@ const VerifyOTPScreen = () => {
 
                         {/* Verification Trigger Button */}
                         <TouchableOpacity
-                            className={`h-12 rounded-lg justify-center items-center mb-5 ${isPending ? 'bg-blue-300' : 'bg-blue-600 active:bg-blue-700'
-                                }`}
+                            className={`h-12 rounded-lg justify-center items-center mb-5 ${
+                                isPending ? 'bg-blue-300' : 'bg-blue-600 active:bg-blue-700'
+                            }`}
                             onPress={handleVerification}
                             disabled={isPending}
                         >

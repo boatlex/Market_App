@@ -14,12 +14,10 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import SafeScreen from '../../components/SafeScreen';
-//import { useResetPassword } from '../../hooks/useResetPassword';
+import { useAuth } from '../../app/contexts/authContext'; 
 
 const ResetPasswordScreen = () => {
     const router = useRouter();
-
-    // 1. Extract the token passed from the deep link url parameter
     const { token } = useLocalSearchParams<{ token?: string }>();
 
     const [newPassword, setNewPassword] = useState('');
@@ -28,10 +26,9 @@ const ResetPasswordScreen = () => {
     // Ref to shift focus down the inputs smoothly
     const confirmPasswordInputRef = useRef<TextInput>(null);
 
-    //const { mutate, isPending } = useResetPassword();
+    const { resetPasswordMutation } = useAuth();
 
     const handleResetPassword = () => {
-        // Basic validation matching backend logic
         if (!newPassword.trim() || !confirmNewPassword.trim()) {
             return Alert.alert('Error', 'Please fill out all fields.');
         }
@@ -46,15 +43,25 @@ const ResetPasswordScreen = () => {
 
         Keyboard.dismiss();
 
-        // 2. Dispatch payload structure matching backend expectation
-        // mutate({
-        //   token,
-        //   newPassword: newPassword.trim(),
-        //   confirmNewPassword: confirmNewPassword.trim()
-        // });
+        resetPasswordMutation.mutate({
+            token,
+            newPassword: newPassword.trim(),
+            confirmNewPassword: confirmNewPassword.trim()
+        }, {
+            onSuccess: (data) => {
+                Alert.alert(
+                    'Success',
+                    data.message || 'Your password has been successfully reset!',
+                    [{ text: 'Log In', onPress: () => router.replace('/') }]
+                );
+            },
+            onError: (error: any) => {
+                const backendMessage = error.response?.data?.message || 'Password reset failed. Please try again.';
+                Alert.alert('Reset Failed', backendMessage);
+            }
+        });
     };
-
-    const isPending = false
+    const isPending = resetPasswordMutation.isPending;
 
     return (
         <SafeScreen>
@@ -117,8 +124,9 @@ const ResetPasswordScreen = () => {
 
                         {/* Action Button */}
                         <TouchableOpacity
-                            className={`h-12 rounded-lg justify-center items-center mb-5 ${isPending ? 'bg-blue-300' : 'bg-blue-600 active:bg-blue-700'
-                                }`}
+                            className={`h-12 rounded-lg justify-center items-center mb-5 ${
+                                isPending ? 'bg-blue-300' : 'bg-blue-600 active:bg-blue-700'
+                            }`}
                             onPress={handleResetPassword}
                             disabled={isPending}
                         >
@@ -131,7 +139,7 @@ const ResetPasswordScreen = () => {
                             )}
                         </TouchableOpacity>
 
-                        <TouchableOpacity onPress={() => router.replace('/(auth)')} disabled={isPending}>
+                        <TouchableOpacity onPress={() => router.replace('/')} disabled={isPending}>
                             <Text className="text-blue-600 text-center text-sm font-medium">
                                 Cancel
                             </Text>

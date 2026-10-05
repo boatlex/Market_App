@@ -15,7 +15,7 @@ const useSocialAuth = () => {
   const handleSocialAuth = async (strategy: AuthStrategy) => {
     setLoadingStrategy(strategy)
     try {
-      const redirectUrl = Linking.createURL('oauth-native-callback', { scheme: 'mobile' });
+      const redirectUrl = Linking.createURL('oauth-native-callback', { scheme: 'market' });
       
       const { createdSessionId, setActive } = await startSSOFlow({
         strategy: strategy,
