@@ -14,32 +14,46 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import SafeScreen from '../../components/SafeScreen';
-//import { useForgotPassword } from '../../hooks/useForgotPassword'; // Adjust path based on your folder structure
+import { useAuth } from '../../app/contexts/authContext'; 
 
 const ForgotPasswordScreen = () => {
     const router = useRouter();
     const [email, setEmail] = useState('');
 
-    // Destructure TanStack Query mutation features from your custom hook
-    //const { mutate, isPending } = useForgotPassword();
+    const { forgotPasswordMutation } = useAuth();
 
     const handleResetRequest = () => {
-        if (!email.trim()) {
+        const cleanEmail = email.trim().toLowerCase();
+
+        if (!cleanEmail) {
             return Alert.alert('Error', 'Please enter your email address.');
         }
 
         Keyboard.dismiss();
-        //mutate(email);
+
+        forgotPasswordMutation.mutate(cleanEmail, {
+            onSuccess: (data) => {
+                Alert.alert(
+                    'Email Sent',
+                    data.message || 'A password reset link has been successfully sent to your inbox.',
+                    [{ text: 'OK', onPress: () => router.replace('/') }]
+                );
+            },
+            onError: (error: any) => {
+                const backendMessage = error.response?.data?.message || 'Failed to dispatch reset link. Please try again.';
+                Alert.alert('Request Failed', backendMessage);
+            }
+        });
     };
 
-    const isPending = false
+    const isPending = forgotPasswordMutation.isPending;
+
     return (
         <SafeScreen>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 className="flex-1 bg-white"
             >
-
                 {/* Logo Container */}
                 <View className="items-center justify-center mb-4 mt-8">
                     <View className='bg-red-400/30 rounded-full justify-center items-center size-24 self-center'>
@@ -77,8 +91,9 @@ const ForgotPasswordScreen = () => {
                         />
 
                         <TouchableOpacity
-                            className={`h-12 rounded-lg justify-center items-center mb-5 ${isPending ? 'bg-blue-300' : 'bg-blue-600 active:bg-blue-700'
-                                }`}
+                            className={`h-12 rounded-lg justify-center items-center mb-5 ${
+                                isPending ? 'bg-blue-300' : 'bg-blue-600 active:bg-blue-700'
+                            }`}
                             onPress={handleResetRequest}
                             disabled={isPending}
                         >

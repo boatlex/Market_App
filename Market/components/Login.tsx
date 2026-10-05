@@ -1,17 +1,39 @@
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Pressable, ActivityIndicator } from 'react-native'
+import { Text, View, TextInput, TouchableOpacity, Pressable, ActivityIndicator, Alert } from 'react-native'
 import React, { useState, useRef } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
+import { useAuth } from '../app/contexts/authContext' 
 
 const Login = () => {
   const [isEmailFocus, setIsEmailFocus] = useState(false)
   const [isPasswordFocus, setIsPasswordFocus] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  
   const router = useRouter()
+  const { loginMutation } = useAuth()
 
-  const [isLoading, setIsLoading] = useState(false)
   const emailRef = useRef("")
   const passwordRef = useRef("")
+
+  const handleLogin = () => {
+    const email = emailRef.current.trim()
+    const password = passwordRef.current
+
+    if (!email || !password) {
+      Alert.alert("Input Required", "Please fill in both email and password fields.")
+      return
+    }
+
+    loginMutation.mutate({ email, password }, {
+      onSuccess: (data) => {
+        Alert.alert("Welcome!", data.message || "Logged in successfully!")
+      },
+      onError: (error: any) => {
+        const backendMessage = error.response?.data?.message || "Invalid Email or Password."
+        Alert.alert("Login Failed", backendMessage)
+      }
+    })
+  }
 
   return (
     <View className="w-full mt-4">
@@ -40,6 +62,7 @@ const Login = () => {
           className="flex-1 text-black text-base"
           placeholder='Enter Your Email'
           keyboardType='email-address'
+          autoCapitalize="none"
           onChangeText={(value) => emailRef.current = value}
         />
       </View>
@@ -57,6 +80,7 @@ const Login = () => {
           placeholderTextColor={'gray'}
           className="flex-1 text-black text-base"
           placeholder='Enter Your Password'
+          autoCapitalize="none"
           onChangeText={(value) => passwordRef.current = value}
           secureTextEntry={!showPassword}
         />
@@ -72,16 +96,17 @@ const Login = () => {
       {/* Forgot Password Link */}
       <TouchableOpacity
         onPress={()=>router.push("/forgot-password")} 
-      className="align-end items-end mt-2 self-end">
+        className="align-end items-end mt-2 self-end"
+      >
         <Text className="text-blue-500 text-sm font-medium">Forgot Your Password?</Text>
       </TouchableOpacity>
 
-      {/* Login Button */}
-      {isLoading ? (
+      {/* Login Button wired with TanStack Loading States */}
+      {loginMutation.isPending ? (
         <ActivityIndicator size={'large'} color="rgb(119, 129, 240)" className="mt-6" />
       ) : (
         <TouchableOpacity 
-          onPress={() => {}} 
+          onPress={handleLogin} 
           className="bg-[rgb(119,129,240)] justify-center items-center h-14 rounded-2xl mt-6 shadow-sm"
         >
           <Text className="color-white text-lg font-bold">Login</Text>
