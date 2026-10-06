@@ -1,6 +1,6 @@
 import Conversation from "../models/conversation.model.js";
 import Message from "../models/message.model.js";
-import { getReceiverSocketId } from "../socket/socket.js"; 
+import { getReceiverSocketIds } from "../socket/socket.js";
 
 export const sendMessage = async (req, res, next) => {
   try {
@@ -33,10 +33,14 @@ export const sendMessage = async (req, res, next) => {
     // --- SOCKET.IO REAL-TIME LOGIC ---
     const io = req.app.get("io");
     if (io) {
-      const receiverSocketId = getReceiverSocketId(receiverId);
+      // 🚀 Pluralized to fetch all active device sockets for the user
+      const receiverSocketIds = getReceiverSocketIds(receiverId);
       
-      if (receiverSocketId) {
-        io.to(receiverSocketId).emit("newMessage", newMessage);
+      // Loop through each active socket instance and emit the message
+      if (receiverSocketIds && receiverSocketIds.length > 0) {
+        receiverSocketIds.forEach(socketId => {
+          io.to(socketId).emit("newMessage", newMessage);
+        });
       }
     }
     // ---------------------------------
@@ -54,7 +58,6 @@ export const getMessages = async (req, res, next) => {
     const { id: userToChatId } = req.params;
     const senderId = req.user._id; 
 
-    
     const conversation = await Conversation.findOne({
       participants: { $all: [senderId, userToChatId], $size: 2 }
     }); 
@@ -77,5 +80,3 @@ export const getMessages = async (req, res, next) => {
     next(error); 
   }
 };
-
-
