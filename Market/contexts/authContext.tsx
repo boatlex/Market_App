@@ -50,8 +50,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // TanStack Query Mutation for Registration
   const registerMutation = useMutation({
+
     mutationFn: async (userData: any) => {
-      const response = await api.post('/register', userData);
+          console.log(userData)
+      const response = await api.post('/auths/register', userData);
       return response.data;
     }
   });
@@ -59,7 +61,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   // TanStack Query Mutation for Manual Login
   const loginMutation = useMutation({
     mutationFn: async (credentials: any) => {
-      const response = await api.post('/login', credentials);
+      const response = await api.post('/auths/login-manual', credentials);
       return response.data;
     },
     onSuccess: async (data) => {
@@ -74,7 +76,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   // resetPasswordMutation
   const resetPasswordMutation = useMutation({
     mutationFn: async (resetData: { token: string; newPassword: string; confirmNewPassword: string }) => {
-      const response = await api.post('/reset-password', resetData);
+      const response = await api.post('/auths/reset-password', resetData);
       return response.data; 
     }
   });
@@ -82,7 +84,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   // forgot password mutation
   const forgotPasswordMutation = useMutation({
     mutationFn: async (email: string) => {
-      const response = await api.post('/forgot-password', { email });
+      const response = await api.post('/auths/forgot-password', { email });
       return response.data; 
     }
   });
@@ -90,7 +92,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   // verifyOTPMutation
   const verifyOTPMutation = useMutation({
     mutationFn: async (otpData: { email: string; otp: string }) => {
-      const response = await api.post('/verify-otp', otpData);
+      const response = await api.post('/auths/verify-otp', otpData);
       return response.data; 
     },
     onSuccess: async (data) => {

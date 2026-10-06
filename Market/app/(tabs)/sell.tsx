@@ -2,12 +2,12 @@ import { View, Text } from 'react-native'
 import React from 'react'
 import SafeScreen from '../../components/SafeScreen'
 
-const HomeScreen = () => {
+const SellScreen = () => {
   return (
     <SafeScreen>
-      <Text>Home Screen</Text>
+      <Text>Sell Screen</Text>
     </SafeScreen>
   )
 }
 
-export default HomeScreen
+export default SellScreen

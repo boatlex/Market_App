@@ -18,9 +18,10 @@ export default function TabsLayout() {
           position: "absolute",
           backgroundColor: "rgba(0, 0, 0, 0.7)",
           borderTopWidth: 0,
-          height: 55 + insets.bottom,
-          paddingTop: 10,
-          marginHorizontal: 30,
+          height: 60 + insets.bottom, 
+          paddingTop: 8,
+          marginHorizontal: 12,
+          // If insets.bottom exists, use it natively; otherwise fall back to explicit spacing
           marginBottom: insets.bottom || 16,
           borderRadius: 24,
           overflow: "hidden",
@@ -33,19 +34,64 @@ export default function TabsLayout() {
           />
         ),
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: '600',
+          paddingBottom: 4,
         }
       }}
     >
+      {/* 🏠 Market (Home) Screen */}
       <Tabs.Screen
         name='index'
         options={{
           title: "Market",
-          // FIX: Removed the explicit strict ': { color: string; size: number }' type declaration structure 
-          // to allow standard Expo Router ColorValue props execution
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name='grid' size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'grid' : 'grid-outline'} size={size} color={color} />
+          )
+        }}
+      />
+      
+      {/* 💬 Chats/Messages Screen */}
+      <Tabs.Screen
+        name='messages'
+        options={{
+          title: "Chats",
+          // 🚀 FIX: Destructured "focused" cleanly from callback payload arguments object
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? "chatbubbles" : "chatbubbles-outline"} size={size} color={color} />
+          )
+        }}
+      />
+      
+      {/* 🏷️ Sell Product Screen */}
+      <Tabs.Screen
+        name='sell'
+        options={{
+          title: "Sell",
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'pricetag' : 'pricetag-outline'} size={size} color={color} />
+          )
+        }}
+      />
+      
+      {/* 🔖 Saved Items Screen */}
+      <Tabs.Screen
+        name='saved'
+        options={{
+          title: "Favorates",
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'heart' : 'heart-outline'} size={size} color={color} />
+          )
+        }}
+      />
+      
+      {/* 👤 User Profile Screen */}
+      <Tabs.Screen
+        name='profile'
+        options={{
+          title: "Profile",
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
           )
         }}
       />
