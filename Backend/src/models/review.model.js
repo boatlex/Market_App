@@ -24,7 +24,7 @@ const reviewSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-// Prevents a user from leaving multiple reviews for the exact same service provider
+
 reviewSchema.index({ provider: 1, reviewer: 1 }, { unique: true });
 
 export const Review = mongoose.model("Review", reviewSchema);

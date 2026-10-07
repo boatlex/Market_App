@@ -1,7 +1,6 @@
 import { Review } from "../models/review.model.js";
 import { ServiceProvider } from "../models/serviceprovider.model.js";
 
-// Helper helper function to automatically update average stars on the provider card
 const updateProviderStats = async (providerId) => {
     const stats = await Review.aggregate([
         { $match: { provider: providerId } },
@@ -16,7 +15,8 @@ const updateProviderStats = async (providerId) => {
 
     if (stats.length > 0) {
         await ServiceProvider.findByIdAndUpdate(providerId, {
-            averageRating: Math.round(stats[0].avgRating * 10) / 10, // Rounds to 1 decimal place (e.g., 4.3)
+            // Corrected: Safely reading properties from the first element of the array
+            averageRating: Math.round(stats[0].avgRating * 10) / 10, 
             totalReviews: stats[0].totalReviews
         });
     } else {
@@ -28,11 +28,9 @@ const updateProviderStats = async (providerId) => {
     }
 };
 
-
 export const createReview = async (req, res, next) => {
     try {
-        const { providerId } = req.params;
-        const { rating, comment } = req.body;
+        const { rating, comment, providerId } = req.body;
         const reviewerId = req.user._id;
 
         if (!rating || rating < 1 || rating > 5) {
@@ -45,7 +43,6 @@ export const createReview = async (req, res, next) => {
             return res.status(404).json({ message: "Service provider profile not found." });
         }
 
-        
         if (providerProfile.user.equals(reviewerId)) {
             return res.status(400).json({ message: "You cannot review your own service profile!" });
         }
@@ -78,7 +75,6 @@ export const createReview = async (req, res, next) => {
     }
 };
 
-
 export const deleteReview = async (req, res, next) => {
     try {
         const { reviewId } = req.params;
@@ -89,7 +85,8 @@ export const deleteReview = async (req, res, next) => {
             return res.status(404).json({ message: "Review not found." });
         }
 
-        if (review.reviewer.equals( currentUserId)) {
+        // FIXED: Throws 403 ONLY if the current user is NOT the person who wrote the review
+        if (!review.reviewer.equals(currentUserId)) {
             return res.status(403).json({ message: "Not authorized to delete this review." });
         }
 
@@ -109,26 +106,20 @@ export const deleteReview = async (req, res, next) => {
     }
 };
 
-
-
-
 export const getProviderReviews = async (req, res, next) => {
     try {
         const { providerId } = req.params;
-        
         
         const page = parseInt(req.query.page) || 1;    
         const limit = parseInt(req.query.limit) || 10; 
         const skip = (page - 1) * limit;
 
-        
         const reviews = await Review.find({ provider: providerId })
             .populate("reviewer", "name profilePicture") 
             .sort({ createdAt: -1 }) 
             .skip(skip)
             .limit(limit);
 
-    
         const totalReviews = await Review.countDocuments({ provider: providerId });
         const totalPages = Math.ceil(totalReviews / limit);
 
@@ -144,4 +135,3 @@ export const getProviderReviews = async (req, res, next) => {
         next(error);
     }
 };
-

@@ -227,6 +227,7 @@ export interface User {
   otp_expiry_time?: string;     
   profilePicture: string;
   role: UserRole;
+  wishList: string[]
   createdAt: string;
   updatedAt: string;
 }
