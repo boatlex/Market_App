@@ -3,6 +3,7 @@ import { Button, View, Text, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import SafeScreen from '../../components/SafeScreen';
 import CreateProductForm from '../../components/CreateProductForm';
+import Header from '../../components/Header';
 
 const SellScreen = () => {
     const [showModal, setShowModal] = useState(false);
@@ -37,18 +38,9 @@ const SellScreen = () => {
 
     return (
         <SafeScreen>
-            {/* Main view content trigger button */}
-            <View className="flex-1 justify-center items-center px-6">
-                <Button 
-                    title="List an Item to Sell" 
-                    onPress={() => {
-                        setEditingProduct(null); 
-                        setImages([]);
-                        setShowModal(true);
-                    }} 
-                />
-            </View>
-            
+           
+            {/* Header */}
+            <Header title='Sell/Post Product'/>
             <CreateProductForm
                 showModal={showModal}
                 setShowModal={setShowModal}

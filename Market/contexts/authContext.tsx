@@ -105,6 +105,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         email: "", 
         role: "user",
         profilePicture: "",
+        wishList:[],
         verified: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
