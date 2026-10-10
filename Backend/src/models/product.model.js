@@ -49,6 +49,11 @@ const productSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
+    location: {
+        type: String,
+        required: true,
+        trim: true
+    },
     images: [
         {
             type: String,
@@ -100,5 +105,6 @@ const productSchema = new mongoose.Schema({
     },
 
 }, { timestamps: true });
+productSchema.index({ category: 1, region: 1, district: 1, createdAt: -1 });
 
 export const Product = mongoose.model("Product", productSchema);

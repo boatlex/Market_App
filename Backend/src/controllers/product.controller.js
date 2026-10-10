@@ -2,6 +2,9 @@ import { Product } from "../models/product.model.js";
 import cloudinary from "../config/cloudinary.js"
 import { promises as fsPromises } from 'fs';
 
+import { Product } from "../models/Product.js"; // Adjust path as necessary
+import fsPromises from "fs/promises";
+import cloudinary from "../config/cloudinary.js"; // Adjust path as necessary
 
 export const createProduct = async (req, res, next) => {
     try {
@@ -13,7 +16,12 @@ export const createProduct = async (req, res, next) => {
             category,
             productType,
             region,
-            location
+            district, 
+            delivery,  
+            warranty,  
+            brand,     
+            color,     
+            condition  
         } = req.body;
 
         const sellerId = req.user?._id;
@@ -22,17 +30,19 @@ export const createProduct = async (req, res, next) => {
             return res.status(401).json({ success: false, message: "Unauthorized: Missing user session." });
         }
 
-        if (!name || !description || !price || !phoneNumber || !category || !productType || !region || !location) {
+        
+        if (!name || !description || !price || !phoneNumber || !category || !productType || !region || !district) {
             if (req.files) {
                 for (const file of req.files) await fsPromises.unlink(file.path).catch(() => { });
             }
-            return res.status(400).json({ success: false, message: "All text fields are required" });
+            return res.status(400).json({ success: false, message: "All required text fields must be provided." });
         }
 
         if (!req.files || req.files.length === 0) {
             return res.status(400).json({ success: false, message: "At least one image file is required" });
         }
 
+        
         const uploadPromises = req.files.map(async (file) => {
             const normalizedPath = file.path.replace(/\\/g, '/');
             return await cloudinary.uploader.upload(normalizedPath, {
@@ -44,11 +54,17 @@ export const createProduct = async (req, res, next) => {
         const uploadResults = await Promise.all(uploadPromises);
         const imageUrls = uploadResults.map((result) => result.secure_url);
 
-        
+         
         for (const file of req.files) {
             await fsPromises.unlink(file.path).catch((err) =>
                 console.error("Failed to delete local temp file:", err.message)
             );
+        }
+
+        // Parse delivery times if provided as a JSON string or object
+        let parsedDelivery;
+        if (delivery) {
+            parsedDelivery = typeof delivery === 'string' ? JSON.parse(delivery) : delivery;
         }
 
         
@@ -60,9 +76,15 @@ export const createProduct = async (req, res, next) => {
             phoneNumber: phoneNumber.trim(),
             productType,
             region,
-            location,
+            district, 
             category,
-            images: imageUrls
+            images: imageUrls,
+            // Safely pass through optional metadata fields
+            delivery: parsedDelivery,
+            warranty,
+            brand,
+            color,
+            condition
         });
 
         return res.status(201).json({ success: true, product });
@@ -70,6 +92,7 @@ export const createProduct = async (req, res, next) => {
     } catch (error) {
         console.error("Error Creating Product:", error);
 
+        // Emergency cleanup if Cloudinary upload succeeded but DB creation failed
         if (req.files) {
             for (const file of req.files) {
                 await fsPromises.unlink(file.path).catch(() => { });
@@ -79,6 +102,7 @@ export const createProduct = async (req, res, next) => {
         next(error);
     }
 };
+
 
 export const getFilteredProducts = async (req, res, next) => {
     try {
@@ -123,46 +147,71 @@ export const getFilteredProducts = async (req, res, next) => {
     }
 }
 
+
 export const getProducts = async (req, res, next) => {
-try {
-const page = parseInt(req.query.page) || 1
-const limit = parseInt(req.query.limit) || 10
-const skip = (page - 1) * limit
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
 
-const filter = { isAvailable: true };
+        // Base marketplace filter constraint to only pull active items
+        const filter = { isAvailable: true };
 
-const [products, totalProducts] = await Promise.all([
-    Product.find(filter)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .populate("seller", "firstName lastName profilePicture")
-        .populate({
-            path: "comments",
-            populate: {
-                path: "user",
-                select: "firstName lastName profilePicture"
+        // 1. Text Search Filter (Handles names or descriptions)
+        if (req.query.search) {
+            filter.$or = [
+                { name: { $regex: req.query.search, $options: "i" } },
+                { description: { $regex: req.query.search, $options: "i" } }
+            ];
+        }
+
+        // 2. Marketplace Classification Selectors (Leverages indexed keys)
+        if (req.query.category) filter.category = String(req.query.category).toLowerCase();
+        if (req.query.productType) filter.productType = String(req.query.productType).toLowerCase();
+        if (req.query.region) filter.region = String(req.query.region);
+        if (req.query.district) filter.district = String(req.query.district);
+        if (req.query.condition) filter.condition = String(req.query.condition);
+
+        // 3. Price-Range Comparison Sliders
+        if (req.query.minPrice || req.query.maxPrice) {
+            filter.price = {};
+            if (req.query.minPrice) filter.price.$gte = parseFloat(req.query.minPrice);
+            if (req.query.maxPrice) filter.price.$lte = parseFloat(req.query.maxPrice);
+        }
+
+        // 4. Run database requests concurrently to maximize throughput performance
+        const [products, totalProducts] = await Promise.all([
+            Product.find(filter)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .populate("seller", "firstName lastName profilePicture")
+                .populate({
+                    path: "comments",
+                    populate: {
+                        path: "user",
+                        select: "firstName lastName profilePicture"
+                    }
+                }),
+            Product.countDocuments(filter)
+        ]);
+
+        return res.status(200).json({ 
+            success: true, 
+            products,
+            pagination: {
+                totalProducts,
+                currentPage: page,
+                totalPages: Math.ceil(totalProducts / limit),
+                hasNextPage: skip + products.length < totalProducts
             }
-        }),
-    Product.countDocuments(filter)
-]);
+        });
 
-return res.status(200).json({ 
-    success: true, 
-    products,
-    pagination: {
-        totalProducts,
-        currentPage: page,
-        totalPages: Math.ceil(totalProducts / limit),
-        hasNextPage: skip + products.length < totalProducts
+    } catch (error) {
+        next(error);
     }
-});
-
-} catch (error) {
-next(error);
-}
-
 };
+
 
 export const getProduct = async (req, res, next) => {
     try {
@@ -217,6 +266,7 @@ export const getUserProducts = async (req, res, next) => {
     }
 };
 
+
 export const updateProduct = async (req, res, next) => {
     try {
         const {
@@ -227,8 +277,14 @@ export const updateProduct = async (req, res, next) => {
             category,
             productType,
             region,
-            location,
-            existingImages // An array of image URLs the user wants to KEEP
+            district,     
+            location,     
+            warranty,     
+            brand,        
+            color,        
+            delivery,     
+            condition,    
+            existingImages 
         } = req.body;
 
         const { id } = req.params;
@@ -269,21 +325,61 @@ export const updateProduct = async (req, res, next) => {
         if (category) product.category = category;
         if (productType) product.productType = productType;
         if (region) product.region = region;
+        if (district) product.district = district;  
         if (location) product.location = location;
+        if (condition) product.condition = condition;
 
         
-        let finalImages = [];
+        if (warranty !== undefined) product.warranty = warranty;
+        if (brand !== undefined) product.brand = brand;
+        if (color !== undefined) product.color = color;
 
-        // Parse images the user decided to keep from the front-end choice checkboxes
-        if (existingImages !== undefined) {
-            finalImages = Array.isArray(existingImages) ? existingImages : [existingImages];
-        } else {
         
-            finalImages = product.images || [];
+        if (delivery !== undefined) {
+            product.delivery = typeof delivery === 'string' ? JSON.parse(delivery) : delivery;
         }
 
+        // Handle Image Deletions & Merges
+        let finalImages = [];
+        if (existingImages !== undefined) {
+            // Handle edge case where a single string instead of an array is posted by FormData
+            const parsedExisting = Array.isArray(existingImages) ? existingImages : [existingImages].filter(Boolean);
+            
+            // Fixed: Identify images removed by the user to delete them from Cloudinary storage
+            const imagesToDelete = product.images.filter(imgUrl => !parsedExisting.includes(imgUrl));
+            
+            for (const imgUrl of imagesToDelete) {
+                try {
+                    // Extract public ID from the Cloudinary URL structure
+                    const urlParts = imgUrl.split('/');
+                    const fileNameWithExtension = urlParts[urlParts.length - 1];
+                    const publicId = `products/${fileNameWithExtension.split('.')[0]}`; // Targets file inside 'products' folder
+                    
+                    await cloudinary.uploader.destroy(publicId);
+                } catch (cloudinaryErr) {
+                    console.error("Failed to delete unused asset from Cloudinary:", cloudinaryErr.message);
+                }
+            }
+            finalImages = parsedExisting;
+        } else {
+            // If existingImages is completely missing, it means the user deleted all past images
+            if (product.images && product.images.length > 0) {
+                for (const imgUrl of product.images) {
+                    try {
+                        const urlParts = imgUrl.split('/');
+                        const fileNameWithExtension = urlParts[urlParts.length - 1];
+                        const publicId = `products/${fileNameWithExtension.split('.')[0]}`;
+                        await cloudinary.uploader.destroy(publicId);
+                    } catch (err) {
+                        console.error("Cloudinary cleanup error:", err.message);
+                    }
+                }
+            }
+            finalImages = [];
+        }
+
+        // Handle processing fresh image upload bundles
         if (req.files && req.files.length > 0) {
-            // Count validation check (Merged images must not exceed limits)
             const totalImageCount = finalImages.length + req.files.length;
             if (totalImageCount > 3) {
                 for (const file of req.files) await fsPromises.unlink(file.path).catch(() => { });
@@ -301,10 +397,8 @@ export const updateProduct = async (req, res, next) => {
             const uploadResults = await Promise.all(uploadPromises);
             const newImageUrls = uploadResults.map((result) => result.secure_url);
 
-            // Merge your kept items together with the fresh network secure image paths
             finalImages = [...finalImages, ...newImageUrls];
 
-            
             for (const file of req.files) {
                 await fsPromises.unlink(file.path).catch((err) =>
                     console.error("Failed to delete local temp file:", err.message)
@@ -312,7 +406,6 @@ export const updateProduct = async (req, res, next) => {
             }
         }
 
-        
         product.images = finalImages;
 
         await product.save();
@@ -330,6 +423,7 @@ export const updateProduct = async (req, res, next) => {
         next(error);
     }
 };
+
 
 
 
@@ -382,8 +476,6 @@ export const deleteProduct = async (req, res, next) => {
         next(error);
     }
 };
-
-
 
 
 

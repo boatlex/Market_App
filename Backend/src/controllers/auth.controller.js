@@ -28,19 +28,18 @@ export const registerUser = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Password must be at least 6 characters long." });
     }
 
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    const cleanEmail = email.toLowerCase();
+    const existingUser = await User.findOne({ email: cleanEmail });
     if (existingUser) {
       return res.status(400).json({ success: false, message: "Email is already registered." });
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
 
     const newUser = new User({
       firstName,
       lastName,
-      email,
-      password: hashedPassword
+      email: cleanEmail,
+      password 
     });
 
     await newUser.save();
@@ -50,6 +49,7 @@ export const registerUser = async (req, res, next) => {
     next(error);
   }
 };
+
 
 export const loginUserClerk = async (req, res, next) => {
   try {
@@ -99,8 +99,12 @@ export const loginUserClerk = async (req, res, next) => {
 export const loginUserManual = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-
-    const user = await User.findOne({ email: email.toLowerCase() });
+    
+    // Ensure email is cleanly formatted
+    const cleanEmail = email ? email.trim().toLowerCase() : "";
+    
+    // Find user
+    const user = await User.findOne({ email: cleanEmail });
     if (!user) {
       return res.status(400).json({ success: false, message: "Invalid email or password." });
     }
@@ -112,17 +116,18 @@ export const loginUserManual = async (req, res, next) => {
       });
     }
 
+    // Verify Password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ success: false, message: "Invalid Credentials." });
+      return res.status(400).json({ success: false, message: "Invalid email or password." });
     }
 
     let currentRole = user.role;
     
-    if (ENV.ADMIN_EMAIL === user.email && user.role !== "admin") {
-      user.role = "admin";
-      await user.save(); 
+    // Safely promote admin without triggering document save race conditions
+    if (ENV.ADMIN_EMAIL === cleanEmail && user.role !== "admin") {
       currentRole = "admin";
+      await User.updateOne({ _id: user._id }, { $set: { role: "admin" } });
     }
 
     const token = signToken(user._id, currentRole);
@@ -145,6 +150,7 @@ export const loginUserManual = async (req, res, next) => {
     next(error);
   }
 };
+;
 
 export const forgotPassword = async (req, res, next) => {
   try {
