@@ -1,7 +1,6 @@
 import { api } from "../lib/api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-
 interface PickerImage {
     uri: string;
     type?: string;   // e.g., 'image/jpeg'
@@ -18,6 +17,13 @@ interface CreateProductVariables {
     region: string;
     location: string;
     images: PickerImage[]; 
+    warranty?: string;
+    brand?: string;
+    color?: string;
+    delivery?: {
+        from?: string;
+        to?: string;
+    };
 }
 
 export const useCreateProduct = () => {
@@ -27,7 +33,7 @@ export const useCreateProduct = () => {
         mutationFn: async (data: CreateProductVariables) => {
             const formData = new FormData();
 
-            // 1. Append text fields
+            // 1. Append mandatory text fields
             formData.append("name", data.name);
             formData.append("description", data.description);
             formData.append("price", String(data.price));
@@ -35,11 +41,20 @@ export const useCreateProduct = () => {
             formData.append("category", data.category);
             formData.append("productType", data.productType);
             formData.append("region", data.region);
-            formData.append("location", data.location);
+            formData.append("location", data.location);  
 
-            // 2. Format and append images for React Native multipart upload
+            // Append optional values safely to FormData if they are defined
+            if (data.warranty) formData.append("warranty", data.warranty);
+            if (data.brand) formData.append("brand", data.brand);
+            if (data.color) formData.append("color", data.color);
+            
+            if (data.delivery) {
+                // Nested objects must be stringified so multipart/form-data can transport them seamlessly
+                formData.append("delivery", JSON.stringify(data.delivery));
+            }
+
+            // 3. Format and append images for React Native multipart upload
             data.images.forEach((img, index) => {
-                // Infer type and name if your picker doesn't automatically supply them
                 const fileType = img.type || "image/jpeg";
                 const fileName = img.name || `image_${index}_${Date.now()}.jpg`;
 
@@ -51,7 +66,7 @@ export const useCreateProduct = () => {
                 } as any); 
             });
 
-            // 3. Post to API (React Native automatically formats headers if Content-Type is left open or multipart)
+            // 4. Post to API
             const response = await api.post("/products", formData, {
                 headers: {
                     "Content-Type": "multipart/form-data",

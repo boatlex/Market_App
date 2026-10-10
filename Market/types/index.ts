@@ -142,7 +142,6 @@ export interface DeliveryTimeline {
     from?: string;
     to?: string;
 }
-
 export interface Product {
     _id: string;
     seller: string | User;
@@ -154,6 +153,7 @@ export interface Product {
     productType: string;
     region: string;
     district: string;
+    location: string; 
     images: string[];
     delivery?: DeliveryTimeline;
     warranty?: string;
@@ -165,6 +165,7 @@ export interface Product {
     createdAt: string;
     updatedAt: string;
 }
+
 
 export interface Report {
     _id: string;
