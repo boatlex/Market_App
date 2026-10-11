@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { FormInput } from './FormInput'; 
+import { FormInput } from './FormInput';
 import { FormDropdown } from './FormDropdown';
 
 interface ProductFormFieldsProps {
@@ -49,12 +49,13 @@ export const ProductFormFields = ({
 }: ProductFormFieldsProps) => {
     return (
         <ScrollView
-            className='flex-1 px-5 py-4 bg-white'
+            className={`flex-1 px-5 py-4
+             bg-white ${showDeliveryConfig || showDiscountConfig || showWarrantyConfig ? 'mb-28' : 'mb-20'}`}
             keyboardShouldPersistTaps='handled'
             showsVerticalScrollIndicator={false}
         >
             <View className='space-y-4 auto-cols-max pb-28'>
-                
+
                 {/* Media Picker Section */}
                 <View className="mb-4">
                     <Text className='text-black text-sm font-semibold mb-2'>
@@ -84,34 +85,35 @@ export const ProductFormFields = ({
                 </View>
 
                 {/* Form Inputs */}
-                <FormInput 
-                    label="Product Name" 
-                    required 
+                <FormInput
+                    label="Product Name"
+                    required
                     placeholder="Enter item name..."
                     value={formData.name}
                     onChangeText={(text) => handleInputChange("name", text)}
                 />
 
-                <FormInput 
-                    label="Price (GHS)" 
-                    required 
+                <FormInput
+                    label="Price (GHS)"
+                    required
                     placeholder="0.00"
                     keyboardType="numeric"
                     value={formData.price}
                     onChangeText={(text) => handleInputChange("price", text)}
                 />
 
-                <FormInput 
-                    label="Phone Number" 
-                    required 
+                <FormInput
+                    label="Phone Number"
+                    required
                     placeholder="e.g. 0244000000"
                     keyboardType="phone-pad"
+                    maxLength={10}
                     value={formData.phoneNumber}
                     onChangeText={(text) => handleInputChange("phoneNumber", text)}
                 />
 
                 {/* Primary Category Selector */}
-                <FormDropdown 
+                <FormDropdown
                     label="Category"
                     required
                     placeholder="Select a Category"
@@ -119,8 +121,8 @@ export const ProductFormFields = ({
                     onPress={() => setShowCategoryModal(true)}
                 />
 
-                {/* FIXED: Swapped out Text Input for a dynamic dependent Subcategory selector Dropdown */}
-                <FormDropdown 
+                {/* Swapped out Text Input for a dynamic dependent Subcategory selector Dropdown */}
+                <FormDropdown
                     label="Product Type / Subcategory"
                     required
                     placeholder={formData.category ? "Select Subcategory" : "Please select a Category first"}
@@ -134,7 +136,7 @@ export const ProductFormFields = ({
                     }}
                 />
 
-                <FormDropdown 
+                <FormDropdown
                     label="Condition"
                     required
                     placeholder="Select Condition Status"
@@ -142,7 +144,7 @@ export const ProductFormFields = ({
                     onPress={() => setShowConditionModal(true)}
                 />
 
-                <FormDropdown 
+                <FormDropdown
                     label="Region"
                     required
                     placeholder="Select Region"
@@ -150,7 +152,7 @@ export const ProductFormFields = ({
                     onPress={() => setShowRegionModal(true)}
                 />
 
-                <FormDropdown 
+                <FormDropdown
                     label="District"
                     required
                     placeholder={formData.region ? "Select District" : "Please select a Region first"}
@@ -164,17 +166,17 @@ export const ProductFormFields = ({
                     }}
                 />
 
-                <FormInput 
-                    label="Specific Location / Area Landmark" 
-                    required 
+                <FormInput
+                    label="Specific Location / Area Landmark"
+                    required
                     placeholder="e.g. East Legon, Spintex, near Shell Station"
                     value={formData.location}
                     onChangeText={(text) => handleInputChange("location", text)}
                 />
 
-                <FormInput 
-                    label="Description" 
-                    required 
+                <FormInput
+                    label="Description"
+                    required
                     placeholder="Tell us more details about your item..."
                     multiline
                     numberOfLines={4}
@@ -186,7 +188,7 @@ export const ProductFormFields = ({
                 <View className="mb-4">
                     <Text className="text-black text-sm font-semibold mb-2">Additional Options (Optional)</Text>
                     <View className="flex-row flex-wrap gap-2">
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             onPress={() => setShowDeliveryConfig(!showDeliveryConfig)}
                             className={`px-3 py-2 rounded-full border ${showDeliveryConfig ? 'bg-green-100 border-green-600' : 'bg-gray-100 border-gray-300'}`}
                         >
@@ -195,7 +197,7 @@ export const ProductFormFields = ({
                             </Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             onPress={() => setShowWarrantyConfig(!showWarrantyConfig)}
                             className={`px-3 py-2 rounded-full border ${showWarrantyConfig ? 'bg-green-100 border-green-600' : 'bg-gray-100 border-gray-300'}`}
                         >
@@ -204,7 +206,7 @@ export const ProductFormFields = ({
                             </Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             onPress={() => setShowDiscountConfig(!showDiscountConfig)}
                             className={`px-3 py-2 rounded-full border ${showDiscountConfig ? 'bg-green-100 border-green-600' : 'bg-gray-100 border-gray-300'}`}
                         >
@@ -218,16 +220,16 @@ export const ProductFormFields = ({
                 {showDeliveryConfig && (
                     <View className="p-4 bg-gray-50 border border-gray-200 rounded-xl mb-4">
                         <Text className="text-gray-700 font-bold text-xs uppercase tracking-wider mb-2">Delivery Windows</Text>
-                        <FormInput 
-                            label="Estimated Days (From)" 
-                            placeholder="e.g. 1" 
+                        <FormInput
+                            label="Estimated Days (From)"
+                            placeholder="e.g. 1"
                             keyboardType="numeric"
                             value={formData.deliveryFrom || ""}
                             onChangeText={(text) => handleInputChange("deliveryFrom", text)}
                         />
-                        <FormInput 
-                            label="Estimated Days (To)" 
-                            placeholder="e.g. 3" 
+                        <FormInput
+                            label="Estimated Days (To)"
+                            placeholder="e.g. 3"
                             keyboardType="numeric"
                             value={formData.deliveryTo || ""}
                             onChangeText={(text) => handleInputChange("deliveryTo", text)}
@@ -239,9 +241,9 @@ export const ProductFormFields = ({
                 {showWarrantyConfig && (
                     <View className="p-4 bg-gray-50 border border-gray-200 rounded-xl mb-4">
                         <Text className="text-gray-700 font-bold text-xs uppercase tracking-wider mb-2">Warranty Details</Text>
-                        <FormInput 
-                            label="Warranty Period" 
-                            placeholder="e.g. 6 Months Store Warranty, 1 Year Apple Warranty" 
+                        <FormInput
+                            label="Warranty Period"
+                            placeholder="e.g. 6 Months Store Warranty, 1 Year Apple Warranty"
                             value={formData.warranty || ""}
                             onChangeText={(text) => handleInputChange("warranty", text)}
                         />
@@ -252,15 +254,15 @@ export const ProductFormFields = ({
                 {showDiscountConfig && (
                     <View className="p-4 bg-gray-50 border border-gray-200 rounded-xl mb-4">
                         <Text className="text-gray-700 font-bold text-xs uppercase tracking-wider mb-2">Specifications & Attributes</Text>
-                        <FormInput 
-                            label="Product Brand" 
-                            placeholder="e.g. Samsung, Nike, Toyota" 
+                        <FormInput
+                            label="Product Brand"
+                            placeholder="e.g. Samsung, Nike, Toyota"
                             value={formData.brand || ""}
                             onChangeText={(text) => handleInputChange("brand", text)}
                         />
-                        <FormInput 
-                            label="Color" 
-                            placeholder="e.g. Midnight Black, Pearl White" 
+                        <FormInput
+                            label="Color"
+                            placeholder="e.g. Midnight Black, Pearl White"
                             value={formData.color || ""}
                             onChangeText={(text) => handleInputChange("color", text)}
                         />
@@ -284,6 +286,7 @@ export const ProductFormFields = ({
 
             </View>
         </ScrollView>
+
     );
 };
 

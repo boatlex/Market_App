@@ -15,7 +15,6 @@ import {
 } from '../../constansts';
 
 const HomeScreen = () => {
-  // 1. Structural Visibility Toggle States for overlays
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [showRegionModal, setShowRegionModal] = useState(false);
   const [showDistrictModal, setShowDistrictModal] = useState(false);
@@ -37,23 +36,22 @@ const HomeScreen = () => {
   // Staging zone temporary state so query calls do not refetch live until "Apply Filters" is clicked
   const [tempFilters, setTempFilters] = useState<ProductFilters>({ ...activeFilters });
 
-  // 3. Fire the updated hook module
- // FIXED: Removed the unused flat 'pagination' variable
-const { 
-  results, 
-  isLoading, 
-  isError, 
-  hasNextPage, 
-  isFetchingNextPage, 
-  fetchNextPage 
-} = useProducts(activeFilters);
+
+  const {
+    results,
+    isLoading,
+    isError,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage
+  } = useProducts(activeFilters);
 
 
   const handleInputChange = (field: keyof ProductFilters, value: string) => {
     setTempFilters(prev => {
       const updated = { ...prev, [field]: value };
       if (field === "region") {
-        updated.district = ""; 
+        updated.district = "";
       }
       return updated;
     });
@@ -81,13 +79,14 @@ const {
     setShowFilterSheet(false);
   };
 
-   return (
+  return (
     <SafeScreen>
       <View className="flex-1 bg-gray-50">
 
         {/* STICKY TOP SEARCH HEADER BLOCK */}
         <View className="px-4 py-2 flex-row items-center space-x-3 border-b border-gray-100 bg-white">
-          <View className="flex-1 h-12">
+
+          <View className="flex-1 justify-center mb-2">
             <FormInput
               label=""
               placeholder="What are you looking for today?..."
@@ -95,16 +94,19 @@ const {
               onChangeText={(text) => setActiveFilters(prev => ({ ...prev, search: text }))}
             />
           </View>
+
           <TouchableOpacity
             onPress={() => {
-              setTempFilters({ ...activeFilters }); // Hydrate temporary state before opening sheet
+              setTempFilters({ ...activeFilters });
               setShowFilterSheet(true);
             }}
-            className="p-3 bg-gray-100 border border-gray-200 rounded-xl items-center justify-center h-12 w-12"
+
+            className="bg-gray-100 border border-gray-200 rounded-xl items-center justify-center h-12 w-12 "
           >
             <Ionicons name="options-outline" size={22} color="#000" />
           </TouchableOpacity>
         </View>
+
 
         {/* PRODUCT FEED LIST RENDERER WITH INFINITE SCROLL */}
         {isLoading ? (
@@ -117,12 +119,12 @@ const {
             keyExtractor={(item: any) => item._id}
             contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 }}
             showsVerticalScrollIndicator={false}
-            
+
             // Render using our new modular ProductCard UI component
             renderItem={({ item }) => (
-              <ProductCard 
-                item={item} 
-                onPress={() => console.log("Navigate to product details for ID:", item._id)} 
+              <ProductCard
+                item={item}
+                onPress={() => console.log("Navigate to product details for ID:", item._id)}
               />
             )}
 
@@ -163,7 +165,7 @@ const {
         )}
 
         {/* REUSABLE EXTERNAL FILTER MODAL SHEET */}
-        <FilterModal 
+        <FilterModal
           visible={showFilterSheet}
           onClose={() => setShowFilterSheet(false)}
           tempFilters={tempFilters}
@@ -194,7 +196,7 @@ const {
                 data={PRODUCT_CATEGORIES}
                 keyExtractor={(item) => item}
                 renderItem={({ item }) => (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     className="py-3 border-b border-gray-100"
                     onPress={() => {
                       handleInputChange("category", item);
@@ -223,7 +225,7 @@ const {
                 data={PRODUCT_CONDITIONS}
                 keyExtractor={(item) => item}
                 renderItem={({ item }) => (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     className="py-3 border-b border-gray-100"
                     onPress={() => {
                       handleInputChange("condition", item);
@@ -252,7 +254,7 @@ const {
                 data={GHANA_REGIONS}
                 keyExtractor={(item) => item}
                 renderItem={({ item }) => (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     className="py-3 border-b border-gray-100"
                     onPress={() => {
                       handleInputChange("region", item);
@@ -281,7 +283,7 @@ const {
                 data={tempFilters.region ? GHANA_DISTRICTS_BY_REGION[tempFilters.region] || [] : []}
                 keyExtractor={(item) => item}
                 renderItem={({ item }) => (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     className="py-3 border-b border-gray-100"
                     onPress={() => {
                       handleInputChange("district", item);

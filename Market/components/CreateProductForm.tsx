@@ -149,8 +149,9 @@ const CreateProductForm = ({
     };
 
     const handleSubmit = async () => {
-        if (!formData.name || !formData.price || !formData.region || !formData.condition || !formData.category || !formData.district || !formData.location) {
-            alert("Please fill in all the required fields including District/City.");
+        // Enforce validations including Phone Number matching server rules
+        if (!formData.name || !formData.price || !formData.region || !formData.condition || !formData.category || !formData.district || !formData.location || !formData.phoneNumber) {
+            alert("Please fill in all the required fields including Phone Number and District/City.");
             return;
         }
 
@@ -204,11 +205,20 @@ const CreateProductForm = ({
                     images: images
                 });
             }
-            handleCloseModal();
+
+
+            setShowModal(false);
+            setEditingProduct(null);
+            resetForm();
+
+
+            router.replace('/my-adds' as any);
+
         } catch (error) {
             console.error("Failed to submit product request:", error);
         }
     };
+
 
     const isSubmitting = isCreatingProduct || isUpdatingProduct;
 
@@ -218,6 +228,18 @@ const CreateProductForm = ({
                 behavior={Platform.OS === "ios" ? "padding" : undefined}
                 className='flex-1 bg-white'
             >
+                {/* Top Header Row of your Form Modal */}
+                <View className="flex-row justify-between
+                 items-center px-5 py-4 border-b border-gray-100">
+                    <Text className="text-xl font-bold text-black">
+                        {isEditing ? "Edit Product Details" : "Create New Ad"}
+                    </Text>
+
+                    <TouchableOpacity onPress={handleCloseModal}>
+                        <Ionicons name="close" size={26} color="#333" />
+                    </TouchableOpacity>
+                </View>
+
                 <ProductFormFields
                     formData={formData}
                     handleInputChange={handleInputChange}
@@ -369,7 +391,7 @@ const CreateProductForm = ({
                             </TouchableOpacity>
                         </View>
                         <FlatList
-                           data={formData.category ? (SUB_CATEGORIES_BY_CATEGORY[formData.category as keyof typeof SUB_CATEGORIES_BY_CATEGORY] || []) : []}
+                            data={formData.category ? (SUB_CATEGORIES_BY_CATEGORY[formData.category as keyof typeof SUB_CATEGORIES_BY_CATEGORY] || []) : []}
                             keyExtractor={(item) => item}
                             renderItem={({ item }) => (
                                 <TouchableOpacity

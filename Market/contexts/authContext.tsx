@@ -52,7 +52,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const registerMutation = useMutation({
 
     mutationFn: async (userData: any) => {
-          console.log(userData)
       const response = await api.post('/auths/register', userData);
       return response.data;
     }

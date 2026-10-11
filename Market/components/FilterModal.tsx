@@ -27,13 +27,13 @@ export const FilterModal = ({
     setShowRegionModal,
     setShowDistrictModal,
     setShowCategoryModal,
-    setShowConditionModal // Added: Deconstructed prop handler
+    setShowConditionModal 
 }: FilterModalProps) => {
     
     const updateFilterField = (field: string, value: string) => {
         setTempFilters((prev: any) => {
             const updated = { ...prev, [field]: value };
-            if (field === "region") updated.district = ""; // Clear out district context if region changes
+            if (field === "region") updated.district = "";  
             return updated;
         });
     };

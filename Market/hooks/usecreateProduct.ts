@@ -3,8 +3,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface PickerImage {
     uri: string;
-    type?: string;   // e.g., 'image/jpeg'
-    name?: string;   // e.g., 'photo.jpg'
+    type?: string;   
+    name?: string;   
 }
 
 interface CreateProductVariables {
@@ -15,7 +15,9 @@ interface CreateProductVariables {
     category: string;
     productType: string;
     region: string;
+    district: string; 
     location: string;
+    condition: string; // 🛠️ FIX 1: Add missing condition property to types
     images: PickerImage[]; 
     warranty?: string;
     brand?: string;
@@ -33,7 +35,6 @@ export const useCreateProduct = () => {
         mutationFn: async (data: CreateProductVariables) => {
             const formData = new FormData();
 
-            // 1. Append mandatory text fields
             formData.append("name", data.name);
             formData.append("description", data.description);
             formData.append("price", String(data.price));
@@ -41,24 +42,22 @@ export const useCreateProduct = () => {
             formData.append("category", data.category);
             formData.append("productType", data.productType);
             formData.append("region", data.region);
+            formData.append("district", data.district); 
             formData.append("location", data.location);  
+            formData.append("condition", data.condition); 
 
-            // Append optional values safely to FormData if they are defined
             if (data.warranty) formData.append("warranty", data.warranty);
             if (data.brand) formData.append("brand", data.brand);
             if (data.color) formData.append("color", data.color);
             
             if (data.delivery) {
-                // Nested objects must be stringified so multipart/form-data can transport them seamlessly
                 formData.append("delivery", JSON.stringify(data.delivery));
             }
 
-            // 3. Format and append images for React Native multipart upload
             data.images.forEach((img, index) => {
                 const fileType = img.type || "image/jpeg";
                 const fileName = img.name || `image_${index}_${Date.now()}.jpg`;
 
-                // React Native requires this precise object shape wrapped inside FormData
                 formData.append("images", {
                     uri: img.uri,
                     type: fileType,
@@ -66,7 +65,6 @@ export const useCreateProduct = () => {
                 } as any); 
             });
 
-            // 4. Post to API
             const response = await api.post("/products", formData, {
                 headers: {
                     "Content-Type": "multipart/form-data",

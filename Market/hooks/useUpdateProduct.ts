@@ -16,11 +16,10 @@ interface UpdateProductVariables {
     category?: string;
     productType?: string;
     region?: string;
-    district?: string; // Fixed: Added support for your new schema district field
+    district?: string; 
     location?: string;
     images?: PickerImage[]; 
-    existingImages?: string[];
-    // Fixed: Added support for optional attributes matching your form payload updates
+    existingImages?: string[]; 
     warranty?: string;
     brand?: string;
     color?: string;
@@ -44,29 +43,21 @@ export const useUpdateProduct = () => {
             if (data.category) formData.append("category", data.category);
             if (data.productType) formData.append("productType", data.productType);
             if (data.region) formData.append("region", data.region);
-            if (data.district) formData.append("district", data.district); // Fixed: Appending district configuration
+            if (data.district) formData.append("district", data.district); 
             if (data.location) formData.append("location", data.location);
 
-            // Fixed: Safely append optional parameter configurations if modified
             if (data.warranty) formData.append("warranty", data.warranty);
             if (data.brand) formData.append("brand", data.brand);
             if (data.color) formData.append("color", data.color);
             
             if (data.delivery) {
-                // Multi-part data payloads require objects to be text-stringified for transportation
                 formData.append("delivery", JSON.stringify(data.delivery));
             }
 
-            // Append existing remote image arrays to keep or reorganize on backend storage paths
-            if (data.existingImages && data.existingImages.length > 0) {
-                data.existingImages.forEach((url) => {
-                    formData.append("existingImages", url);
-                });
-            } else if (data.existingImages && data.existingImages.length === 0) {
-                formData.append("existingImages", "");
+            if (data.existingImages) {
+                formData.append("existingImages", JSON.stringify(data.existingImages));
             }
 
-            // Append newly added binary local files
             if (data.images && data.images.length > 0) {
                 data.images.forEach((img, index) => {
                     const fileType = img.type || "image/jpeg";
