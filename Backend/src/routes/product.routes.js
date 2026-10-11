@@ -21,11 +21,16 @@ router.get("/user", protectRoute, getUserProducts);
 router.get("/", getProducts);
 
 // 3. DATA MUTATION PATHS
-router.post("/products", protectRoute, upload.array("images", 3), createProduct);
-router.put("/products/:id", protectRoute, upload.array("images", 3), updateProduct);
-router.delete("/products/:id", protectRoute, deleteProduct);
 
-// 4. DYNAMIC PATHS LAST (Acts as the catch-all parameter)
+router.post("/", protectRoute, upload.array("images", 3), createProduct);
+
+
+router.put("/:id", protectRoute, upload.array("images", 3), updateProduct);
+
+
+router.delete("/:id", protectRoute, deleteProduct);
+
+
 router.get("/:productId", protectRoute, getProduct);
 
 export default router;

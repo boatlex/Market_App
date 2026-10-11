@@ -1,8 +1,8 @@
 
 import bcrypt from 'bcrypt';
-import OtpGenerator from "otp-generator"; 
+import { generate } from 'otp-generator';
 import jwt from "jsonwebtoken";
-import crypto from "crypto"; // FIXED: Added missing crypto package import
+import crypto from "crypto"; 
 import { User } from '../models/user.model.js';
 import { clerkClient, getAuth } from "@clerk/express";
 import { ENV } from '../config/env.js';
@@ -24,8 +24,17 @@ export const registerUser = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Passwords do not match." });
     }
 
-    if (password.length < 6) {
-      return res.status(400).json({ success: false, message: "Password must be at least 6 characters long." });
+    
+    if (password.length < 8) {
+      return res.status(400).json({ success: false, message: "Password must be at least 8 characters long." });
+    }
+
+    const strictPasswordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+    if (!strictPasswordRegex.test(password)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Password must contain letters, numbers, and at least one special character." 
+      });
     }
 
     const cleanEmail = email.toLowerCase();
@@ -33,7 +42,6 @@ export const registerUser = async (req, res, next) => {
     if (existingUser) {
       return res.status(400).json({ success: false, message: "Email is already registered." });
     }
-
 
     const newUser = new User({
       firstName,
@@ -150,13 +158,17 @@ export const loginUserManual = async (req, res, next) => {
     next(error);
   }
 };
-;
 
 export const forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    // 1. Guard check to prevent crashes if email is undefined
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email field is required." });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
     if (!user) {
       return res.status(404).json({ success: false, message: "No account found with that email address." });
     }
@@ -179,20 +191,27 @@ export const forgotPassword = async (req, res, next) => {
       service: 'Gmail', 
       auth: {
         user: ENV.EMAIL_USER,
-        pass: ENV.EMAIL_PASS,
+        pass: ENV.EMAIL_PASS, // Reminder: This must be a Google App Password
       },
     });
 
-    const resetUrl = `market://auth/reset-password/${resetToken}`;
+    // 📱 DEVELOPMENT DEEP LINK METHOD:
+    // Uses the local computer IP matching your React Native Axios setup
+    const devIP = "10.251.38.151"; 
+    const resetUrl = `exp://${devIP}:8081/--/reset-password/${resetToken}`;
 
     const mailOptions = {
       to: user.email,
       from: ENV.EMAIL_USER,
       subject: 'Market App - Password Reset Request',
-      text: `You are receiving this because you requested a password reset.\n\n
-             Please use the following link, or open it in your app to complete the process:\n\n
-             ${resetUrl}\n\n
-             If you did not request this, please ignore this email.\n`,
+      // Using HTML format makes the deep link cleanly clickable inside mobile email clients
+      html: `
+        <h3>Market App Password Reset</h3>
+        <p>You requested a password reset. Tap the link below on your mobile device to open the app:</p>
+        <p><a href="${resetUrl}" style="background-color: #4CAF50; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a></p>
+        <p>If the button doesn't work, copy and paste this into your browser: <br/> <code>${resetUrl}</code></p>
+        <p>If you did not request this, please ignore this email.</p>
+      `,
     };
 
     await transporter.sendMail(mailOptions);
@@ -205,38 +224,64 @@ export const forgotPassword = async (req, res, next) => {
   }
 };
 
+
 export const resetPassword = async (req, res, next) => {
   try {
     const { token, newPassword, confirmNewPassword } = req.body;
-   
+
     if (!token || !newPassword || !confirmNewPassword) {
-      return res.status(400).json({ success: false, message: "Please fill out all fields." });
+      return res.status(400).json({ success: false, message: "All fields are required." });
     }
 
     if (newPassword !== confirmNewPassword) {
       return res.status(400).json({ success: false, message: "Passwords do not match." });
     }
 
+    if (newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: "Password must be at least 8 characters long." });
+    }
+
+    const strictPasswordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+    if (!strictPasswordRegex.test(newPassword)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Password must contain letters, numbers, and at least one special character." 
+      });
+    }
+
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    
     const user = await User.findOne({
       resetPasswordToken: hashedToken,
-      resetPasswordExpires: { $gt: Date.now() }
+      resetPasswordExpires: { $gt: Date.now() } 
     });
 
     if (!user) {
-      return res.status(400).json({ success: false, message: "Token is invalid or has expired." });
+      return res.status(400).json({ 
+        success: false, 
+        message: "Password reset token is invalid or has expired." 
+      });
     }
 
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(newPassword, salt);
+    // 5. Update the password
+    // Your pre-save hook handles hashing automatically, so pass it plainly!
+    user.password = newPassword; 
+    
+    // Clear out the token fields so they cannot be reused
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
 
     await user.save();
-    return res.status(200).json({ success: true, message: "Your password has been successfully reset!" });
+
+    return res.status(200).json({ 
+      success: true, 
+      message: "Password has been reset successfully! You can now log in." 
+    });
 
   } catch (error) {
-    next(error)
+    console.error("Reset Password Error:", error);
+    next(error);
   }
 };
 
@@ -290,17 +335,17 @@ export const sendOTP = async (req, res, next) => {
     if (!email) {
       return res.status(400).json({ success: false, message: "Email field is required." });
     }
-    const new_otp = OtpGenerator.generate(6, {
+
+    const new_otp = generate(6, {
       upperCaseAlphabets: false,
       lowerCaseAlphabets: false,
       specialChars: false
     });
 
-    const otp_expiry_time = Date.now() + 10 * 60 * 1000; // 10 minutes validation window
+    const otp_expiry_time = Date.now() + 10 * 60 * 1000; 
 
-    // 2. Locate the user profile document by email and save the new parameters
     const user = await User.findOneAndUpdate(
-      { email: email.toLowerCase() },
+      { email: email.toLowerCase().trim() },
       { otp: new_otp, otp_expiry_time },
       { new: true, runValidators: true } 
     );
@@ -309,7 +354,7 @@ export const sendOTP = async (req, res, next) => {
       return res.status(404).json({ success: false, message: "User account profile not found." });
     }
 
-    // 3. Connect to your custom mail transport provider instance context
+    
     const transporter = nodemailer.createTransport({
       service: 'Gmail',
       auth: {
@@ -322,7 +367,17 @@ export const sendOTP = async (req, res, next) => {
       to: user.email,
       from: ENV.EMAIL_USER,
       subject: 'Market App - Your New OTP',
-      text: `Hello ${user.firstName},\n\nYour New OTP is: ${new_otp}\n\nIt will expire in 10 minutes.`,
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; border: 1px solid #eee;">
+          <h2 style="color: #333;">Market App Verification</h2>
+          <p>Hello ${user.firstName || 'User'},</p>
+          <p>Your one-time password (OTP) verification code is:</p>
+          <div style="background-color: #f4f4f4; padding: 15px; font-size: 24px; font-weight: bold; letter-spacing: 4px; text-align: center; color: #007bff; border-radius: 4px; margin: 20px 0;">
+            ${new_otp}
+          </div>
+          <p style="color: #666; font-size: 12px;">This code is private and will expire in 10 minutes. If you didn't request this code, please secure your account immediately.</p>
+        </div>
+      `
     };
 
     await transporter.sendMail(mailOptions);
@@ -333,6 +388,7 @@ export const sendOTP = async (req, res, next) => {
     next(error);
   }
 };
+
 
 export const verifyOTP = async (req, res, next) => {
   try {

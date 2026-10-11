@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import bcrypt from "bcrypt"; // 👈 CRITICAL: This import was missing!
 
 const userSchema = new mongoose.Schema({
     firstName: {
@@ -15,85 +16,64 @@ const userSchema = new mongoose.Schema({
         unique: true,
         lowercase: true,
         trim: true,
-
         match: [
             /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
             "Please provide a valid email address!"
         ]
     },
-
-    password: {
+     password: {
         type: String,
         required: function () {
             return !this.clerkId;
+        },
+        validate: {
+            validator: function (value) {
+                if (this.clerkId && !value) return true;
+                
+               return /^(?=.*[A-Za-z])(?=.*\d)(?=.*[\W_]).{8,}$/.test(value);
+            },
+           message: "Password must be at least 8 characters long and contain letters, numbers, and a special character!"
         }
     },
-
     clerkId: {
         type: String,
         required: function () {
             return !this.password;
         },
-        sparse: true // 👈 CRITICAL: Allows multiple manual users to have NO clerkId without crashing
+        sparse: true 
     },
-
-    resetPasswordToken: {
-        type: String,
-        required: false
-    },
-    resetPasswordExpires: {
-        type: Date,
-        required: false
-    },
-    verified: {
-        type: Boolean,
-        default: false,
-    },
-    otp: {
-        type: String,
-    },
-    otp_expiry_time: {
-        type: Date,
-    },
-
-    profilePicture: {
-        type: String,
-        default: "",
-    },
+    resetPasswordToken: { type: String, required: false },
+    resetPasswordExpires: { type: Date, required: false },
+    verified: { type: Boolean, default: false },
+    otp: { type: String },
+    otp_expiry_time: { type: Date },
+    profilePicture: { type: String, default: "" },
     role: {
         type: String,
         enum: ["user", "admin"],
         default: "user",
         index: true
     },
-     wishList: [
+    wishList: [
         {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Product"
         }
     ],
-
 }, { timestamps: true });
 
-// 👇 ADD THIS HOOK HERE
-userSchema.pre('save', async function (next) {
-    // Only hash the password if it has been modified or is new
+
+userSchema.pre('save', async function () {
+    
     if (!this.isModified('password') || !this.password) {
-        return next();
+        return;
     }
 
-    try {
-        // Only hash if it doesn't already look like a bcrypt hash (starts with $2a$ or $2b$)
-        if (!this.password.startsWith('$2b$') && !this.password.startsWith('$2a$')) {
-            const salt = await bcrypt.genSalt(10);
-            this.password = await bcrypt.hash(this.password, salt);
-        }
-        next();
-    } catch (error) {
-        next(error);
+    if (!this.password.startsWith('$2b$') && !this.password.startsWith('$2a$')) {
+        const salt = await bcrypt.genSalt(10);
+        this.password = await bcrypt.hash(this.password, salt);
     }
+    
 });
 
-
 export const User = mongoose.model("User", userSchema);
-

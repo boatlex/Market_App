@@ -42,8 +42,10 @@ app.use(cors({
   exposedHeaders: ["x-cid-error"] 
 }));
 
-app.use(clerkMiddleware());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(clerkMiddleware());
+
 
 // 6. Routes
 app.get("/api/health", (req, res) => {

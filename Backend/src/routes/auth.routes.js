@@ -26,9 +26,9 @@ const loginLimiter = rateLimit({
 
 const router = express.Router()
 
-router.post("/register", registerUser, sendOTP )
+router.post("/register", registerUser)
 router.post("/login-clerk", loginLimiter, loginUserClerk )
-router.post("/login-manual", loginLimiter, loginUserManual )
+router.post("/login-manual", loginLimiter, loginUserManual,sendOTP )
 
 router.post("/forgot-password", forgotPassword )
 router.post("/reset-password", resetPassword )

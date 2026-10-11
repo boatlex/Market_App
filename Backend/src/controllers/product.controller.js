@@ -2,9 +2,6 @@ import { Product } from "../models/product.model.js";
 import cloudinary from "../config/cloudinary.js"
 import { promises as fsPromises } from 'fs';
 
-import { Product } from "../models/Product.js"; // Adjust path as necessary
-import fsPromises from "fs/promises";
-import cloudinary from "../config/cloudinary.js"; // Adjust path as necessary
 
 export const createProduct = async (req, res, next) => {
     try {
@@ -16,7 +13,8 @@ export const createProduct = async (req, res, next) => {
             category,
             productType,
             region,
-            district, 
+            district,
+            location, 
             delivery,  
             warranty,  
             brand,     
@@ -30,60 +28,76 @@ export const createProduct = async (req, res, next) => {
             return res.status(401).json({ success: false, message: "Unauthorized: Missing user session." });
         }
 
-        
-        if (!name || !description || !price || !phoneNumber || !category || !productType || !region || !district) {
-            if (req.files) {
+        // 1. Core Field Presence Guard
+        if (!name || !description || !price || !phoneNumber || !category || !productType || !region || !district || !location || !condition) {
+            if (req.files && req.files.length > 0) {
                 for (const file of req.files) await fsPromises.unlink(file.path).catch(() => { });
             }
             return res.status(400).json({ success: false, message: "All required text fields must be provided." });
+        }
+
+    
+        const cleanPhone = phoneNumber.trim().replace(/\s+/g, '');
+        if (cleanPhone.length !== 10 || !/^\d{10}$/.test(cleanPhone)) {
+            if (req.files && req.files.length > 0) {
+                for (const file of req.files) await fsPromises.unlink(file.path).catch(() => { });
+            }
+            return res.status(400).json({ 
+                success: false, 
+                message: "Invalid Phone Number. It must be exactly 10 digits long (e.g. 0244000000)." 
+            });
         }
 
         if (!req.files || req.files.length === 0) {
             return res.status(400).json({ success: false, message: "At least one image file is required" });
         }
 
-        
-        const uploadPromises = req.files.map(async (file) => {
-            const normalizedPath = file.path.replace(/\\/g, '/');
-            return await cloudinary.uploader.upload(normalizedPath, {
-                folder: "products",
-                upload_preset: "images" 
+        let imageUrls = [];
+        try {
+            const uploadPromises = req.files.map(async (file) => {
+                const normalizedPath = file.path.replace(/\\/g, '/');
+                return await cloudinary.uploader.upload(normalizedPath, {
+                    folder: "products",
+                    upload_preset: "images" 
+                });
             });
-        });
 
-        const uploadResults = await Promise.all(uploadPromises);
-        const imageUrls = uploadResults.map((result) => result.secure_url);
+            const uploadResults = await Promise.all(uploadPromises);
+            imageUrls = uploadResults.map((result) => result.secure_url);
+        } catch (uploadError) {
+            if (req.files) {
+                for (const file of req.files) await fsPromises.unlink(file.path).catch(() => { });
+            }
+            throw uploadError;
+        }
 
-         
         for (const file of req.files) {
             await fsPromises.unlink(file.path).catch((err) =>
                 console.error("Failed to delete local temp file:", err.message)
             );
         }
 
-        // Parse delivery times if provided as a JSON string or object
         let parsedDelivery;
         if (delivery) {
             parsedDelivery = typeof delivery === 'string' ? JSON.parse(delivery) : delivery;
         }
 
-        
         const product = await Product.create({
             seller: sellerId, 
-            name,
-            description,
+            name: name.trim(),
+            description: description.trim(),
             price: parseFloat(price),
-            phoneNumber: phoneNumber.trim(),
+            phoneNumber: cleanPhone, // 🛠️ Saves the sanitized 10-digit number variant
             productType,
             region,
-            district, 
+            district,
+            location: location.trim(), 
             category,
             images: imageUrls,
-            // Safely pass through optional metadata fields
             delivery: parsedDelivery,
-            warranty,
-            brand,
-            color,
+            warranty: warranty ? warranty.trim() : undefined,
+            brand: brand ? brand.trim() : undefined,
+            color: color ? color.trim() : undefined,
             condition
         });
 
@@ -92,8 +106,7 @@ export const createProduct = async (req, res, next) => {
     } catch (error) {
         console.error("Error Creating Product:", error);
 
-        // Emergency cleanup if Cloudinary upload succeeded but DB creation failed
-        if (req.files) {
+        if (req.files && req.files.length > 0) {
             for (const file of req.files) {
                 await fsPromises.unlink(file.path).catch(() => { });
             }
@@ -102,8 +115,6 @@ export const createProduct = async (req, res, next) => {
         next(error);
     }
 };
-
-
 export const getFilteredProducts = async (req, res, next) => {
     try {
         const { search, region, category, condition, priceMin, priceMax } = req.query;
@@ -146,8 +157,6 @@ export const getFilteredProducts = async (req, res, next) => {
         next(error)
     }
 }
-
-
 export const getProducts = async (req, res, next) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -212,7 +221,6 @@ export const getProducts = async (req, res, next) => {
     }
 };
 
-
 export const getProduct = async (req, res, next) => {
     try {
         const { productId } = req.params
@@ -235,8 +243,6 @@ export const getProduct = async (req, res, next) => {
         next(error)
     }
 }
-
-
 export const getUserProducts = async (req, res, next) => {
     try {
 
@@ -265,7 +271,6 @@ export const getUserProducts = async (req, res, next) => {
         next(error);
     }
 };
-
 
 export const updateProduct = async (req, res, next) => {
     try {
@@ -318,8 +323,8 @@ export const updateProduct = async (req, res, next) => {
             });
         }
 
-        if (name) product.name = name;
-        if (description) product.description = description;
+        if (name) product.name = name.trim();
+        if (description) product.description = description.trim();
         if (price !== undefined) product.price = parseFloat(price);
         if (phoneNumber !== undefined) product.phoneNumber = phoneNumber.trim();
         if (category) product.category = category;
@@ -328,62 +333,51 @@ export const updateProduct = async (req, res, next) => {
         if (district) product.district = district;  
         if (location) product.location = location;
         if (condition) product.condition = condition;
-
         
         if (warranty !== undefined) product.warranty = warranty;
         if (brand !== undefined) product.brand = brand;
         if (color !== undefined) product.color = color;
 
-        
         if (delivery !== undefined) {
             product.delivery = typeof delivery === 'string' ? JSON.parse(delivery) : delivery;
         }
 
-        // Handle Image Deletions & Merges
-        let finalImages = [];
+        let parsedExisting = [];
         if (existingImages !== undefined) {
-            // Handle edge case where a single string instead of an array is posted by FormData
-            const parsedExisting = Array.isArray(existingImages) ? existingImages : [existingImages].filter(Boolean);
-            
-            // Fixed: Identify images removed by the user to delete them from Cloudinary storage
-            const imagesToDelete = product.images.filter(imgUrl => !parsedExisting.includes(imgUrl));
-            
-            for (const imgUrl of imagesToDelete) {
+            if (typeof existingImages === 'string') {
                 try {
-                    // Extract public ID from the Cloudinary URL structure
-                    const urlParts = imgUrl.split('/');
-                    const fileNameWithExtension = urlParts[urlParts.length - 1];
-                    const publicId = `products/${fileNameWithExtension.split('.')[0]}`; // Targets file inside 'products' folder
-                    
-                    await cloudinary.uploader.destroy(publicId);
-                } catch (cloudinaryErr) {
-                    console.error("Failed to delete unused asset from Cloudinary:", cloudinaryErr.message);
+                    const parsed = JSON.parse(existingImages);
+                    parsedExisting = Array.isArray(parsed) ? parsed : [parsed].filter(Boolean);
+                } catch {
+                    parsedExisting = [existingImages].filter(Boolean);
                 }
+            } else if (Array.isArray(existingImages)) {
+                parsedExisting = existingImages;
             }
-            finalImages = parsedExisting;
-        } else {
-            // If existingImages is completely missing, it means the user deleted all past images
-            if (product.images && product.images.length > 0) {
-                for (const imgUrl of product.images) {
-                    try {
-                        const urlParts = imgUrl.split('/');
-                        const fileNameWithExtension = urlParts[urlParts.length - 1];
-                        const publicId = `products/${fileNameWithExtension.split('.')[0]}`;
-                        await cloudinary.uploader.destroy(publicId);
-                    } catch (err) {
-                        console.error("Cloudinary cleanup error:", err.message);
-                    }
-                }
-            }
-            finalImages = [];
         }
 
-        // Handle processing fresh image upload bundles
+        let finalImages = [...parsedExisting];
+        const imagesToDelete = product.images.filter(imgUrl => !parsedExisting.includes(imgUrl));
+        
+        for (const imgUrl of imagesToDelete) {
+            try {
+                const urlParts = imgUrl.split('/');
+                const fileNameWithExtension = urlParts[urlParts.length - 1];
+                const publicId = `products/${fileNameWithExtension.split('.')[0]}`;
+                await cloudinary.uploader.destroy(publicId);
+            } catch (cloudinaryErr) {
+                console.error("Failed to delete unused asset from Cloudinary:", cloudinaryErr.message);
+            }
+        }
+
         if (req.files && req.files.length > 0) {
             const totalImageCount = finalImages.length + req.files.length;
             if (totalImageCount > 3) {
                 for (const file of req.files) await fsPromises.unlink(file.path).catch(() => { });
-                return res.status(400).json({ success: false, message: `Maximum 3 images allowed. You tried to upload ${req.files.length} new photos but kept ${finalImages.length} old ones.` });
+                return res.status(400).json({ 
+                    success: false, 
+                    message: `Maximum 3 images allowed. You have ${finalImages.length} active images and tried adding ${req.files.length} more.` 
+                });
             }
 
             const uploadPromises = req.files.map((file) => {
@@ -412,20 +406,15 @@ export const updateProduct = async (req, res, next) => {
         return res.status(200).json({ success: true, product });
 
     } catch (error) {
-        console.error("Error Updating Product", error);
-
+        console.error("Error Updating Product:", error);
         if (req.files) {
             for (const file of req.files) {
                 await fsPromises.unlink(file.path).catch(() => { });
             }
         }
-
         next(error);
     }
 };
-
-
-
 
 export const deleteProduct = async (req, res, next) => {
     try {
@@ -476,8 +465,6 @@ export const deleteProduct = async (req, res, next) => {
         next(error);
     }
 };
-
-
 
 export const toggleAvailability = async (req, res, next) => {
   try {

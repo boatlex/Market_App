@@ -1,10 +1,10 @@
 import mongoose from "mongoose";
 
 const productSchema = new mongoose.Schema({
-      
+
     seller: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User", 
+        ref: "User",
         required: true
     },
     name: {
@@ -24,20 +24,27 @@ const productSchema = new mongoose.Schema({
     },
     phoneNumber: {
         type: String,
-        required: true,
-        trim: true
+        required: [true, "Phone number is a mandatory field."],
+        trim: true,
+        validate: {
+            validator: function (v) {
+                return /^\d{10}\$/.test(v);
+            },
+            message: props => `${props.value} is not a valid 10-digit phone number!`
+        }
     },
+
     category: {
         type: String,
         required: true,
         trim: true,
-         lowercase:true
+        lowercase: true
     },
     productType: {
         type: String,
         required: true,
         trim: true,
-        lowercase:true
+        lowercase: true
     },
     region: {
         type: String,
@@ -81,17 +88,17 @@ const productSchema = new mongoose.Schema({
         trim: true,
         enum: {
             values: [
-                'New', 
-                'Refurbished', 
-                'Home-used', 
-                'Used - Like New', 
-                'Used - Good', 
+                'New',
+                'Refurbished',
+                'Home-used',
+                'Used - Like New',
+                'Used - Good',
                 'Used - Fair'
             ],
             message: '{VALUE} is not a valid product condition'
         }
     },
-     comments: [
+    comments: [
         {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Comment",
