@@ -8,7 +8,8 @@ import {
     getUserProducts,
     createProduct,
     updateProduct,
-    deleteProduct 
+    deleteProduct ,
+    toggleAvailability
 } from "../controllers/product.controller.js";
 
 const router = express.Router();
@@ -32,5 +33,9 @@ router.delete("/:id", protectRoute, deleteProduct);
 
 
 router.get("/:productId", protectRoute, getProduct);
+
+
+router.patch("/:productId/toggle-availability", protectRoute, toggleAvailability);
+
 
 export default router;

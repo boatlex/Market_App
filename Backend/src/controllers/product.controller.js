@@ -14,12 +14,12 @@ export const createProduct = async (req, res, next) => {
             productType,
             region,
             district,
-            location, 
-            delivery,  
-            warranty,  
-            brand,     
-            color,     
-            condition  
+            location,
+            delivery,
+            warranty,
+            brand,
+            color,
+            condition
         } = req.body;
 
         const sellerId = req.user?._id;
@@ -36,17 +36,20 @@ export const createProduct = async (req, res, next) => {
             return res.status(400).json({ success: false, message: "All required text fields must be provided." });
         }
 
-    
+
         const cleanPhone = phoneNumber.trim().replace(/\s+/g, '');
-        if (cleanPhone.length !== 10 || !/^\d{10}$/.test(cleanPhone)) {
+        if (!/^0\d{9}$/.test(cleanPhone)) {
             if (req.files && req.files.length > 0) {
-                for (const file of req.files) await fsPromises.unlink(file.path).catch(() => { });
+                for (const file of req.files) {
+                    await fsPromises.unlink(file.path).catch(() => { });
+                }
             }
-            return res.status(400).json({ 
-                success: false, 
-                message: "Invalid Phone Number. It must be exactly 10 digits long (e.g. 0244000000)." 
+            return res.status(400).json({
+                success: false,
+                message: "Invalid Phone Number. It must be exactly 10 digits long and start with 0 (e.g., 0244000000)."
             });
         }
+
 
         if (!req.files || req.files.length === 0) {
             return res.status(400).json({ success: false, message: "At least one image file is required" });
@@ -58,7 +61,7 @@ export const createProduct = async (req, res, next) => {
                 const normalizedPath = file.path.replace(/\\/g, '/');
                 return await cloudinary.uploader.upload(normalizedPath, {
                     folder: "products",
-                    upload_preset: "images" 
+                    upload_preset: "images"
                 });
             });
 
@@ -83,7 +86,7 @@ export const createProduct = async (req, res, next) => {
         }
 
         const product = await Product.create({
-            seller: sellerId, 
+            seller: sellerId,
             name: name.trim(),
             description: description.trim(),
             price: parseFloat(price),
@@ -91,7 +94,7 @@ export const createProduct = async (req, res, next) => {
             productType,
             region,
             district,
-            location: location.trim(), 
+            location: location.trim(),
             category,
             images: imageUrls,
             delivery: parsedDelivery,
@@ -163,15 +166,24 @@ export const getProducts = async (req, res, next) => {
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
 
-        // Base marketplace filter constraint to only pull active items
-        const filter = { isAvailable: true };
+
+        const filter = {};
+
+        if (req.query.isAvailable === "true") {
+            filter.isAvailable = true;
+        } else if (req.query.isAvailable === "false") {
+            filter.isAvailable = false;
+        } else {
+            // Option C: If it's "" or undefined, default to true so public feeds remain clean,
+            // but you can comment this out if "All Items" should literally include sold items.
+            filter.isAvailable = true;
+        }
 
         // 1. Text Search Filter (Handles names or descriptions)
         if (req.query.search) {
-            filter.$or = [
-                { name: { $regex: req.query.search, $options: "i" } },
-                { description: { $regex: req.query.search, $options: "i" } }
-            ];
+            filter.$text = {
+                $search: String(req.query.search)
+            };
         }
 
         // 2. Marketplace Classification Selectors (Leverages indexed keys)
@@ -205,8 +217,8 @@ export const getProducts = async (req, res, next) => {
             Product.countDocuments(filter)
         ]);
 
-        return res.status(200).json({ 
-            success: true, 
+        return res.status(200).json({
+            success: true,
             products,
             pagination: {
                 totalProducts,
@@ -238,7 +250,7 @@ export const getProduct = async (req, res, next) => {
 
         if (!userProduct) return res.status(404).json({ error: "Product Not Found" })
 
-        res.status(200).json({ userProduct })
+        res.status(200).json({ product: userProduct })
     } catch (error) {
         next(error)
     }
@@ -282,18 +294,18 @@ export const updateProduct = async (req, res, next) => {
             category,
             productType,
             region,
-            district,     
-            location,     
-            warranty,     
-            brand,        
-            color,        
-            delivery,     
-            condition,    
-            existingImages 
+            district,
+            location,
+            warranty,
+            brand,
+            color,
+            delivery,
+            condition,
+            existingImages
         } = req.body;
 
         const { id } = req.params;
-        const databaseUser = req.user; 
+        const databaseUser = req.user;
 
         if (!databaseUser) {
             if (req.files) {
@@ -317,9 +329,9 @@ export const updateProduct = async (req, res, next) => {
             if (req.files) {
                 for (const file of req.files) await fsPromises.unlink(file.path).catch(() => { });
             }
-            return res.status(403).json({ 
-                success: false, 
-                message: "Forbidden: You do not have permission to modify this product." 
+            return res.status(403).json({
+                success: false,
+                message: "Forbidden: You do not have permission to modify this product."
             });
         }
 
@@ -330,10 +342,10 @@ export const updateProduct = async (req, res, next) => {
         if (category) product.category = category;
         if (productType) product.productType = productType;
         if (region) product.region = region;
-        if (district) product.district = district;  
+        if (district) product.district = district;
         if (location) product.location = location;
         if (condition) product.condition = condition;
-        
+
         if (warranty !== undefined) product.warranty = warranty;
         if (brand !== undefined) product.brand = brand;
         if (color !== undefined) product.color = color;
@@ -358,7 +370,7 @@ export const updateProduct = async (req, res, next) => {
 
         let finalImages = [...parsedExisting];
         const imagesToDelete = product.images.filter(imgUrl => !parsedExisting.includes(imgUrl));
-        
+
         for (const imgUrl of imagesToDelete) {
             try {
                 const urlParts = imgUrl.split('/');
@@ -374,9 +386,9 @@ export const updateProduct = async (req, res, next) => {
             const totalImageCount = finalImages.length + req.files.length;
             if (totalImageCount > 3) {
                 for (const file of req.files) await fsPromises.unlink(file.path).catch(() => { });
-                return res.status(400).json({ 
-                    success: false, 
-                    message: `Maximum 3 images allowed. You have ${finalImages.length} active images and tried adding ${req.files.length} more.` 
+                return res.status(400).json({
+                    success: false,
+                    message: `Maximum 3 images allowed. You have ${finalImages.length} active images and tried adding ${req.files.length} more.`
                 });
             }
 
@@ -420,13 +432,13 @@ export const deleteProduct = async (req, res, next) => {
     try {
         const { id } = req.params;
 
-        const databaseUser = req.user; 
-        
+        const databaseUser = req.user;
+
         if (!databaseUser) {
             return res.status(401).json({ success: false, message: "Unauthorized: User session missing." });
         }
 
-    
+
         const product = await Product.findById(id);
         if (!product) {
             return res.status(404).json({ success: false, message: "Product Not Found" });
@@ -436,9 +448,9 @@ export const deleteProduct = async (req, res, next) => {
         const isAdmin = databaseUser.role === "admin";
 
         if (!isOwner && !isAdmin) {
-            return res.status(403).json({ 
-                success: false, 
-                message: "Forbidden: You do not have permission to delete this product." 
+            return res.status(403).json({
+                success: false,
+                message: "Forbidden: You do not have permission to delete this product."
             });
         }
 
@@ -467,34 +479,39 @@ export const deleteProduct = async (req, res, next) => {
 };
 
 export const toggleAvailability = async (req, res, next) => {
-  try {
-    const { productId } = req.params;
-    const userId = req.user._id; 
+    try {
+        const { productId } = req.params;
+        
+        
+        if (!req.user || !req.user._id) {
+            return res.status(401).json({ success: false, message: "Authentication failed. Token missing or invalid." });
+        }
+        
+        const userId = req.user._id.toString(); 
 
-    const product = await Product.findById(productId);
+        const product = await Product.findById(productId);
 
-    if (!product) {
-      return res.status(404).json({ success: false, message: "Product listing not found." });
+        if (!product) {
+            return res.status(404).json({ success: false, message: "Product listing not found." });
+        }
+
+        if (product.seller.toString() !== userId) {
+            return res.status(403).json({ success: false, message: "Action denied. You do not own this listing." });
+        }
+
+        product.isAvailable = !product.isAvailable;
+        await product.save();
+
+        return res.status(200).json({
+            success: true,
+            message: `Product successfully marked as ${product.isAvailable ? "available" : "unavailable"}.`,
+            product
+        });
+    } catch (error) {
+        next(error)
     }
-
-    
-     if (!product.seller.equals(userId)) {
-      return res.status(403).json({ success: false, message: "Action denied. You do not own this listing." });
-    }
-
-    // 3. Reverse the boolean flag status
-    product.isAvailable = !product.isAvailable;
-    await product.save();
-
-    return res.status(200).json({
-      success: true,
-      message: `Product successfully marked as ${product.isAvailable ? "available" : "unavailable"}.`,
-      product
-    });
-  } catch (error) {
-    next(error)
-  }
 };
+
 
 
 

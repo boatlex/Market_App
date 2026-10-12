@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 
 const productSchema = new mongoose.Schema({
-
     seller: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
@@ -28,12 +27,11 @@ const productSchema = new mongoose.Schema({
         trim: true,
         validate: {
             validator: function (v) {
-                return /^\d{10}\$/.test(v);
+                return /^0\d{9}$/.test(v);
             },
             message: props => `${props.value} is not a valid 10-digit phone number!`
         }
     },
-
     category: {
         type: String,
         required: true,
@@ -61,12 +59,15 @@ const productSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
-    images: [
-        {
-            type: String,
-            required: true,
+    images: {
+        type: [String],
+        validate: {
+            validator: function (v) {
+                return Array.isArray(v) && v.length > 0;
+            },
+            message: "A product must have at least one image."
         }
-    ],
+    },
     delivery: {
         from: { type: Date },
         to: { type: Date }
@@ -104,14 +105,17 @@ const productSchema = new mongoose.Schema({
             ref: "Comment",
         }
     ],
-
     isAvailable: {
         type: Boolean,
         default: true,
-        index: true // Accelerates public marketplace search queries
+        index: true
     },
-
 }, { timestamps: true });
+
+// Index for localized filtering & sorting
 productSchema.index({ category: 1, region: 1, district: 1, createdAt: -1 });
+
+// OPTIMIZATION: Text index for keyword search bars
+productSchema.index({ name: "text", description: "text" }, { weights: { name: 10, description: 5 } });
 
 export const Product = mongoose.model("Product", productSchema);
