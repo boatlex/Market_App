@@ -228,7 +228,7 @@ const CreateProductForm = ({
                 behavior={Platform.OS === "ios" ? "padding" : undefined}
                 className='flex-1 bg-white'
             >
-                {/* Top Header Row of your Form Modal */}
+                {/* Top Header Role of Modal */}
                 <View className="flex-row justify-between
                  items-center px-5 py-4 border-b border-gray-100">
                     <Text className="text-xl font-bold text-black">

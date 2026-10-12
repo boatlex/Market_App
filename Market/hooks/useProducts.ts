@@ -23,6 +23,7 @@ export interface ProductFilters {
   condition?: string;
   minPrice?: string;
   maxPrice?: string;
+  isAvailable?:string;
 }
 
 const useProducts = (filters: ProductFilters) => {

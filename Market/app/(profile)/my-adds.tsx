@@ -109,7 +109,16 @@ const MyAddsScreen = () => {
 
   return (
     <SafeScreen>
-      <Header title='My Adds' />
+      {/* <Header title='My Adds' /> */}
+       <View className='px-6 pb-5 pt-3 border-b border-surface flex-row items-center'>
+              <TouchableOpacity 
+                className='mr-4'
+                onPress={() => router.push("/(tabs)")}
+              >
+                <Ionicons name='arrow-back' size={28} color={"#000"}/>
+              </TouchableOpacity>
+              <Text className=' font-bold text-2xl'>My-Ads</Text>
+          </View>
       
       <View className="flex-1 px-4 pt-4 bg-gray-50/50">
         {isLoading ? (

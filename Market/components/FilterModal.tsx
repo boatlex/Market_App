@@ -14,7 +14,7 @@ interface FilterModalProps {
     setShowRegionModal: (show: boolean) => void;
     setShowDistrictModal: (show: boolean) => void;
     setShowCategoryModal: (show: boolean) => void;
-    setShowConditionModal: (show: boolean) => void; // Added: Prop type definition
+    setShowConditionModal: (show: boolean) => void;
 }
 
 export const FilterModal = ({
@@ -112,6 +112,56 @@ export const FilterModal = ({
                             value={tempFilters.condition}
                             onPress={() => setShowConditionModal(true)}
                         />
+
+                        {/* NEW: Item Listing Status (isAvailable) Segmented Controls */}
+                        <View className="mb-2">
+                            <Text className="text-black text-sm font-semibold mb-2">Item Listing Status</Text>
+                            <View className="flex-row space-x-2">
+                                
+                                {/* Option A: All Listings */}
+                                <TouchableOpacity
+                                    onPress={() => updateFilterField("isAvailable", "")}
+                                    className={`flex-1 h-11 rounded-xl items-center justify-center border ${
+                                        tempFilters.isAvailable === "" || tempFilters.isAvailable === undefined
+                                            ? 'bg-green-50 border-green-500' 
+                                            : 'bg-white border-gray-200'
+                                    }`}
+                                >
+                                    <Text className={`font-semibold text-xs ${tempFilters.isAvailable === "" || tempFilters.isAvailable === undefined ? 'text-green-600' : 'text-gray-700'}`}>
+                                        All Items
+                                    </Text>
+                                </TouchableOpacity>
+
+                                {/* Option B: Available Only */}
+                                <TouchableOpacity
+                                    onPress={() => updateFilterField("isAvailable", "true")}
+                                    className={`flex-1 h-11 rounded-xl items-center justify-center border ${
+                                        tempFilters.isAvailable === "true" 
+                                            ? 'bg-green-50 border-green-500' 
+                                            : 'bg-white border-gray-200'
+                                    }`}
+                                >
+                                    <Text className={`font-semibold text-xs ${tempFilters.isAvailable === "true" ? 'text-green-600' : 'text-gray-700'}`}>
+                                        Available
+                                    </Text>
+                                </TouchableOpacity>
+
+                                {/* Option C: Sold Out */}
+                                <TouchableOpacity
+                                    onPress={() => updateFilterField("isAvailable", "false")}
+                                    className={`flex-1 h-11 rounded-xl items-center justify-center border ${
+                                        tempFilters.isAvailable === "false" 
+                                            ? 'bg-green-50 border-green-500' 
+                                            : 'bg-white border-gray-200'
+                                    }`}
+                                >
+                                    <Text className={`font-semibold text-xs ${tempFilters.isAvailable === "false" ? 'text-green-600' : 'text-gray-700'}`}>
+                                        Sold Out
+                                    </Text>
+                                </TouchableOpacity>
+
+                            </View>
+                        </View>
                     </ScrollView>
 
                     {/* Bottom Action Footer */}

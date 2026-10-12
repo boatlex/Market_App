@@ -11,7 +11,7 @@ interface ProductFormFieldsProps {
     pickImages: () => Promise<void>;
     removeImage: (index: number) => void;
     setShowCategoryModal: (show: boolean) => void;
-    setShowSubCategoryModal: (show: boolean) => void; // Added
+    setShowSubCategoryModal: (show: boolean) => void; 
     setShowConditionModal: (show: boolean) => void;
     setShowRegionModal: (show: boolean) => void;
     setShowDistrictModal: (show: boolean) => void;

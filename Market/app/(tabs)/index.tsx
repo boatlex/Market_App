@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import SafeScreen from '../../components/SafeScreen'
-import useProducts, { ProductFilters } from '../../hooks/useProducts'; // Adjust paths as necessary
+import useProducts, { ProductFilters } from '../../hooks/useProducts'
 import { FormInput } from '../../components/FormInput';
 import { ProductCard } from '../../components/ProductCard';
 import { FilterModal } from '../../components/FilterModal';
+import { useRouter } from 'expo-router';
 
 import {
   GHANA_REGIONS,
@@ -13,6 +14,7 @@ import {
   PRODUCT_CATEGORIES,
   PRODUCT_CONDITIONS
 } from '../../constansts';
+
 
 const HomeScreen = () => {
   const [showFilterSheet, setShowFilterSheet] = useState(false);
@@ -30,7 +32,8 @@ const HomeScreen = () => {
     district: "",
     condition: "",
     minPrice: "",
-    maxPrice: ""
+    maxPrice: "",
+    isAvailable: ""
   });
 
   // Staging zone temporary state so query calls do not refetch live until "Apply Filters" is clicked
@@ -46,7 +49,7 @@ const HomeScreen = () => {
     fetchNextPage
   } = useProducts(activeFilters);
 
-
+  const router = useRouter()
   const handleInputChange = (field: keyof ProductFilters, value: string) => {
     setTempFilters(prev => {
       const updated = { ...prev, [field]: value };
@@ -72,12 +75,18 @@ const HomeScreen = () => {
       district: "",
       condition: "",
       minPrice: "",
-      maxPrice: ""
+      maxPrice: "",
+      isAvailable: "" 
     };
     setTempFilters(standardReset);
     setActiveFilters(standardReset);
     setShowFilterSheet(false);
   };
+
+  // Safe accessor to fetch current districts based on regional selections
+  const activeDistricts = tempFilters.region
+    ? GHANA_DISTRICTS_BY_REGION[tempFilters.region as keyof typeof GHANA_DISTRICTS_BY_REGION] || []
+    : [];
 
   return (
     <SafeScreen>
@@ -85,7 +94,6 @@ const HomeScreen = () => {
 
         {/* STICKY TOP SEARCH HEADER BLOCK */}
         <View className="px-4 py-2 flex-row items-center space-x-3 border-b border-gray-100 bg-white">
-
           <View className="flex-1 justify-center mb-2">
             <FormInput
               label=""
@@ -100,13 +108,11 @@ const HomeScreen = () => {
               setTempFilters({ ...activeFilters });
               setShowFilterSheet(true);
             }}
-
-            className="bg-gray-100 border border-gray-200 rounded-xl items-center justify-center h-12 w-12 "
+            className="bg-gray-100 border border-gray-200 rounded-xl items-center justify-center h-12 w-12"
           >
             <Ionicons name="options-outline" size={22} color="#000" />
           </TouchableOpacity>
         </View>
-
 
         {/* PRODUCT FEED LIST RENDERER WITH INFINITE SCROLL */}
         {isLoading ? (
@@ -119,22 +125,22 @@ const HomeScreen = () => {
             keyExtractor={(item: any) => item._id}
             contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 }}
             showsVerticalScrollIndicator={false}
+            numColumns={2}
+            columnWrapperStyle={{ justifyContent: 'space-between' }}
 
-            // Render using our new modular ProductCard UI component
             renderItem={({ item }) => (
               <ProductCard
                 item={item}
-                onPress={() => console.log("Navigate to product details for ID:", item._id)}
+                onPress={() => router.push(`/product/${item._id}`)}
               />
             )}
-
             // INFINITE SCROLL TRIGGER CONFIGURATIONS
             onEndReached={() => {
               if (hasNextPage && !isFetchingNextPage) {
                 fetchNextPage();
               }
             }}
-            onEndReachedThreshold={0.5} // Fires when scrolled halfway through the final item chunk
+            onEndReachedThreshold={0.5}
 
             // BOTTOM LOADING INDICATOR / FINISHED TEXT OVERLAYS
             ListFooterComponent={() => {
@@ -145,7 +151,7 @@ const HomeScreen = () => {
                   </View>
                 );
               }
-              if (results.length > 0 && !hasNextPage) {
+              if (results && results.length > 0 && !hasNextPage) {
                 return (
                   <Text className="text-gray-400 text-center text-xs py-6 font-medium">
                     You've caught up with all active listings! 🎉
