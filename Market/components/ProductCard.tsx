@@ -94,7 +94,7 @@ export const ProductCard = ({ item, onPress, onFavoriteToggle }: ProductCardProp
       </View>
 
       {/* BODY METADATA DETAILED PANELS */}
-      <View className="p-3">
+      <View className="p-5">
         <Text numberOfLines={1} className="font-bold text-sm text-gray-900 mb-0.5">
           {item.name}
         </Text>

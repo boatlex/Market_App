@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, ComponentProps } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import SafeScreen from '../../components/SafeScreen';
@@ -7,13 +7,16 @@ import { FormInput } from '../../components/FormInput';
 import { ProductCard } from '../../components/ProductCard';
 import { FilterModal } from '../../components/FilterModal';
 import { useRouter, Href } from 'expo-router';
-
+import { FormDropdown } from '../../components/FormDropdown';
 import {
   GHANA_REGIONS,
   GHANA_DISTRICTS_BY_REGION,
   PRODUCT_CATEGORIES,
-  PRODUCT_CONDITIONS
+  PRODUCT_CONDITIONS,
+  CATEGORY_CONFIG,
 } from '../../constants'
+
+
 
 const HomeScreen = () => {
   const router = useRouter();
@@ -74,7 +77,7 @@ const HomeScreen = () => {
       condition: "",
       minPrice: "",
       maxPrice: "",
-      isAvailable: "" 
+      isAvailable: ""
     };
     setTempFilters(standardReset);
     setActiveFilters(standardReset);
@@ -92,6 +95,39 @@ const HomeScreen = () => {
 
         {/* STICKY TOP SEARCH HEADER BLOCK */}
         <View className="px-4 py-2 flex-row items-center space-x-3 border-b border-gray-100 bg-white">
+          {/* Row 2: Single Geographic Unified Dropdown Selector */}
+          <View className="px-4 flex-row items-center space-x-2">
+            <View className="flex-1 justify-center items-center">
+              <FormDropdown
+                label=""
+                placeholder="Ghana"
+                value={
+                  activeFilters.region
+                    ? `${activeFilters.region}${activeFilters.district ? ` - \${activeFilters.district.split(' ')[0]}` : ''}`
+                    : 'Ghana'
+                }
+                onPress={() => {
+                  setTempFilters({ ...activeFilters });
+                  setShowRegionModal(true);
+                }}
+              />
+            </View>
+
+            {/* Clear Location Quick-Button (Only active if a region filter is present) */}
+            {activeFilters.region && (
+              <TouchableOpacity
+                onPress={() => {
+                  const clearedLocation = { ...activeFilters, region: "", district: "" };
+                  setActiveFilters(clearedLocation);
+                  setTempFilters(clearedLocation);
+                }}
+                className="bg-red-50 border border-red-100 rounded-xl h-11 px-3 items-center justify-center"
+              >
+                <Text className="text-red-500 text-xs font-bold">All Ghana</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
           <View className="flex-1 justify-center mb-2">
             <FormInput
               label=""
@@ -125,10 +161,79 @@ const HomeScreen = () => {
             showsVerticalScrollIndicator={false}
             numColumns={2}
             columnWrapperStyle={{ justifyContent: 'space-between' }}
+
+            // Render the 4-Column Category Grid at the top of the feed
+            ListHeaderComponent={() => (
+              <View className="bg-white rounded-2xl p-3 mb-4 shadow-sm border border-gray-100">
+                <View className="flex-row justify-between items-center mb-4 px-1">
+                  <Text className="text-sm font-bold text-gray-800">Browse Categories</Text>
+                  {activeFilters.category && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setActiveFilters(prev => ({ ...prev, category: "" }));
+                        setTempFilters(prev => ({ ...prev, category: "" }));
+                      }}
+                    >
+                      <Text className="text-xs text-red-500 font-semibold">Clear Filter</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                <View className="flex-row flex-wrap justify-start">
+                  {PRODUCT_CATEGORIES.map((category) => {
+                    const config = CATEGORY_CONFIG[category] || { icon: "grid-outline", color: "#4b5563", bgColor: "bg-gray-50" };
+                    const isSelected = activeFilters.category === category;
+
+                    return (
+                      <TouchableOpacity
+                        key={category}
+                        activeOpacity={0.7}
+                        className="w-[25%] items-center justify-start px-0.5 mb-4"
+                        onPress={() => {
+                          // Toggle category off if clicked again, otherwise update search feed
+                          const targetCategory = isSelected ? "" : category;
+                          setActiveFilters(prev => ({ ...prev, category: targetCategory }));
+                          setTempFilters(prev => ({ ...prev, category: targetCategory }));
+                        }}
+                      >
+                        <View className={`w-12 h-12 rounded-2xl items-center justify-center mb-1.5 shadow-sm ${isSelected ? 'bg-emerald-600 border border-emerald-700' : config.bgColor
+                          }`}>
+                          <Ionicons
+                            name={config.icon}
+                            size={20}
+                            color={isSelected ? "#fff" : config.color}
+                          />
+                        </View>
+                        <Text
+                          numberOfLines={2}
+                          className={`text-[10px] text-center leading-tight px-0.5 ${isSelected ? 'font-bold text-emerald-600' : 'font-medium text-gray-600'
+                            }`}
+                        >
+                          {category}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
             renderItem={({ item }) => (
               <ProductCard
                 item={item}
-                onPress={() => router.push(`/product/${item._id}` as Href)}
+                onPress={() => {
+                  const sellerID = typeof item.seller === 'object' && item.seller
+                    ? (item.seller as any)._id
+                    : item.seller;
+
+                  router.push({
+                    pathname: '/product/[id]',
+                    params: {
+                      id: item._id,
+                      sellerID: sellerID
+                    }
+                  });
+                }}
               />
             )}
             onEndReached={() => {
@@ -164,6 +269,7 @@ const HomeScreen = () => {
             }
           />
         )}
+
 
         {/* REUSABLE EXTERNAL FILTER MODAL SHEET */}
         <FilterModal
@@ -213,7 +319,45 @@ const HomeScreen = () => {
         </Modal>
 
         {/* Region Selection Sheet */}
+        {/* Region Selection Sheet */}
         <Modal visible={showRegionModal} transparent={true} animationType="slide">
+          <View className="flex-1 bg-black/50 justify-end">
+            <View className="bg-white rounded-t-3xl max-h-[50%] p-5">
+              <View className="flex-row justify-between items-center mb-4">
+                <Text className="text-lg font-bold text-black">Choose Region</Text>
+                <TouchableOpacity onPress={() => setShowRegionModal(false)}>
+                  <Ionicons name="close" size={24} color="#000" />
+                </TouchableOpacity>
+              </View>
+              <FlatList
+                data={GHANA_REGIONS}
+                keyExtractor={(item) => item}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    className="py-3 border-b border-gray-100"
+                    onPress={() => {
+                      // 1. Update staging hook inputs
+                      handleInputChange("region", item);
+                      setShowRegionModal(false);
+
+                      // 2. Chain parameters forward to the active filters immediately
+                      setActiveFilters(prev => ({ ...prev, region: item, district: "" }));
+
+                      // 3. Smooth programmatic popup transition for districts
+                      setTimeout(() => {
+                        setShowDistrictModal(true);
+                      }, 350); // 350ms accounts perfectly for the closing modal transition slide
+                    }}
+                  >
+                    <Text className="text-black text-base">{item}</Text>
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </View>
+        </Modal>
+
+        {/* <Modal visible={showRegionModal} transparent={true} animationType="slide">
           <View className="flex-1 bg-black/50 justify-end">
             <View className="bg-white rounded-t-3xl max-h-[50%] p-5">
               <View className="flex-row justify-between items-center mb-4">
@@ -239,10 +383,43 @@ const HomeScreen = () => {
               />
             </View>
           </View>
-        </Modal>
+        </Modal> */}
 
         {/* District Selection Sheet */}
+        {/* District Selection Sheet */}
         <Modal visible={showDistrictModal} transparent={true} animationType="slide">
+          <View className="flex-1 bg-black/50 justify-end">
+            <View className="bg-white rounded-t-3xl max-h-[50%] p-5">
+              <View className="flex-row justify-between items-center mb-4">
+                <Text className="text-lg font-bold text-black">Choose District in {tempFilters.region}</Text>
+                <TouchableOpacity onPress={() => setShowDistrictModal(false)}>
+                  <Ionicons name="close" size={24} color="#000" />
+                </TouchableOpacity>
+              </View>
+              <FlatList
+                data={activeDistricts}
+                keyExtractor={(item) => item}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    className="py-3 border-b border-gray-100"
+                    onPress={() => {
+                      // 1. Commit layout query changes directly to active view hooks
+                      handleInputChange("district", item);
+                      setActiveFilters(prev => ({ ...prev, district: item }));
+
+                      // 2. Dismiss the modal context safely
+                      setShowDistrictModal(false);
+                    }}
+                  >
+                    <Text className="text-black text-base">{item}</Text>
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </View>
+        </Modal>
+
+        {/* <Modal visible={showDistrictModal} transparent={true} animationType="slide">
           <View className="flex-1 bg-black/50 justify-end">
             <View className="bg-white rounded-t-3xl max-h-[50%] p-5">
               <View className="flex-row justify-between items-center mb-4">
@@ -272,7 +449,7 @@ const HomeScreen = () => {
               )}
             </View>
           </View>
-        </Modal>
+        </Modal> */}
 
         {/* Condition Selection Sheet */}
         <Modal visible={showConditionModal} transparent={true} animationType="slide">

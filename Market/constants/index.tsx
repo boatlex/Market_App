@@ -1,3 +1,6 @@
+import { Ionicons } from "@expo/vector-icons";
+import { ComponentProps } from "react";
+
     export const GHANA_REGIONS = [
     "Greater Accra", "Ashanti", "Bono", "Bono East", "Central", "Eastern",
     "Ahafo", "Northern", "Oti", "Savannah", "North East",
@@ -200,4 +203,22 @@ export const SUB_CATEGORIES_BY_CATEGORY: Record<Category, string[]> = {
     "Other": [ 
         "General Items", "Miscellaneous"
     ]
+};
+
+  export const CATEGORY_CONFIG: Record<string,{ icon: ComponentProps<typeof Ionicons>['name']; color: string; bgColor: string }
+> = {
+ 
+  "Electronics": { icon: "laptop-outline", color: "#2563eb", bgColor: "bg-blue-50" },
+  "Phones & Tablets": { icon: "phone-portrait-outline", color: "#16a34a", bgColor: "bg-emerald-50" },
+  "Vehicles": { icon: "car-sport-outline", color: "#dc2626", bgColor: "bg-red-50" },
+  "Heavy Equipment & Commercial Tools": { icon: "construct-outline", color: "#d97706", bgColor: "bg-amber-50" },
+  "Property & Real Estate": { icon: "home-outline", color: "#7c3aed", bgColor: "bg-purple-50" },
+  "Home, Furniture & Appliances": { icon: "bed-outline", color: "#0891b2", bgColor: "bg-cyan-50" },
+  "Fashion & Beauty": { icon: "shirt-outline", color: "#db2777", bgColor: "bg-pink-50" },
+  "Pets & Animals": { icon: "paw-outline", color: "#b45309", bgColor: "bg-amber-50" },
+  "Agriculture & Food": { icon: "leaf-outline", color: "#15803d", bgColor: "bg-green-50" },
+  "Babies & Kids Items": { icon: "balloon-outline", color: "#06b6d4", bgColor: "bg-cyan-50" },
+  "Sports, Arts & Outdoors": { icon: "football-outline", color: "#ea580c", bgColor: "bg-orange-50" },
+  "Jobs & Services": { icon: "briefcase-outline", color: "#4f46e5", bgColor: "bg-indigo-50" },
+  "Other": { icon: "ellipsis-horizontal-circle-outline", color: "#6b7280", bgColor: "bg-gray-50" },
 };

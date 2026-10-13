@@ -215,7 +215,8 @@ export interface ServiceProvider {
 }
 
 export interface User {
- _id: string;
+ _id?: string;
+ id?: string;
   firstName: string;
   lastName: string;
   email: string;

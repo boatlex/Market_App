@@ -9,23 +9,24 @@ import SafeScreen from '../../components/SafeScreen'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import ImageView from 'react-native-image-viewing';
-import { useAuth } from '../../contexts/authContext'; 
+import { useAuth } from '../../contexts/authContext';
 
 
 const { width } = Dimensions.get("window")
 
 const ProductDetailsScreen = () => {
-  const { id } = useLocalSearchParams<{ id: string }>()
+  const { id, sellerID } = useLocalSearchParams<{ id: string; sellerID: string }>();
+ 
   const { data: product, isError, isLoading } = useProduct(id)
-  const {user}=useAuth()
+  const { user } = useAuth()
   const toggleMutation = useToggleAvailability()
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [isFavorite, setIsFavorite] = useState(false)
   const [isZoomVisible, setIsZoomVisible] = useState(false);
 
- const owner = user?._id===item.seller._id
 
+const owner = user?.id === (Array.isArray(sellerID) ? sellerID[0] : sellerID);
 
   const handleCallSeller = () => {
     if (!product?.isAvailable) {
@@ -90,8 +91,8 @@ const ProductDetailsScreen = () => {
         contentContainerStyle={{ paddingBottom: 140 }}
         showsVerticalScrollIndicator={false}
       >
-        
-        
+
+
         {/* Image Gallery */}
         <View className='relative bg-gray-100 m-2' >
           {validImages.length > 0 ? (
@@ -131,8 +132,8 @@ const ProductDetailsScreen = () => {
                 imageIndex={selectedImageIndex}
                 visible={isZoomVisible}
                 onRequestClose={() => setIsZoomVisible(false)}
-                doubleTapToZoomEnabled={true}  
-                swipeToCloseEnabled={true}     
+                doubleTapToZoomEnabled={true}
+                swipeToCloseEnabled={true}
               />
             </>
           ) : (
@@ -189,31 +190,34 @@ const ProductDetailsScreen = () => {
           {/* NEW: Management Control Box (Call this only if user owns the listing) */}
           <View className="mb-6 p-4 bg-gray-50 border border-gray-100 rounded-2xl">
             <Text className="text-gray-950 font-bold text-sm mb-2">Listing Dashboard Controls</Text>
-            {/* here */}
-            <TouchableOpacity
-              disabled={toggleMutation.isPending}
-              onPress={handleStatusUpdate}
-              activeOpacity={0.8}
-              className={`h-11 rounded-xl flex-row items-center justify-center gap-2 border ${product.isAvailable
-                  ? 'bg-amber-50 border-amber-200'
-                  : 'bg-emerald-50 border-emerald-200'
-                }`}
-            >
-              {toggleMutation.isPending ? (
-                <ActivityIndicator size="small" color={product.isAvailable ? "#B45309" : "#047857"} />
-              ) : (
-                <>
-                  <Ionicons
-                    name={product.isAvailable ? "ban-outline" : "checkmark-circle-outline"}
-                    size={18}
-                    color={product.isAvailable ? "#B45309" : "#047857"}
-                  />
-                  <Text className={`font-semibold text-sm ${product.isAvailable ? 'text-amber-700' : 'text-emerald-700'}`}>
-                    {product.isAvailable ? "Mark Listing as Sold" : "Mark Listing as Available"}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
+            {owner && (
+  <TouchableOpacity
+    disabled={toggleMutation.isPending}
+    onPress={handleStatusUpdate}
+    activeOpacity={0.8}
+    className={`h-11 rounded-xl flex-row items-center justify-center gap-2 border ${
+      product.isAvailable
+        ? 'bg-amber-50 border-amber-200'
+        : 'bg-emerald-50 border-emerald-200'
+    }`}
+  >
+    {toggleMutation.isPending ? (
+      <ActivityIndicator size="small" color={product.isAvailable ? "#B45309" : "#047857"} />
+    ) : (
+      <>
+        <Ionicons
+          name={product.isAvailable ? "ban-outline" : "checkmark-circle-outline"}
+          size={18}
+          color={product.isAvailable ? "#B45309" : "#047857"}
+        />
+        <Text className={`font-semibold text-sm ${product.isAvailable ? 'text-amber-700' : 'text-emerald-700'}`}>
+          {product.isAvailable ? "Mark Listing as Sold" : "Mark Listing as Available"}
+        </Text>
+      </>
+    )}
+  </TouchableOpacity>
+)} 
+
           </View>
 
           {/* Localized Marketplace Locations */}
