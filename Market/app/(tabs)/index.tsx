@@ -94,16 +94,16 @@ const HomeScreen = () => {
       <View className="flex-1 bg-gray-50">
 
         {/* STICKY TOP SEARCH HEADER BLOCK */}
-        <View className="px-4 py-2 flex-row items-center space-x-3 border-b border-gray-100 bg-white">
+        <View className="px-4 py-2 flex-row items-center space-x-2 gap-2 border-b border-gray-100 bg-white">
           {/* Row 2: Single Geographic Unified Dropdown Selector */}
-          <View className="px-4 flex-row items-center space-x-2">
-            <View className="flex-1 justify-center items-center">
+          <View>
+            <View className="flex-1 justify-center items-center mb-2">
               <FormDropdown
                 label=""
                 placeholder="Ghana"
                 value={
                   activeFilters.region
-                    ? `${activeFilters.region}${activeFilters.district ? ` - \${activeFilters.district.split(' ')[0]}` : ''}`
+                    ? `${activeFilters.region}${activeFilters.district ? ` - ${activeFilters.district.split(' ')[0]}` : ''}`
                     : 'Ghana'
                 }
                 onPress={() => {
@@ -318,7 +318,7 @@ const HomeScreen = () => {
           </View>
         </Modal>
 
-        {/* Region Selection Sheet */}
+        
         {/* Region Selection Sheet */}
         <Modal visible={showRegionModal} transparent={true} animationType="slide">
           <View className="flex-1 bg-black/50 justify-end">
@@ -357,35 +357,9 @@ const HomeScreen = () => {
           </View>
         </Modal>
 
-        {/* <Modal visible={showRegionModal} transparent={true} animationType="slide">
-          <View className="flex-1 bg-black/50 justify-end">
-            <View className="bg-white rounded-t-3xl max-h-[50%] p-5">
-              <View className="flex-row justify-between items-center mb-4">
-                <Text className="text-lg font-bold text-black">Choose Region</Text>
-                <TouchableOpacity onPress={() => setShowRegionModal(false)}>
-                  <Ionicons name="close" size={24} color="#000" />
-                </TouchableOpacity>
-              </View>
-              <FlatList
-                data={GHANA_REGIONS}
-                keyExtractor={(item) => item}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    className="py-3 border-b border-gray-100"
-                    onPress={() => {
-                      handleInputChange("region", item);
-                      setShowRegionModal(false);
-                    }}
-                  >
-                    <Text className="text-black text-base">{item}</Text>
-                  </TouchableOpacity>
-                )}
-              />
-            </View>
-          </View>
-        </Modal> */}
+       
 
-        {/* District Selection Sheet */}
+        
         {/* District Selection Sheet */}
         <Modal visible={showDistrictModal} transparent={true} animationType="slide">
           <View className="flex-1 bg-black/50 justify-end">
@@ -419,37 +393,7 @@ const HomeScreen = () => {
           </View>
         </Modal>
 
-        {/* <Modal visible={showDistrictModal} transparent={true} animationType="slide">
-          <View className="flex-1 bg-black/50 justify-end">
-            <View className="bg-white rounded-t-3xl max-h-[50%] p-5">
-              <View className="flex-row justify-between items-center mb-4">
-                <Text className="text-lg font-bold text-black">Choose District / City</Text>
-                <TouchableOpacity onPress={() => setShowDistrictModal(false)}>
-                  <Ionicons name="close" size={24} color="#000" />
-                </TouchableOpacity>
-              </View>
-              {activeDistricts.length === 0 ? (
-                <Text className="text-gray-400 text-center py-6 font-medium">Please choose a Region first</Text>
-              ) : (
-                <FlatList
-                  data={activeDistricts}
-                  keyExtractor={(item) => item}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      className="py-3 border-b border-gray-100"
-                      onPress={() => {
-                        handleInputChange("district", item);
-                        setShowDistrictModal(false);
-                      }}
-                    >
-                      <Text className="text-black text-base">{item}</Text>
-                    </TouchableOpacity>
-                  )}
-                />
-              )}
-            </View>
-          </View>
-        </Modal> */}
+        
 
         {/* Condition Selection Sheet */}
         <Modal visible={showConditionModal} transparent={true} animationType="slide">
