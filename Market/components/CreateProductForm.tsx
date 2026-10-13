@@ -9,7 +9,7 @@ import {
     GHANA_DISTRICTS_BY_REGION,
     GHANA_REGIONS, PRODUCT_CATEGORIES,
     PRODUCT_CONDITIONS, SUB_CATEGORIES_BY_CATEGORY
-} from '../constansts'
+} from '../constants'
 
 
 interface CreateProductFormProps {
@@ -20,6 +20,7 @@ interface CreateProductFormProps {
     images: any[];
     setImages: (images: any[]) => void;
     pickImages: () => Promise<void>;
+    takePhoto: () => Promise<void>;
     removeImage: (index: number) => void;
 }
 
@@ -31,6 +32,7 @@ const CreateProductForm = ({
     images,
     setImages,
     pickImages,
+    takePhoto,
     removeImage
 }: CreateProductFormProps) => {
     const isEditing = !!editingProduct;
@@ -240,27 +242,33 @@ const CreateProductForm = ({
                     </TouchableOpacity>
                 </View>
 
-                <ProductFormFields
-                    formData={formData}
-                    handleInputChange={handleInputChange}
-                    images={images}
-                    pickImages={pickImages}
-                    removeImage={removeImage}
-                    setShowCategoryModal={setShowCategoryModal}
-                    setShowConditionModal={setShowConditionModal}
-                    setShowRegionModal={setShowRegionModal}
-                    setShowDistrictModal={setShowDistrictModal}
-                    handleSubmit={handleSubmit}
-                    isSubmitting={isSubmitting}
-                    isEditing={isEditing}
-                    showDeliveryConfig={showDeliveryConfig}
-                    setShowDeliveryConfig={setShowDeliveryConfig}
-                    showWarrantyConfig={showWarrantyConfig}
-                    setShowWarrantyConfig={setShowWarrantyConfig}
-                    showDiscountConfig={showDiscountConfig}
-                    setShowDiscountConfig={setShowDiscountConfig}
-                    setShowSubCategoryModal={setShowSubCategoryModal}
-                />
+                 <ProductFormFields
+                formData={formData}
+                handleInputChange={handleInputChange}
+                images={images}
+                pickImages={pickImages}
+                takePhoto={takePhoto} 
+                removeImage={removeImage}
+                handleSubmit={handleSubmit}
+                isSubmitting={isSubmitting}
+                isEditing={isEditing}
+                handleCloseModal={handleCloseModal}
+                
+                // Modal Toggles
+                setShowRegionModal={setShowRegionModal}
+                setShowCategoryModal={setShowCategoryModal}
+                setShowConditionModal={setShowConditionModal}
+                setShowDistrictModal={setShowDistrictModal}
+                setShowSubCategoryModal={setShowSubCategoryModal}
+                
+                // Config Section Toggles
+                showDeliveryConfig={showDeliveryConfig}
+                setShowDeliveryConfig={setShowDeliveryConfig}
+                showWarrantyConfig={showWarrantyConfig}
+                setShowWarrantyConfig={setShowWarrantyConfig}
+                showDiscountConfig={showDiscountConfig}
+                setShowDiscountConfig={setShowDiscountConfig}
+            />
             </KeyboardAvoidingView>
 
             {/* SELECTION MODALS */}

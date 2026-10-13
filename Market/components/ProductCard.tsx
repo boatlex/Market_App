@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, TouchableOpacity, Dimensions, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image'; // OPTIMIZATION: Replacing react-native Image for smoother caching & performance
+import { Image } from 'expo-image'; 
 import { Product } from '../types';
+import { useRouter } from 'expo-router';
+import useWishList from '../hooks/useWishlist';
 
 interface ProductCardProps {
   item: Product;
   onPress?: () => void;
-  // Optional parameters if you decide to pass generic handlers up to your screens later
-  isInitiallyFavorite?: boolean;
   onFavoriteToggle?: (productId: string, isFav: boolean) => void;
 }
 
@@ -26,15 +26,27 @@ const GAP = 12;
 const CARD_WIDTH = (SCREEN_WIDTH - (PADDING * 2) - GAP) / 2;
 
 // 1. INDIVIDUAL GRID ITEM COMPONENT
-export const ProductCard = ({ item, onPress, isInitiallyFavorite = false, onFavoriteToggle }: ProductCardProps) => {
-  const [isFavorite, setIsFavorite] = useState(isInitiallyFavorite);
+export const ProductCard = ({ item, onPress, onFavoriteToggle }: ProductCardProps) => {
+  const router = useRouter();
+  const { toggleWishList, isInWishList } = useWishList();
+  
+  
+  const isFavorite = isInWishList(item._id);
   const displayImage = item.images && item.images.length > 0 ? item.images[0] : null;
 
   const handleFavoritePress = () => {
+    if (!item._id) return;
+    
     const nextState = !isFavorite;
-    setIsFavorite(nextState);
-    if (onFavoriteToggle && item._id) {
+    
+    toggleWishList(item._id);
+    
+    if (onFavoriteToggle) {
       onFavoriteToggle(item._id, nextState);
+    }
+    
+    if (nextState) {
+      router.push("/(tabs)/saved");
     }
   };
 
@@ -52,7 +64,7 @@ export const ProductCard = ({ item, onPress, isInitiallyFavorite = false, onFavo
             source={{ uri: displayImage }}
             style={{ width: '100%', height: 144 }}
             contentFit="cover"
-            transition={200} // Smooth image fade-in transition
+            transition={200} 
           />
         ) : (
           <View className="flex-1 items-center justify-center bg-gray-200">
@@ -67,7 +79,7 @@ export const ProductCard = ({ item, onPress, isInitiallyFavorite = false, onFavo
           </View>
         )}
 
-        {/* ADDED: FLOATING FAVORITE BUTTON OVERLAY */}
+        {/* FLOATING FAVORITE BUTTON OVERLAY */}
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={handleFavoritePress}
@@ -88,7 +100,7 @@ export const ProductCard = ({ item, onPress, isInitiallyFavorite = false, onFavo
         </Text>
         
         <Text className="text-green-600 font-extrabold text-sm mb-1">
-          GHS {item.price.toLocaleString()}
+          GHS {item.price?.toLocaleString() ?? "0"}
         </Text>
 
         <Text numberOfLines={1} className="text-gray-500 text-[10px] font-medium mb-1 uppercase tracking-wide">
@@ -105,7 +117,7 @@ export const ProductCard = ({ item, onPress, isInitiallyFavorite = false, onFavo
           </View>
           
           <Text className="text-gray-400 text-[9px] shrink-0">
-            {new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+            {item.createdAt ? new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : ''}
           </Text>
         </View>
       </View>
@@ -118,24 +130,19 @@ export const ProductGrid = ({ products, onProductPress, onRefresh, refreshing = 
   return (
     <FlatList
       data={products}
-      keyExtractor={(item) => item._id || item.name}
+      keyExtractor={(item) => item._id || Math.random().toString()}
       renderItem={({ item }) => (
         <ProductCard 
           item={item} 
           onPress={() => onProductPress && onProductPress(item)} 
         />
       )}
-      // Grid Props
       numColumns={2}
       columnWrapperStyle={{ justifyContent: 'space-between' }}
       contentContainerStyle={{ paddingHorizontal: PADDING, paddingVertical: 16 }}
       showsVerticalScrollIndicator={false}
-      
-      // Pull to Refresh (Optional configuration)
       onRefresh={onRefresh}
       refreshing={refreshing}
-
-      // Performance optimizations for rapid image scrolling
       removeClippedSubviews={true}
       maxToRenderPerBatch={10}
       windowSize={5}

@@ -1,42 +1,23 @@
-import { View, Text, FlatList, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, Image, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import React from 'react';
 import SafeScreen from '../../components/SafeScreen';
 import Header from '../../components/Header';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/authContext'; 
-import { api } from '../../lib/api';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
+import useListings from '../../hooks/useListings';
 
 const MyAddsScreen = () => {
   const router = useRouter();
-  const queryClient = useQueryClient();
-
+    const { 
+    products, 
+    isLoading, 
+    isError, 
+    refetch, 
+    deleteProduct, 
+    deletingProductId 
+  } = useListings();
   
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['products', 'my-listings'],
-    queryFn: async () => {
-      const response = await api.get('/products/user');
-      return response.data; 
-    }
-  });
-
-  
-  const deleteProductMutation = useMutation({
-    mutationFn: async (productId: string) => {
-      const response = await api.delete(`/products/${productId}`);
-      return response.data;
-    },
-    onSuccess: () => {
-      alert("Listing deleted successfully.");
-      queryClient.invalidateQueries({ queryKey: ['products', 'my-listings'] });
-    },
-    onError: (error: any) => {
-      console.error("Delete failed:", error);
-      alert("Failed to delete item. Please try again.");
-    }
-  });
-
   const handleEditPress = (product: any) => {
     router.push({
       pathname: '/sell',
@@ -45,27 +26,42 @@ const MyAddsScreen = () => {
   };
 
   const handleDeletePress = (productId: string) => {
-    if (confirm("Are you sure you want to permanently delete this listing?")) {
-      deleteProductMutation.mutate(productId);
-    }
+    Alert.alert(
+      "Confirm Deletion",
+      "Are you sure you want to permanently delete this listing? This action cannot be undone.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel" 
+        },
+        {
+          text: "Delete",
+          style: "destructive", 
+          onPress: () => deleteProduct(productId) 
+        }
+      ]
+    );
   };
 
   const renderProductCard = ({ item }: { item: any }) => {
     const fallbackImage = "https://placeholder.com";
     const primaryImage = item.images && item.images.length > 0 ? item.images[0] : fallbackImage;
 
+    // FIXED: Isolate loading state strictly to this specific card instance
+    const isThisItemDeleting = deletingProductId === item._id;
+
     return (
-      <View className="flex-row bg-white border
-       border-gray-100 rounded-2xl p-3 mb-4 shadow-sm items-center">
+      <View className="flex-row bg-white border border-gray-100 rounded-2xl p-3 mb-4 shadow-sm items-center">
         <Image 
           source={{ uri: primaryImage }} 
           className="w-20 h-20 rounded-xl bg-gray-100 object-cover"
         />
 
-        {/* Product Meta details metadata info */}
+        {/* Product Details info panel */}
         <View className="flex-1 ml-4 justify-between">
           <View>
-            <Text className="text-black font-bold text-base numberOfLines={1}">
+            {/* FIXED: Removed numberOfLines out of the className template string */}
+            <Text className="text-black font-bold text-base" numberOfLines={1}>
               {item.name}
             </Text>
             <Text className="text-blue-600 font-extrabold text-sm mt-1">
@@ -85,22 +81,28 @@ const MyAddsScreen = () => {
           </View>
         </View>
 
-        {/* Interactive Action Control Bars Buttons */}
+        {/* Interactive Actions Controls Wrapper */}
         <View className="flex-row space-x-2 border-l border-gray-100 pl-3">
-          {/* Edit Trigger Button */}
+          {/* Edit Button */}
           <TouchableOpacity 
             onPress={() => handleEditPress(item)}
+            disabled={isThisItemDeleting}
             className="w-9 h-9 bg-blue-50 rounded-xl items-center justify-center border border-blue-100"
           >
             <Ionicons name="create-outline" size={18} color="#2563eb" />
           </TouchableOpacity>
 
-          {/* Permanent Database Delete Trigger Button */}
+          {/* Delete Button */}
           <TouchableOpacity 
             onPress={() => handleDeletePress(item._id)}
+            disabled={isThisItemDeleting}
             className="w-9 h-9 bg-red-50 rounded-xl items-center justify-center border border-red-100"
           >
-            <Ionicons name="trash-outline" size={18} color="#dc2626" />
+            {isThisItemDeleting ? (
+              <ActivityIndicator size="small" color="#dc2626" />
+            ) : (
+              <Ionicons name="trash-outline" size={18} color="#dc2626" />
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -109,16 +111,15 @@ const MyAddsScreen = () => {
 
   return (
     <SafeScreen>
-      {/* <Header title='My Adds' /> */}
-       <View className='px-6 pb-5 pt-3 border-b border-surface flex-row items-center'>
-              <TouchableOpacity 
-                className='mr-4'
-                onPress={() => router.push("/(tabs)")}
-              >
-                <Ionicons name='arrow-back' size={28} color={"#000"}/>
-              </TouchableOpacity>
-              <Text className=' font-bold text-2xl'>My-Ads</Text>
-          </View>
+      <View className='px-6 pb-5 pt-3 border-b border-surface flex-row items-center'>
+        <TouchableOpacity 
+          className='mr-4'
+          onPress={() => router.push("/(tabs)")}
+        >
+          <Ionicons name='arrow-back' size={28} color={"#000"}/>
+        </TouchableOpacity>
+        <Text className='font-bold text-2xl'>My-Ads</Text>
+      </View>
       
       <View className="flex-1 px-4 pt-4 bg-gray-50/50">
         {isLoading ? (
@@ -137,21 +138,21 @@ const MyAddsScreen = () => {
               <Text className="text-white font-semibold">Retry Fetch</Text>
             </TouchableOpacity>
           </View>
-        ) : data?.products?.length === 0 ? (
+        ) : products?.length === 0 ? (
           <View className="flex-1 items-center justify-center px-6 text-center">
             <Ionicons name="file-tray-stacked-outline" size={54} color="#9ca3af" />
             <Text className="text-gray-800 font-bold text-lg mt-4">No active ads published</Text>
             <Text className="text-gray-500 text-sm mt-1">Items you publish for sale will show up right here.</Text>
             <TouchableOpacity 
               onPress={() => router.push('/sell')}
-              className="mt-5 px-6 py-3 bg-blue-600 rounded-xl shadow-sm shadow-blue-500/20"
+              className="mt-5 px-6 py-3 bg-blue-600 rounded-xl shadow-sm"
             >
               <Text className="text-white font-bold text-base">Create an Ad Now</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <FlatList
-            data={data?.products || []}
+            data={products || []}
             keyExtractor={(item) => item._id}
             renderItem={renderProductCard}
             showsVerticalScrollIndicator={false}

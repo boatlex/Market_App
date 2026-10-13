@@ -1,55 +1,53 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal, ScrollView } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import SafeScreen from '../../components/SafeScreen'
-import useProducts, { ProductFilters } from '../../hooks/useProducts'
+import SafeScreen from '../../components/SafeScreen';
+import useProducts, { ProductFilters } from '../../hooks/useProducts';
 import { FormInput } from '../../components/FormInput';
 import { ProductCard } from '../../components/ProductCard';
 import { FilterModal } from '../../components/FilterModal';
-import { useRouter } from 'expo-router';
+import { useRouter, Href } from 'expo-router';
 
 import {
   GHANA_REGIONS,
   GHANA_DISTRICTS_BY_REGION,
   PRODUCT_CATEGORIES,
   PRODUCT_CONDITIONS
-} from '../../constansts';
-
+} from '../../constants'
 
 const HomeScreen = () => {
+  const router = useRouter();
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [showRegionModal, setShowRegionModal] = useState(false);
   const [showDistrictModal, setShowDistrictModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showConditionModal, setShowConditionModal] = useState(false);
 
-  // 2. Active Query Tracker State synced straight into your TanStack React Query hook
+  // Active Query Tracker State
   const [activeFilters, setActiveFilters] = useState<ProductFilters>({
     limit: 10,
     search: "",
     category: "",
+    productType: "",
     region: "",
     district: "",
     condition: "",
     minPrice: "",
     maxPrice: "",
-    isAvailable: ""
+    isAvailable: "true"
   });
 
-  // Staging zone temporary state so query calls do not refetch live until "Apply Filters" is clicked
+  // Staging zone temporary state
   const [tempFilters, setTempFilters] = useState<ProductFilters>({ ...activeFilters });
-
 
   const {
     results,
     isLoading,
-    isError,
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage
   } = useProducts(activeFilters);
 
-  const router = useRouter()
   const handleInputChange = (field: keyof ProductFilters, value: string) => {
     setTempFilters(prev => {
       const updated = { ...prev, [field]: value };
@@ -61,7 +59,7 @@ const HomeScreen = () => {
   };
 
   const handleApplyFilters = () => {
-    setActiveFilters({ ...tempFilters, });
+    setActiveFilters({ ...tempFilters });
     setShowFilterSheet(false);
   };
 
@@ -122,19 +120,17 @@ const HomeScreen = () => {
         ) : (
           <FlatList
             data={results}
-            keyExtractor={(item: any) => item._id}
+            keyExtractor={(item: any) => item._id || Math.random().toString()}
             contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 }}
             showsVerticalScrollIndicator={false}
             numColumns={2}
             columnWrapperStyle={{ justifyContent: 'space-between' }}
-
             renderItem={({ item }) => (
               <ProductCard
                 item={item}
-                onPress={() => router.push(`/product/${item._id}`)}
+                onPress={() => router.push(`/product/${item._id}` as Href)}
               />
             )}
-            // INFINITE SCROLL TRIGGER CONFIGURATIONS
             onEndReached={() => {
               if (hasNextPage && !isFetchingNextPage) {
                 fetchNextPage();
@@ -142,7 +138,6 @@ const HomeScreen = () => {
             }}
             onEndReachedThreshold={0.5}
 
-            // BOTTOM LOADING INDICATOR / FINISHED TEXT OVERLAYS
             ListFooterComponent={() => {
               if (isFetchingNextPage) {
                 return (
@@ -217,35 +212,6 @@ const HomeScreen = () => {
           </View>
         </Modal>
 
-        {/* Condition Selection Sheet */}
-        <Modal visible={showConditionModal} transparent={true} animationType="slide">
-          <View className="flex-1 bg-black/50 justify-end">
-            <View className="bg-white rounded-t-3xl max-h-[50%] p-5">
-              <View className="flex-row justify-between items-center mb-4">
-                <Text className="text-lg font-bold text-black">Choose Condition</Text>
-                <TouchableOpacity onPress={() => setShowConditionModal(false)}>
-                  <Ionicons name="close" size={24} color="#000" />
-                </TouchableOpacity>
-              </View>
-              <FlatList
-                data={PRODUCT_CONDITIONS}
-                keyExtractor={(item) => item}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    className="py-3 border-b border-gray-100"
-                    onPress={() => {
-                      handleInputChange("condition", item);
-                      setShowConditionModal(false);
-                    }}
-                  >
-                    <Text className="text-black text-base">{item}</Text>
-                  </TouchableOpacity>
-                )}
-              />
-            </View>
-          </View>
-        </Modal>
-
         {/* Region Selection Sheet */}
         <Modal visible={showRegionModal} transparent={true} animationType="slide">
           <View className="flex-1 bg-black/50 justify-end">
@@ -275,25 +241,58 @@ const HomeScreen = () => {
           </View>
         </Modal>
 
-        {/* Filter Dependent District Selection Sheet */}
+        {/* District Selection Sheet */}
         <Modal visible={showDistrictModal} transparent={true} animationType="slide">
           <View className="flex-1 bg-black/50 justify-end">
             <View className="bg-white rounded-t-3xl max-h-[50%] p-5">
               <View className="flex-row justify-between items-center mb-4">
-                <Text className="text-lg font-bold text-black">Choose District</Text>
+                <Text className="text-lg font-bold text-black">Choose District / City</Text>
                 <TouchableOpacity onPress={() => setShowDistrictModal(false)}>
                   <Ionicons name="close" size={24} color="#000" />
                 </TouchableOpacity>
               </View>
+              {activeDistricts.length === 0 ? (
+                <Text className="text-gray-400 text-center py-6 font-medium">Please choose a Region first</Text>
+              ) : (
+                <FlatList
+                  data={activeDistricts}
+                  keyExtractor={(item) => item}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      className="py-3 border-b border-gray-100"
+                      onPress={() => {
+                        handleInputChange("district", item);
+                        setShowDistrictModal(false);
+                      }}
+                    >
+                      <Text className="text-black text-base">{item}</Text>
+                    </TouchableOpacity>
+                  )}
+                />
+              )}
+            </View>
+          </View>
+        </Modal>
+
+        {/* Condition Selection Sheet */}
+        <Modal visible={showConditionModal} transparent={true} animationType="slide">
+          <View className="flex-1 bg-black/50 justify-end">
+            <View className="bg-white rounded-t-3xl max-h-[50%] p-5">
+              <View className="flex-row justify-between items-center mb-4">
+                <Text className="text-lg font-bold text-black">Choose Condition</Text>
+                <TouchableOpacity onPress={() => setShowConditionModal(false)}>
+                  <Ionicons name="close" size={24} color="#000" />
+                </TouchableOpacity>
+              </View>
               <FlatList
-                data={tempFilters.region ? GHANA_DISTRICTS_BY_REGION[tempFilters.region] || [] : []}
+                data={PRODUCT_CONDITIONS}
                 keyExtractor={(item) => item}
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     className="py-3 border-b border-gray-100"
                     onPress={() => {
-                      handleInputChange("district", item);
-                      setShowDistrictModal(false);
+                      handleInputChange("condition", item);
+                      setShowConditionModal(false);
                     }}
                   >
                     <Text className="text-black text-base">{item}</Text>

@@ -113,7 +113,7 @@ export const FilterModal = ({
                             onPress={() => setShowConditionModal(true)}
                         />
 
-                        {/* NEW: Item Listing Status (isAvailable) Segmented Controls */}
+                        {/* Item Listing Status (isAvailable) Segmented Controls */}
                         <View className="mb-2">
                             <Text className="text-black text-sm font-semibold mb-2">Item Listing Status</Text>
                             <View className="flex-row space-x-2">
@@ -164,18 +164,20 @@ export const FilterModal = ({
                         </View>
                     </ScrollView>
 
-                    {/* Bottom Action Footer */}
-                    <View className="flex-row space-x-3 mt-4 pt-4 border-t border-gray-100">
-                        <TouchableOpacity 
+                    {/* Footer Action Buttons */}
+                    <View className="flex-row space-x-3 pt-4 border-t border-gray-100">
+                        <TouchableOpacity
                             onPress={onResetFilters}
-                            className="flex-1 py-4 border border-gray-300 rounded-xl items-center"
+                            activeOpacity={0.7}
+                            className="flex-1 h-12 rounded-2xl items-center justify-center bg-gray-100 border border-gray-200"
                         >
-                            <Text className="text-gray-700 font-bold text-base">Clear All</Text>
+                            <Text className="text-gray-700 font-bold text-base">Reset</Text>
                         </TouchableOpacity>
-                        
-                        <TouchableOpacity 
+
+                        <TouchableOpacity
                             onPress={onApplyFilters}
-                            className="flex-1 py-4 bg-green-600 rounded-xl items-center"
+                            activeOpacity={0.8}
+                            className="flex-[2] h-12 rounded-2xl items-center justify-center bg-emerald-600 shadow-sm"
                         >
                             <Text className="text-white font-bold text-base">Apply Filters</Text>
                         </TouchableOpacity>

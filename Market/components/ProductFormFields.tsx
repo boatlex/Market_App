@@ -9,6 +9,8 @@ interface ProductFormFieldsProps {
     handleInputChange: (field: string, value: any) => void;
     images: any;
     pickImages: () => Promise<void>;
+    takePhoto: () => Promise<void>;
+      handleCloseModal: () => void;
     removeImage: (index: number) => void;
     setShowCategoryModal: (show: boolean) => void;
     setShowSubCategoryModal: (show: boolean) => void; 
@@ -31,6 +33,7 @@ export const ProductFormFields = ({
     handleInputChange,
     images,
     pickImages,
+    takePhoto,
     removeImage,
     setShowCategoryModal,
     setShowSubCategoryModal,
@@ -45,8 +48,10 @@ export const ProductFormFields = ({
     showWarrantyConfig,
     setShowWarrantyConfig,
     showDiscountConfig,
-    setShowDiscountConfig
+    setShowDiscountConfig,
+      handleCloseModal,
 }: ProductFormFieldsProps) => {
+    
     return (
         <ScrollView
             className={`flex-1 px-5 py-4
@@ -56,20 +61,52 @@ export const ProductFormFields = ({
         >
             <View className='space-y-4 auto-cols-max pb-28'>
 
+               {/* ADDED: INLINE CANCEL / TITLE ACTION BAR */}
+                <View className="flex-row items-center justify-between pb-3 mb-2 border-b border-gray-100">
+                    <View>
+                        <Text className="text-gray-900 font-extrabold text-xl">
+                            {isEditing ? 'Modify Listing' : 'Listing Particulars'}
+                        </Text>
+                        <Text className="text-gray-400 text-xs mt-0.5 font-medium">
+                            Please provide exact marketplace specs
+                        </Text>
+                    </View>
+                    <TouchableOpacity 
+                        onPress={handleCloseModal}
+                        activeOpacity={0.7}
+                        className="bg-gray-100 px-3 py-1.5 rounded-full flex-row items-center"
+                    >
+                        <Ionicons name="close-outline" size={16} color="#4B5563" />
+                        <Text className="text-gray-600 font-semibold text-xs ml-0.5">Cancel</Text>
+                    </TouchableOpacity>
+                </View>
+                
                 {/* Media Picker Section */}
                 <View className="mb-4">
                     <Text className='text-black text-sm font-semibold mb-2'>
                         Product Photos ({images.length}/3)
                     </Text>
                     <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} className="flex-row">
+                        
+                        {/* 1. CAMERA BUTTON */}
                         <TouchableOpacity
-                            onPress={pickImages}
-                            className='w-20 h-20 border border-gray-300 rounded-xl items-center justify-center bg-gray-200 mr-3'
+                            onPress={takePhoto}
+                            className='w-20 h-20 border border-gray-300 rounded-xl items-center justify-center bg-gray-100 mr-2'
                         >
-                            <Ionicons name="camera" size={26} color="#888" />
-                            <Text className='text-[10px] text-gray-500 mt-1 font-medium'>Add Photo</Text>
+                            <Ionicons name="camera" size={24} color="#4B5563" />
+                            <Text className='text-[10px] text-gray-500 mt-0.5 font-semibold'>Take Photo</Text>
                         </TouchableOpacity>
 
+                        {/* 2. GALLERY BUTTON */}
+                        <TouchableOpacity
+                            onPress={pickImages}
+                            className='w-20 h-20 border border-gray-300 rounded-xl items-center justify-center bg-gray-100 mr-4'
+                        >
+                            <Ionicons name="images" size={24} color="#4B5563" />
+                            <Text className='text-[10px] text-gray-500 mt-0.5 font-semibold'>Add Gallery</Text>
+                        </TouchableOpacity>
+
+                        {/* PREVIEW CONTAINER IMAGES TRACK */}
                         {images.map((img: any, index: number) => (
                             <View key={index} className='w-20 h-20 mr-3 relative rounded-xl overflow-hidden bg-gray-100'>
                                 <Image source={{ uri: img.uri }} className='w-full h-full object-cover' />

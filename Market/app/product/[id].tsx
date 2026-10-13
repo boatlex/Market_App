@@ -2,22 +2,30 @@ import { View, Text, Alert, TouchableOpacity, ScrollView, Dimensions, Linking, A
 import React, { useState } from 'react'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useProduct } from '../../hooks/useProduct'
-import { useToggleAvailability } from '../../hooks/useProductToggleAvailability' 
+import { useToggleAvailability } from '../../hooks/useProductToggleAvailability'
 import ErrorUi from '../../components/ErrorUi'
 import LoadingUi from '../../components/LoadingUi'
 import SafeScreen from '../../components/SafeScreen'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
+import ImageView from 'react-native-image-viewing';
+import { useAuth } from '../../contexts/authContext'; 
+
 
 const { width } = Dimensions.get("window")
 
 const ProductDetailsScreen = () => {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { data: product, isError, isLoading } = useProduct(id)
+  const {user}=useAuth()
   const toggleMutation = useToggleAvailability()
-  
+
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [isFavorite, setIsFavorite] = useState(false)
+  const [isZoomVisible, setIsZoomVisible] = useState(false);
+
+ const owner = user?._id===item.seller._id
+
 
   const handleCallSeller = () => {
     if (!product?.isAvailable) {
@@ -34,7 +42,7 @@ const ProductDetailsScreen = () => {
   const handleToggleFavorite = () => {
     setIsFavorite(!isFavorite)
     Alert.alert(
-      "Favorites", 
+      "Favorites",
       !isFavorite ? "Product added to your favorites!" : "Product removed from favorites."
     )
   }
@@ -42,7 +50,7 @@ const ProductDetailsScreen = () => {
   // NEW: Fire mutation requests straight to your Express backend
   const handleStatusUpdate = () => {
     if (!id) return;
-    
+
     toggleMutation.mutate(id, {
       onSuccess: (data) => {
         Alert.alert("Success", data.message || "Listing status successfully updated!");
@@ -53,7 +61,7 @@ const ProductDetailsScreen = () => {
       }
     });
   }
- 
+
   if (isLoading) {
     return <LoadingUi />
   }
@@ -68,7 +76,7 @@ const ProductDetailsScreen = () => {
     <SafeScreen>
       {/* Absolute Header Overlay */}
       <View className='absolute top-12 right-0 left-0 z-10 px-6 pb-4 flex-row items-center justify-between'>
-        <TouchableOpacity 
+        <TouchableOpacity
           className='bg-black/50 w-12 h-12 rounded-full items-center justify-center'
           onPress={() => router.back()}
           activeOpacity={0.7}
@@ -76,35 +84,57 @@ const ProductDetailsScreen = () => {
           <Ionicons name='arrow-back' size={24} color={"#FFFFFF"} />
         </TouchableOpacity>
       </View>
-      
+
       <ScrollView
         className='flex-1 bg-white'
         contentContainerStyle={{ paddingBottom: 140 }}
         showsVerticalScrollIndicator={false}
       >
+        
+        
         {/* Image Gallery */}
         <View className='relative bg-gray-100 m-2' >
           {validImages.length > 0 ? (
-            <ScrollView
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onScroll={(e) => {
-                const index = Math.round(e.nativeEvent.contentOffset.x / width)
-                setSelectedImageIndex(index)
-              }}
-              scrollEventThrottle={16}
-            >
-              {validImages.map((image: string, index: number) => (
-                <View key={index} style={{ width }}>
-                  <Image 
-                    source={ image }
-                    style={{ width, height: 400 }}
-                    contentFit='cover'
-                  />
-                </View>
-              ))}
-            </ScrollView>
+            <>
+              <ScrollView
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScroll={(e) => {
+                  const index = Math.round(e.nativeEvent.contentOffset.x / width)
+                  setSelectedImageIndex(index)
+                }}
+                scrollEventThrottle={16}
+              >
+                {validImages.map((image: string, index: number) => (
+                  <TouchableOpacity
+                    key={index}
+                    activeOpacity={0.9}
+                    style={{ width }}
+                    onPress={() => {
+                      setSelectedImageIndex(index);
+                      setIsZoomVisible(true);
+                    }}
+                  >
+                    <Image
+                      source={image}
+                      style={{ width, height: 400 }}
+                      contentFit='cover'
+                    />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {/* ====== PINCH TO ZOOM LIGHTBOX OVERLAY ====== */}
+              <ImageView
+                images={validImages.map((img: string) => ({ uri: img }))}
+                imageIndex={selectedImageIndex}
+                visible={isZoomVisible}
+                onRequestClose={() => setIsZoomVisible(false)}
+                doubleTapToZoomEnabled={true}  
+                swipeToCloseEnabled={true}     
+              />
+            </>
           ) : (
             <View style={{ width, height: 400 }} className="items-center justify-center bg-gray-200">
               <Ionicons name="image-outline" size={64} color="#9CA3AF" />
@@ -124,9 +154,10 @@ const ProductDetailsScreen = () => {
           )}
         </View>
 
+
         {/* Product Info Content Wrapper */}
         <View className='p-6'>
-          
+
           {/* Badges: Category, Condition & Status */}
           <View className='mb-3 flex-row items-center gap-2'>
             <View className='bg-green-50 px-3 py-1 rounded-full border border-green-100'>
@@ -137,7 +168,7 @@ const ProductDetailsScreen = () => {
                 <Text className='text-gray-600 text-xs font-semibold'>{product.condition}</Text>
               </View>
             )}
-            
+
             <View className={`px-3 py-1 rounded-full ${product.isAvailable ? 'bg-emerald-50 border border-emerald-100' : 'bg-rose-50 border border-rose-100'}`}>
               <Text className={`text-xs font-bold ${product.isAvailable ? 'text-emerald-600' : 'text-rose-600'}`}>
                 {product.isAvailable ? 'Available' : 'Sold Out'}
@@ -147,7 +178,7 @@ const ProductDetailsScreen = () => {
 
           {/* Product Name */}
           <Text className='text-gray-900 text-2xl font-bold mb-3'>{product.name}</Text>
-           
+
           {/* Price formatted in Ghana Cedis */}
           <View className='flex-row items-center mb-4'>
             <Text className='text-green-600 text-3xl font-black'>
@@ -158,24 +189,24 @@ const ProductDetailsScreen = () => {
           {/* NEW: Management Control Box (Call this only if user owns the listing) */}
           <View className="mb-6 p-4 bg-gray-50 border border-gray-100 rounded-2xl">
             <Text className="text-gray-950 font-bold text-sm mb-2">Listing Dashboard Controls</Text>
+            {/* here */}
             <TouchableOpacity
               disabled={toggleMutation.isPending}
               onPress={handleStatusUpdate}
               activeOpacity={0.8}
-              className={`h-11 rounded-xl flex-row items-center justify-center gap-2 border ${
-                product.isAvailable 
-                  ? 'bg-amber-50 border-amber-200' 
+              className={`h-11 rounded-xl flex-row items-center justify-center gap-2 border ${product.isAvailable
+                  ? 'bg-amber-50 border-amber-200'
                   : 'bg-emerald-50 border-emerald-200'
-              }`}
+                }`}
             >
               {toggleMutation.isPending ? (
                 <ActivityIndicator size="small" color={product.isAvailable ? "#B45309" : "#047857"} />
               ) : (
                 <>
-                  <Ionicons 
-                    name={product.isAvailable ? "ban-outline" : "checkmark-circle-outline"} 
-                    size={18} 
-                    color={product.isAvailable ? "#B45309" : "#047857"} 
+                  <Ionicons
+                    name={product.isAvailable ? "ban-outline" : "checkmark-circle-outline"}
+                    size={18}
+                    color={product.isAvailable ? "#B45309" : "#047857"}
                   />
                   <Text className={`font-semibold text-sm ${product.isAvailable ? 'text-amber-700' : 'text-emerald-700'}`}>
                     {product.isAvailable ? "Mark Listing as Sold" : "Mark Listing as Available"}
@@ -200,31 +231,29 @@ const ProductDetailsScreen = () => {
           </View>
         </View>
       </ScrollView>
-      
+
 
       {/* Floating Bottom Contact & Favorite Action Bar */}
       <View className='absolute bottom-0 left-0 right-0 bg-white p-4 pb-8 border-t border-gray-100 flex-row gap-3 shadow-lg mb-10'>
         {/* Favorite Heart Icon Button */}
-        <TouchableOpacity 
-          className={`w-14 h-14 rounded-xl items-center justify-center border ${
-            isFavorite ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'
-          }`}
+        <TouchableOpacity
+          className={`w-14 h-14 rounded-xl items-center justify-center border ${isFavorite ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'
+            }`}
           onPress={handleToggleFavorite}
           activeOpacity={0.7}
         >
-          <Ionicons 
-            name={isFavorite ? "heart" : "heart-outline"} 
-            size={26} 
-            color={isFavorite ? "#EF4444" : "#4B5563"} 
+          <Ionicons
+            name={isFavorite ? "heart" : "heart-outline"}
+            size={26}
+            color={isFavorite ? "#EF4444" : "#4B5563"}
           />
         </TouchableOpacity>
 
         {/* Call Action Button */}
-        <TouchableOpacity 
+        <TouchableOpacity
           disabled={!product.isAvailable}
-          className={`flex-1 h-14 rounded-xl flex-row items-center justify-center gap-2 ${
-            product.isAvailable ? 'bg-green-600' : 'bg-gray-300'
-          }`}
+          className={`flex-1 h-14 rounded-xl flex-row items-center justify-center gap-2 ${product.isAvailable ? 'bg-green-600' : 'bg-gray-300'
+            }`}
           onPress={handleCallSeller}
           activeOpacity={0.8}
         >
