@@ -213,7 +213,7 @@ export const getProducts = async (req, res, next) => {
                         path: "user",
                         select: "firstName lastName profilePicture"
                     }
-                }),
+                }).lean(),
             Product.countDocuments(filter)
         ]);
 
