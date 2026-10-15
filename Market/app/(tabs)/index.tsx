@@ -1,4 +1,4 @@
-import React, { useState, ComponentProps } from 'react';
+import React, { useState, ComponentProps, useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import SafeScreen from '../../components/SafeScreen';
@@ -14,8 +14,14 @@ import {
   PRODUCT_CATEGORIES,
   PRODUCT_CONDITIONS,
   CATEGORY_CONFIG,
-} from '../../constants'
+} from '../../constants'  
 
+
+const SPECIAL_CATEGORY_ROUTES: Record<string, string> = {
+  "Posted Jobs": "/post-jobs",
+  "Find Job": "/find-job",
+  "Services": "/post-service",
+};
 
 
 const HomeScreen = () => {
@@ -50,6 +56,8 @@ const HomeScreen = () => {
     isFetchingNextPage,
     fetchNextPage
   } = useProducts(activeFilters);
+
+
 
   const handleInputChange = (field: keyof ProductFilters, value: string) => {
     setTempFilters(prev => {
@@ -89,6 +97,13 @@ const HomeScreen = () => {
     ? GHANA_DISTRICTS_BY_REGION[tempFilters.region as keyof typeof GHANA_DISTRICTS_BY_REGION] || []
     : [];
 
+
+    const formattedLocationLabel = useMemo(() => {
+  if (!activeFilters.region) return 'Ghana';
+  const shortDistrict = activeFilters.district ? ` - ${activeFilters.district.split(' ')[0]}` : '';
+  return `${activeFilters.region}${shortDistrict}`;
+}, [activeFilters.region, activeFilters.district])
+
   return (
     <SafeScreen>
       <View className="flex-1 bg-gray-50">
@@ -101,11 +116,7 @@ const HomeScreen = () => {
               <FormDropdown
                 label=""
                 placeholder="Ghana"
-                value={
-                  activeFilters.region
-                    ? `${activeFilters.region}${activeFilters.district ? ` - ${activeFilters.district.split(' ')[0]}` : ''}`
-                    : 'Ghana'
-                }
+                value={formattedLocationLabel}
                 onPress={() => {
                   setTempFilters({ ...activeFilters });
                   setShowRegionModal(true);
@@ -131,7 +142,7 @@ const HomeScreen = () => {
           <View className="flex-1 justify-center mb-2">
             <FormInput
               label=""
-              placeholder="What are you looking for today?..."
+              placeholder="What are you looking for?..."
               value={activeFilters.search}
               onChangeText={(text) => setActiveFilters(prev => ({ ...prev, search: text }))}
             />
@@ -156,7 +167,7 @@ const HomeScreen = () => {
         ) : (
           <FlatList
             data={results}
-            keyExtractor={(item: any) => item._id || Math.random().toString()}
+            keyExtractor={(item: any, index) => item._id || `product-grid-key-${index}`}
             contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 }}
             showsVerticalScrollIndicator={false}
             numColumns={2}
@@ -190,6 +201,12 @@ const HomeScreen = () => {
                         activeOpacity={0.7}
                         className="w-[25%] items-center justify-start px-0.5 mb-4"
                         onPress={() => {
+
+                          // INTERCEPT CLICK: Route directly if a special route exists
+                          if (SPECIAL_CATEGORY_ROUTES[category]) {
+                            router.push(SPECIAL_CATEGORY_ROUTES[category] as any);
+                            return; // Exit execution early so inline search filter doesn't trigger
+                          }
                           // Toggle category off if clicked again, otherwise update search feed
                           const targetCategory = isSelected ? "" : category;
                           setActiveFilters(prev => ({ ...prev, category: targetCategory }));
@@ -318,7 +335,7 @@ const HomeScreen = () => {
           </View>
         </Modal>
 
-        
+
         {/* Region Selection Sheet */}
         <Modal visible={showRegionModal} transparent={true} animationType="slide">
           <View className="flex-1 bg-black/50 justify-end">
@@ -357,9 +374,9 @@ const HomeScreen = () => {
           </View>
         </Modal>
 
-       
 
-        
+
+
         {/* District Selection Sheet */}
         <Modal visible={showDistrictModal} transparent={true} animationType="slide">
           <View className="flex-1 bg-black/50 justify-end">
@@ -393,7 +410,7 @@ const HomeScreen = () => {
           </View>
         </Modal>
 
-        
+
 
         {/* Condition Selection Sheet */}
         <Modal visible={showConditionModal} transparent={true} animationType="slide">

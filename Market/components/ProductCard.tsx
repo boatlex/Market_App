@@ -130,7 +130,7 @@ export const ProductGrid = ({ products, onProductPress, onRefresh, refreshing = 
   return (
     <FlatList
       data={products}
-      keyExtractor={(item) => item._id || Math.random().toString()}
+      keyExtractor={(item: Product, index) => item._id || `product-grid-key-${index}`}
       renderItem={({ item }) => (
         <ProductCard 
           item={item} 

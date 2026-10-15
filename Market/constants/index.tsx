@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { ComponentProps } from "react";
 
-    export const GHANA_REGIONS = [
+export const GHANA_REGIONS = [
     "Greater Accra", "Ashanti", "Bono", "Bono East", "Central", "Eastern",
     "Ahafo", "Northern", "Oti", "Savannah", "North East",
     "Upper East", "Upper West", "Volta", "Western", "Western North"
@@ -9,7 +9,7 @@ import { ComponentProps } from "react";
 
 export const GHANA_DISTRICTS_BY_REGION: Record<string, string[]> = {
     "Greater Accra": [
-        "Accra Metropolitan (AMA)", "Tema Metropolitan (TMA)", "Kpone Katamanso Metropolitan", 
+        "Accra Metropolitan (AMA)", "Tema Metropolitan (TMA)", "Kpone Katamanso Metropolitan",
         "Ablekuma Central Municipal", "Ablekuma North Municipal", "Ablekuma West Municipal",
         "Adentan Municipal", "Ashaiman Municipal", "Ayawaso Central Municipal", "Ayawaso East Municipal",
         "Ayawaso West Municipal", "Ayawaso North Municipal", "Ga Central Municipal", "Ga East Municipal",
@@ -19,18 +19,18 @@ export const GHANA_DISTRICTS_BY_REGION: Record<string, string[]> = {
         "Ada East District", "Ada West District", "Ningo-Prampram District"
     ],
     "Ashanti": [
-        "Kumasi Metropolitan", "Ahafo Ano North Municipal", "Asante Akim Central Municipal", 
-        "Asante Akim South Municipal", "Asokore Mampong Municipal", "Asokwa Municipal", 
-        "Atwima Nwabiagya Municipal", "Bekwai Municipal", "Ejisu Municipal", "Ejura/Sekyedumase Municipal", 
-        "Juaben Municipal", "Kwabre East Municipal", "Kwadaso Municipal", "Mampong Municipal", 
-        "Obuasi Municipal", "Offinso Municipal", "Oforikrom Municipal", "Old Tafo Municipal", 
-        "Suame Municipal", "Adansi Asokwa District", "Adansi North District", "Adansi South District", 
-        "Afigya-Kwabre North District", "Afigya-Kwabre South District", "Ahafo Ano South East District", 
-        "Ahafo Ano South West District", "Akrofuom District", "Amansie Central District", 
-        "Amansie South District", "Amansie West District", "Asante Akim North District", 
-        "Atwima Kwanwoma District", "Atwima Mponua District", "Atwima Nwabiagya North District", 
-        "Bosome Freho District", "Bosomtwe District", "Obuasi East District", "Offinso North District", 
-        "Sekyere Afram Plains District", "Sekyere Central District", "Sekyere East District", 
+        "Kumasi Metropolitan", "Ahafo Ano North Municipal", "Asante Akim Central Municipal",
+        "Asante Akim South Municipal", "Asokore Mampong Municipal", "Asokwa Municipal",
+        "Atwima Nwabiagya Municipal", "Bekwai Municipal", "Ejisu Municipal", "Ejura/Sekyedumase Municipal",
+        "Juaben Municipal", "Kwabre East Municipal", "Kwadaso Municipal", "Mampong Municipal",
+        "Obuasi Municipal", "Offinso Municipal", "Oforikrom Municipal", "Old Tafo Municipal",
+        "Suame Municipal", "Adansi Asokwa District", "Adansi North District", "Adansi South District",
+        "Afigya-Kwabre North District", "Afigya-Kwabre South District", "Ahafo Ano South East District",
+        "Ahafo Ano South West District", "Akrofuom District", "Amansie Central District",
+        "Amansie South District", "Amansie West District", "Asante Akim North District",
+        "Atwima Kwanwoma District", "Atwima Mponua District", "Atwima Nwabiagya North District",
+        "Bosome Freho District", "Bosomtwe District", "Obuasi East District", "Offinso North District",
+        "Sekyere Afram Plains District", "Sekyere Central District", "Sekyere East District",
         "Sekyere Kumawu District", "Sekyere South District"
     ],
     "Bono": [
@@ -46,10 +46,10 @@ export const GHANA_DISTRICTS_BY_REGION: Record<string, string[]> = {
     ],
     "Central": [
         "Cape Coast Metropolitan", "Effutu Municipal", "Agona West Municipal",
-        "Assin Fosu Municipal", "Awutu Senya East Municipal", "Komenda-Edina-Eguafo-Abirem Municipal", 
-        "Mfantseman Municipal", "Upper Denkyira East Municipal", "Abura-Asebu-Kwamankese District", 
-        "Agona East District", "Ajumako-Enyan-Essiam District", "Asikuma-Odoben-Brakwa District", 
-        "Assin North District", "Assin South District", "Awutu Senya West District", "Ekumfi District", 
+        "Assin Fosu Municipal", "Awutu Senya East Municipal", "Komenda-Edina-Eguafo-Abirem Municipal",
+        "Mfantseman Municipal", "Upper Denkyira East Municipal", "Abura-Asebu-Kwamankese District",
+        "Agona East District", "Ajumako-Enyan-Essiam District", "Asikuma-Odoben-Brakwa District",
+        "Assin North District", "Assin South District", "Awutu Senya West District", "Ekumfi District",
         "Gomoa Central District", "Gomoa East District", "Gomoa West District", "Twifo-Ati Morkwa District",
         "Twifo Heman Lower Denkyira District", "Upper Denkyira West District"
     ],
@@ -70,9 +70,9 @@ export const GHANA_DISTRICTS_BY_REGION: Record<string, string[]> = {
         "Asunafo South District", "Asutifi North District", "Asutifi South District"
     ],
     "Northern": [
-        "Tamale Metropolitan", "Gushegu Municipal", "Nanumba North Municipal", "Sagnarigu Municipal", 
-        "Savelugu Municipal", "Yendi Municipal", "Karaga District", "Kpandai District", 
-        "Kumbungu District", "Mion District", "Nanton District", "Nanumba South District", 
+        "Tamale Metropolitan", "Gushegu Municipal", "Nanumba North Municipal", "Sagnarigu Municipal",
+        "Savelugu Municipal", "Yendi Municipal", "Karaga District", "Kpandai District",
+        "Kumbungu District", "Mion District", "Nanton District", "Nanumba South District",
         "Saboba District", "Tatale Sanguli District", "Tolon District", "Zabzugu District"
     ],
     "Oti": [
@@ -127,16 +127,18 @@ export const PRODUCT_CATEGORIES = [
     "Electronics",
     "Phones & Tablets",
     "Vehicles",
-    "Heavy Equipment & Commercial Tools", 
+    "Heavy Equipment & Commercial Tools",
     "Property & Real Estate",
     "Home, Furniture & Appliances",
     "Fashion & Beauty",
     "Health & Wellness",
-    "Pets & Animals",                      
+    "Pets & Animals",
     "Agriculture & Food",
     "Babies & Kids Items",
     "Sports, Arts & Outdoors",
-    "Jobs & Services",
+    "Posted Jobs",
+    "Find Job",
+    "Services",
     "Other",
 ] as const;
 
@@ -144,81 +146,101 @@ export type Category = typeof PRODUCT_CATEGORIES[number];
 
 export const SUB_CATEGORIES_BY_CATEGORY: Record<Category, string[]> = {
     "Electronics": [
-        "Laptops & Computers", "TVs & Smart Displays", "Audio & Sound Systems", 
+        "Laptops & Computers", "TVs & Smart Displays", "Audio & Sound Systems",
         "Cameras & Camcorders", "Video Game Consoles", "Computer Accessories"
     ],
     "Phones & Tablets": [
-        "Mobile Phones", "Tablets", "Smartwatches & Trackers", 
+        "Mobile Phones", "Tablets", "Smartwatches & Trackers",
         "Mobile Accessories", "Cases & Screen Protectors"
     ],
     "Vehicles": [
-        "Cars & SUVs", "Motorcycles & Scooters", "Buses & Microbuses", 
+        "Cars & SUVs", "Motorcycles & Scooters", "Buses & Microbuses",
         "Trucks & Trailers", "Vehicle Parts & Accessories"
     ],
     "Heavy Equipment & Commercial Tools": [
-        "Construction Machinery", 
-        "Industrial Generators & Power", 
-        "Manufacturing & Factory Plants", 
+        "Construction Machinery",
+        "Industrial Generators & Power",
+        "Manufacturing & Factory Plants",
         "Forklifts & Material Handling",
         "Medical & Laboratory Equipment",
         "Professional Hand & Power Tools"
     ],
     "Property & Real Estate": [
-        "Houses for Rent", "Houses for Sale", "Apartments & Flats for Rent", 
+        "Houses for Rent", "Houses for Sale", "Apartments & Flats for Rent",
         "Apartments & Flats for Sale", "Commercial Property", "Land & Plots"
     ],
     "Home, Furniture & Appliances": [
-        "Furniture", "Kitchen Appliances", "Laundry & Cleaning Appliances", 
+        "Furniture", "Kitchen Appliances", "Laundry & Cleaning Appliances",
         "Kitchenware & Cookware", "Home Decor & Lighting", "Bedding & Textiles"
     ],
-    "Fashion & Beauty": [ 
-        "Men's Clothing", "Men's Shoes", "Women's Clothing", 
+    "Fashion & Beauty": [
+        "Men's Clothing", "Men's Shoes", "Women's Clothing",
         "Women's Shoes", "Bags & Purses", "Jewelry & Watches",
-        "Skincare & Body Products", "Makeup & Cosmetics", "Hair Care & Wigs", 
+        "Skincare & Body Products", "Makeup & Cosmetics", "Hair Care & Wigs",
         "Fragrances & Perfumes"
     ],
-    "Health & Wellness": [ 
+    "Health & Wellness": [
         "Vitamins & Supplements", "Medical Equipment & Braces", "Fitness Accessories"
     ],
     "Pets & Animals": [
-        "Dogs & Puppies", "Cats & Kittens", "Birds & Poultry", 
+        "Dogs & Puppies", "Cats & Kittens", "Birds & Poultry",
         "Pet Food & Nutrition", "Pet Accessories & Cages", "Veterinary Supplies"
     ],
     "Agriculture & Food": [
-        "Farm Machinery & Tractors", "Livestock & Poultry", "Seeds & Fertilizers", 
+        "Farm Machinery & Tractors", "Livestock & Poultry", "Seeds & Fertilizers",
         "Fresh Food & Groceries", "Wholesale Agro Commodities"
     ],
     "Babies & Kids Items": [
-        "Children's Clothing", "Children's Shoes", "Toys & Games", 
+        "Children's Clothing", "Children's Shoes", "Toys & Games",
         "Baby Strollers & Car Seats", "Baby Feeding & Care"
     ],
-    "Sports, Arts & Outdoors": [ 
-        "Gym & Fitness Gear", "Camping & Outdoor Equipment", "Musical Instruments", 
+    "Sports, Arts & Outdoors": [
+        "Gym & Fitness Gear", "Camping & Outdoor Equipment", "Musical Instruments",
         "Bicycles & Cycling Accessories", "Books & Stationery", "Art & Collectibles"
     ],
-    "Jobs & Services": [
-        "Job Vacancies", "Freelance & Professional Services", "Car Rentals & Transport", 
-        "Event Planning & Catering", "Repair & Installation Services"
+
+    "Posted Jobs": ["Full-Time Corporate", "Part-Time & Shift Work", "Contract & Freelance Projects",
+        "Artisan & Trade Openings", "Remote & Tech Roles", "Internships & Entry-Level", "NGO & Government Jobs"
     ],
-    "Other": [ 
+    "Find Job": [
+        "Administrative & HR", "Sales & Marketing", "Tech & Software Engineering", "Accounting & Finance",
+        "Teaching & Education", "Healthcare & Medical", "Driving, Logistics & Delivery",
+        "Construction & Engineering", "Hospitality & Catering", "Security & Housekeeping"
+    ],
+
+    "Services": [
+        "Freelance & Professional Services", "Car Rentals & Transport Services", "Legal Services",
+        "Event Planning & Catering", "Repair & Installation Services",
+        "Recruitment Services", "Health & Beauty Services", "Fitnass & Personal Training Services"
+    ],
+    "Other": [
         "General Items", "Miscellaneous"
     ]
 };
 
-  export const CATEGORY_CONFIG: Record<string,{ icon: ComponentProps<typeof Ionicons>['name']; color: string; bgColor: string }
+
+
+export const CATEGORY_CONFIG: Record<
+    string,
+    { icon: ComponentProps<typeof Ionicons>['name']; color: string; bgColor: string }
 > = {
- 
-  "Electronics": { icon: "laptop-outline", color: "#2563eb", bgColor: "bg-blue-50" },
-  "Phones & Tablets": { icon: "phone-portrait-outline", color: "#16a34a", bgColor: "bg-emerald-50" },
-  "Vehicles": { icon: "car-sport-outline", color: "#dc2626", bgColor: "bg-red-50" },
-  "Heavy Equipment & Commercial Tools": { icon: "construct-outline", color: "#d97706", bgColor: "bg-amber-50" },
-  "Property & Real Estate": { icon: "home-outline", color: "#7c3aed", bgColor: "bg-purple-50" },
-  "Home, Furniture & Appliances": { icon: "bed-outline", color: "#0891b2", bgColor: "bg-cyan-50" },
-  "Fashion & Beauty": { icon: "shirt-outline", color: "#db2777", bgColor: "bg-pink-50" },
-  "Pets & Animals": { icon: "paw-outline", color: "#b45309", bgColor: "bg-amber-50" },
-  "Agriculture & Food": { icon: "leaf-outline", color: "#15803d", bgColor: "bg-green-50" },
-  "Babies & Kids Items": { icon: "balloon-outline", color: "#06b6d4", bgColor: "bg-cyan-50" },
-  "Sports, Arts & Outdoors": { icon: "football-outline", color: "#ea580c", bgColor: "bg-orange-50" },
-  "Jobs & Services": { icon: "briefcase-outline", color: "#4f46e5", bgColor: "bg-indigo-50" },
-  "Other": { icon: "ellipsis-horizontal-circle-outline", color: "#6b7280", bgColor: "bg-gray-50" },
+    "Electronics": { icon: "laptop-outline", color: "#2563eb", bgColor: "bg-blue-50" },
+    "Phones & Tablets": { icon: "phone-portrait-outline", color: "#16a34a", bgColor: "bg-emerald-50" },
+    "Vehicles": { icon: "car-sport-outline", color: "#dc2626", bgColor: "bg-red-50" },
+    "Heavy Equipment & Commercial Tools": { icon: "construct-outline", color: "#d97706", bgColor: "bg-amber-50" },
+    "Property & Real Estate": { icon: "home-outline", color: "#7c3aed", bgColor: "bg-purple-50" },
+    "Home, Furniture & Appliances": { icon: "bed-outline", color: "#0891b2", bgColor: "bg-cyan-50" },
+    "Fashion & Beauty": { icon: "shirt-outline", color: "#db2777", bgColor: "bg-pink-50" },
+    "Pets & Animals": { icon: "paw-outline", color: "#b45309", bgColor: "bg-amber-50" },
+    "Agriculture & Food": { icon: "leaf-outline", color: "#15803d", bgColor: "bg-green-50" },
+    "Babies & Kids Items": { icon: "balloon-outline", color: "#06b6d4", bgColor: "bg-cyan-50" },
+    "Sports, Arts & Outdoors": { icon: "football-outline", color: "#ea580c", bgColor: "bg-orange-50" },
+
+    // Straight standalone categories replacing "Jobs & Services"
+    "Posted Jobs": { icon: "business-outline", color: "#4f46e5", bgColor: "bg-indigo-50" },
+    "Find Job": { icon: "search-outline", color: "#16a34a", bgColor: "bg-emerald-50" },
+    "Services": { icon: "build-outline", color: "#d97706", bgColor: "bg-amber-50" },
+
+  "Other": { icon: "ellipsis-horizontal-circle", color: "#6b7280", bgColor: "bg-gray-50" },
 };
+

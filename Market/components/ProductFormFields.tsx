@@ -10,7 +10,7 @@ interface ProductFormFieldsProps {
     images: any;
     pickImages: () => Promise<void>;
     takePhoto: () => Promise<void>;
-      handleCloseModal: () => void;
+    handleCloseModal: () => void;
     removeImage: (index: number) => void;
     setShowCategoryModal: (show: boolean) => void;
     setShowSubCategoryModal: (show: boolean) => void; 

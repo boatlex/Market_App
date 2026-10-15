@@ -55,6 +55,7 @@ export interface ISalary {
 
 export interface Job {
     _id: string;
+    id: string;
     employer: string;
     companyName: string;
     companyLogo?: string;
@@ -69,10 +70,11 @@ export interface Job {
     emailForApplications?: string;
     region: string;
     district: string;
+    location:string,
     requirements: string[];
     benefits: string[];
     applications: string[];
-    applicationDeadline?: string; // Dates are transmitted as ISO strings over JSON
+    applicationDeadline?: string; 
     isOpen: boolean;
     createdAt: string;
     updatedAt: string;
