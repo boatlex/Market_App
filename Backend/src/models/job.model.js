@@ -11,10 +11,6 @@ const jobSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
-    companyLogo: {
-        type: String, 
-        trim: true
-    },
     jobImage: {
         type: String,
         required:true, 
@@ -72,6 +68,11 @@ const jobSchema = new mongoose.Schema({
         trim: true
     },
     district: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    location: {
         type: String,
         required: true,
         trim: true

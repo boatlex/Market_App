@@ -111,11 +111,18 @@ const productSchema = new mongoose.Schema({
         index: true
     },
 }, { timestamps: true });
-
-// Index for localized filtering & sorting
-productSchema.index({ category: 1, region: 1, district: 1, createdAt: -1 });
-
-// OPTIMIZATION: Text index for keyword search bars
+// 1. Existing text index remains for keyword inputs
 productSchema.index({ name: "text", description: "text" }, { weights: { name: 10, description: 5 } });
+
+// 2. PRIMARY COMBINED AD FEED FILTER (Covers general browsing, location changes, and sorting)
+// This ensures that even if 'category' is empty, query optimization triggers correctly from right to left variations
+productSchema.index({ isAvailable: 1, region: 1, district: 1, category: 1, createdAt: -1 });
+
+// 3. SPECIALIZED SPARE COMBINED INDEX (For specific category drilling directly from home grid)
+productSchema.index({ isAvailable: 1, category: 1, productType: 1, createdAt: -1 });
+
+// 4. PRICE RANGE SPECIFIC QUERY SCANNING
+productSchema.index({ isAvailable: 1, price: 1, createdAt: -1 });
+
 
 export const Product = mongoose.model("Product", productSchema);
