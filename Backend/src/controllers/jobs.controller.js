@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import cloudinary from "../config/cloudinary.js";
 import { Job } from "../models/job.model.js"
 import { Application } from "../models/application.model.js"
@@ -16,6 +17,7 @@ const getCloudinaryPublicId = (url) => {
         return null;
     }
 };
+
 export const createJob = async (req, res, next) => {
     try {
         const userId = req.user._id;
@@ -27,8 +29,8 @@ export const createJob = async (req, res, next) => {
             category,
             jobType,
             workMode,
-            minSalary,
-            maxSalary,
+            salaryMin, 
+            salaryMax, 
             currency,
             phoneNumber,
             emailForApplications,
@@ -40,26 +42,23 @@ export const createJob = async (req, res, next) => {
             applicationDeadline
         } = req.body;
 
-        // ========================================================
-        // 1. CONDITIONAL INPUT VALIDATION CHECKS
-        // ========================================================
         const errors = [];
 
-        if (!companyName || !companyName.trim()) errors.push("Company name is required.");
-        if (!title || !title.trim()) errors.push("Job title is required.");
-        if (!description || !description.trim()) errors.push("Job description is required.");
+        if (!companyName || !String(companyName).trim()) errors.push("Company name is required.");
+        if (!title || !String(title).trim()) errors.push("Job title is required.");
+        if (!description || !String(description).trim()) errors.push("Job description is required.");
+        if (!region || !String(region).trim()) errors.push("Operating region is required.");
+        if (!district || !String(district).trim()) errors.push("Local district/city is required.");
+        if (!location || !String(location).trim()) errors.push("Specific location address is required.");
         
-        // Email validation if provided
-        if (emailForApplications && !/^[^\s@]+@[^\s@]+\.[^\s@]+\$/.test(emailForApplications)) {
+        if (emailForApplications && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailForApplications.trim())) {
             errors.push("Invalid application email format.");
         }
 
-        // Salary Logic Verification
-        if (minSalary && maxSalary && Number(minSalary) > Number(maxSalary)) {
+        if (salaryMin && salaryMax && Number(salaryMin) > Number(salaryMax)) {
             errors.push("Minimum salary cannot be greater than maximum salary.");
         }
 
-        // Date Validation
         let deadlineDate;
         if (applicationDeadline) {
             deadlineDate = new Date(applicationDeadline);
@@ -70,68 +69,77 @@ export const createJob = async (req, res, next) => {
             }
         }
 
-        // Return client errors immediately before processing files
+        
+        if (!imageFile) {
+            errors.push("A job banner image file is required by the schema index rules.");
+        }
+
         if (errors.length > 0) {
+            console.log("❌ SERVER SIDE VALIDATION FAILED:", errors);
             return res.status(400).json({ success: false, errors });
         }
 
-        // ========================================================
-        // 2. IMAGE UPLOAD HANDLING
-        // ========================================================
+      
         let imageUrl = "";
-        if (imageFile) {
-            try {
-                const base64Image = `data:${imageFile.mimetype};base64,${imageFile.buffer.toString('base64')}`;
-                const uploadResponse = await cloudinary.uploader.upload(base64Image, {
-                    folder: "social_media_posts",
-                    resource_type: "image",
-                    transformation: [
-                        { width: 800, height: 600, crop: "limit" },
-                        { quality: "auto" },
-                        { format: "auto" }
-                    ]
-                });
-                imageUrl = uploadResponse.secure_url;
-            } catch (uploadError) {
-                console.error("cloudinary upload error", uploadError);
-                return res.status(400).json({ error: "Failed To Upload Image" });
+        try {
+            const base64Image = `data:${imageFile.mimetype};base64,${imageFile.buffer.toString('base64')}`;
+            const uploadResponse = await cloudinary.uploader.upload(base64Image, {
+                folder: "job_banners",
+                resource_type: "image",
+                transformation: [
+                    { width: 800, height: 600, crop: "limit" },
+                    { quality: "auto" },
+                    { format: "auto" }
+                ]
+            });
+            
+            imageUrl = uploadResponse.secure_url;
+            
+            
+            if (!imageUrl) {
+                throw new Error("Cloudinary returned an empty secure_url string stream.");
             }
+        } catch (uploadError) {
+            console.error("❌ CLOUDINARY UPLOAD FAILURE TRACE:", uploadError);
+            return res.status(400).json({ 
+                success: false, 
+                errors: ["Cloudinary asset processing failed. Verify server storage environment keys."] 
+            });
         }
 
-        // Safe array parsing helper for Form-Data fields
+        
         const parseArrayField = (field) => {
             if (Array.isArray(field)) return field;
             if (typeof field === 'string' && field.trim()) {
-                try { return JSON.parse(field); } catch { return [field]; }
+                try { return JSON.parse(field); } catch { return field.split('\n').map(str => str.trim()).filter(Boolean); }
             }
             return [];
         };
 
-        // ========================================================
-        // 3. DATABASE RECORD CREATION
-        // ========================================================
         const newJob = new Job({
             employer: userId,
-            companyName: companyName.trim(),
-            jobImage: imageUrl,
-            title: title.trim(),
-            description: description.trim(),
-            category: category ? String(category).trim().toLowerCase() : "posted jobs",
-            jobType: jobType ? String(jobType).trim().toLowerCase() : "",
-            workMode: workMode ? String(workMode).trim().toLowerCase() : "on-site",
+            companyName: String(companyName).trim(),
+            jobImage: imageUrl, 
+            title: String(title).trim(),
+            description: String(description).trim(),
+            category: category ? String(category).trim() : "Other",
+            jobType: jobType ? String(jobType).trim() : "Full-time",
+            workMode: workMode ? String(workMode).trim() : "On-site",
             salary: {
-                min: minSalary ? Number(minSalary) : undefined,
-                max: maxSalary ? Number(maxSalary) : undefined,
-                currency: currency || "GHS"
+                min: salaryMin ? Number(salaryMin) : 0,
+                max: salaryMax ? Number(salaryMax) : 0,
+                currency: currency || "GHS",
+                period: req.body.salaryPeriod || "monthly"
             },
-            phoneNumber,
-            emailForApplications,
-            region,
-            district,
-            location,
+            phoneNumber: phoneNumber || undefined,
+            emailForApplications: emailForApplications ? String(emailForApplications).trim() : undefined,
+            region: String(region).trim(),
+            district: String(district).trim(),
+            location: String(location).trim(),
             requirements: parseArrayField(requirements),
             benefits: parseArrayField(benefits),
-            applicationDeadline: deadlineDate
+            applicationDeadline: deadlineDate || undefined,
+            isOpen: true
         });
 
         const savedJob = await newJob.save();
@@ -145,6 +153,9 @@ export const createJob = async (req, res, next) => {
         next(error);
     }
 };
+
+
+
 
 export const getAllJobs = async (req, res, next) => {
     try {
@@ -418,6 +429,58 @@ export const deleteJob = async (req, res, next) => {
         next(error);
     }
 };
+
+
+export const toggleJobStatus = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        
+        const userId = req.user?._id; 
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            res.status(400).json({
+                success: false,
+                message: "Invalid Job ID parameters format layout structure."
+            });
+            return;
+        }
+
+        const job = await Job.findById(id);
+
+        if (!job) {
+            res.status(404).json({
+                success: false,
+                message: "Requested job posting workspace could not be found."
+            });
+            return;
+        }
+
+        
+        if (!job.employer.equals(userId)) {
+            res.status(403).json({
+                success: false,
+                message: "Action Denied. You do not have permission to modify this listing."
+            });
+            return;
+        }
+
+        
+        job.isOpen = !job.isOpen;
+        await job.save();
+
+        
+        res.status(200).json({
+            success: true,
+            message: `Job position successfully ${job.isOpen ? 're-opened for applications' : 'closed to new candidates'}.`,
+            job
+        });
+
+    } catch (error) {
+        console.error("Error inside toggleJobStatus controller pipeline execution:", error);
+      next(error)
+    }
+};
+
 
 
 

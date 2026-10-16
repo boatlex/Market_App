@@ -65,7 +65,6 @@ export const getJobApplications = async (req, res, next) => {
             return res.status(404).json({ success: false, message: "Job not found" });
         }
         
-        // Use standard Mongoose .equals for deep ObjectId checks
         if (!job.employer.equals(currentUserId)) {
             return res.status(403).json({ success: false, message: "Not authorized to view applications for this job" });
         }
@@ -81,7 +80,6 @@ export const getJobApplications = async (req, res, next) => {
         });
 
     } catch (error) {
-        // FIX 2: Standardized error forwarder
         next(error);
     }
 };

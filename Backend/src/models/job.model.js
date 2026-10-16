@@ -96,9 +96,9 @@ const jobSchema = new mongoose.Schema({
     },
     isOpen: {
         type: Boolean,
-        default: true,
-        index: true 
-    }
+        default: true,   
+    },
+    
 }, { timestamps: true });
 
  
