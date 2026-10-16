@@ -1,34 +1,28 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator, TextInput, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FormInput } from '../FormInput';
 import { FormDropdown } from '../FormDropdown';
 
-interface ProductFormFieldsProps {
+interface CreateJobFormFieldsProps {
     formData: any;
     handleInputChange: (field: string, value: any) => void;
-    images: any;
+    images: any[];
     pickImages: () => Promise<void>;
     takePhoto: () => Promise<void>;
-    handleCloseModal: () => void;
     removeImage: (index: number) => void;
     setShowCategoryModal: (show: boolean) => void;
-    setShowSubCategoryModal: (show: boolean) => void; 
-    setShowConditionModal: (show: boolean) => void;
+    setShowJobTypeModal: (show: boolean) => void;
+    setShowWorkModeModal: (show: boolean) => void;
     setShowRegionModal: (show: boolean) => void;
     setShowDistrictModal: (show: boolean) => void;
+    setShowCalendarModal: (show: boolean) => void;
     handleSubmit: () => Promise<void>;
     isSubmitting: boolean;
-    isEditing: boolean;
-    showDeliveryConfig: boolean;
-    setShowDeliveryConfig: (val: boolean) => void;
-    showWarrantyConfig: boolean;
-    setShowWarrantyConfig: (val: boolean) => void;
-    showDiscountConfig: boolean;
-    setShowDiscountConfig: (val: boolean) => void;
+    handleClose: () => void;
 }
 
-export const ProductFormFields = ({
+export const CreateJobFormFields = ({
     formData,
     handleInputChange,
     images,
@@ -36,43 +30,36 @@ export const ProductFormFields = ({
     takePhoto,
     removeImage,
     setShowCategoryModal,
-    setShowSubCategoryModal,
-    setShowConditionModal,
+    setShowWorkModeModal,
     setShowRegionModal,
     setShowDistrictModal,
+    setShowJobTypeModal,
+    setShowCalendarModal,
     handleSubmit,
     isSubmitting,
-    isEditing,
-    showDeliveryConfig,
-    setShowDeliveryConfig,
-    showWarrantyConfig,
-    setShowWarrantyConfig,
-    showDiscountConfig,
-    setShowDiscountConfig,
-      handleCloseModal,
-}: ProductFormFieldsProps) => {
+    handleClose,
+}: CreateJobFormFieldsProps) => {
     
     return (
         <ScrollView
-            className={`flex-1 px-5 py-4
-             bg-white ${showDeliveryConfig || showDiscountConfig || showWarrantyConfig ? 'mb-28' : 'mb-20'}`}
-            keyboardShouldPersistTaps='handled'
+            className="flex-1 px-5 py-4 bg-white mb-20"
+            keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
         >
-            <View className='space-y-4 auto-cols-max pb-28'>
+            <View className="space-y-4 auto-cols-max pb-28">
 
-               {/* ADDED: INLINE CANCEL / TITLE ACTION BAR */}
+                {/* Inline Action Bar Header */}
                 <View className="flex-row items-center justify-between pb-3 mb-2 border-b border-gray-100">
                     <View>
                         <Text className="text-gray-900 font-extrabold text-xl">
-                            {isEditing ? 'Modify Listing' : 'Listing Particulars'}
+                            {formData.title ? 'Modify Vacancy' : 'Job Specifications'}
                         </Text>
                         <Text className="text-gray-400 text-xs mt-0.5 font-medium">
-                            Please provide exact marketplace specs
+                            Please provide exact recruitment criteria
                         </Text>
                     </View>
                     <TouchableOpacity 
-                        onPress={handleCloseModal}
+                        onPress={handleClose}
                         activeOpacity={0.7}
                         className="bg-gray-100 px-3 py-1.5 rounded-full flex-row items-center"
                     >
@@ -81,38 +68,42 @@ export const ProductFormFields = ({
                     </TouchableOpacity>
                 </View>
                 
-                {/* Media Picker Section */}
+                {/* Media Picker Banner Section */}
                 <View className="mb-4">
-                    <Text className='text-black text-sm font-semibold mb-2'>
-                        Product Photos ({images.length}/3)
+                    <Text className="text-black text-sm font-semibold mb-2">
+                        Company Banner / Job Image ({images.length}/1)
                     </Text>
                     <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} className="flex-row">
                         
                         {/* 1. CAMERA BUTTON */}
-                        <TouchableOpacity
-                            onPress={takePhoto}
-                            className='w-20 h-20 border border-gray-300 rounded-xl items-center justify-center bg-gray-100 mr-2'
-                        >
-                            <Ionicons name="camera" size={24} color="#4B5563" />
-                            <Text className='text-[10px] text-gray-500 mt-0.5 font-semibold'>Take Photo</Text>
-                        </TouchableOpacity>
+                        {images.length < 1 && (
+                            <TouchableOpacity
+                                onPress={takePhoto}
+                                className="w-20 h-20 border border-gray-300 rounded-xl items-center justify-center bg-gray-100 mr-2"
+                            >
+                                <Ionicons name="camera" size={24} color="#4B5563" />
+                                <Text className="text-[10px] text-gray-500 mt-0.5 font-semibold">Take Photo</Text>
+                            </TouchableOpacity>
+                        )}
 
                         {/* 2. GALLERY BUTTON */}
-                        <TouchableOpacity
-                            onPress={pickImages}
-                            className='w-20 h-20 border border-gray-300 rounded-xl items-center justify-center bg-gray-100 mr-4'
-                        >
-                            <Ionicons name="images" size={24} color="#4B5563" />
-                            <Text className='text-[10px] text-gray-500 mt-0.5 font-semibold'>Add Gallery</Text>
-                        </TouchableOpacity>
+                        {images.length < 1 && (
+                            <TouchableOpacity
+                                onPress={pickImages}
+                                className="w-20 h-20 border border-gray-300 rounded-xl items-center justify-center bg-gray-100 mr-4"
+                            >
+                                <Ionicons name="images" size={24} color="#4B5563" />
+                                <Text className="text-[10px] text-gray-500 mt-0.5 font-semibold">Add Gallery</Text>
+                            </TouchableOpacity>
+                        )}
 
-                        {/* PREVIEW CONTAINER IMAGES TRACK */}
+                        {/* Banner Image Preview Container */}
                         {images.map((img: any, index: number) => (
-                            <View key={index} className='w-20 h-20 mr-3 relative rounded-xl overflow-hidden bg-gray-100'>
-                                <Image source={{ uri: img.uri }} className='w-full h-full object-cover' />
+                            <View key={index} className="w-24 h-20 mr-3 relative rounded-xl overflow-hidden bg-gray-100">
+                                <Image source={{ uri: img.uri }} className="w-full h-full object-cover" />
                                 <TouchableOpacity
                                     onPress={() => removeImage(index)}
-                                    className='absolute top-1 right-1 bg-black/60 rounded-full w-5 h-5 items-center justify-center'
+                                    className="absolute top-1 right-1 bg-black/60 rounded-full w-5 h-5 items-center justify-center"
                                 >
                                     <Ionicons name="close-circle" size={16} color="#FFF" />
                                 </TouchableOpacity>
@@ -121,82 +112,127 @@ export const ProductFormFields = ({
                     </ScrollView>
                 </View>
 
-                {/* Form Inputs */}
+                {/* Company Information Inputs */}
                 <FormInput
-                    label="Product Name"
+                    label="Company Name"
                     required
-                    placeholder="Enter item name..."
-                    value={formData.name}
-                    onChangeText={(text) => handleInputChange("name", text)}
+                    placeholder="e.g. MTN Ghana or Retail Shop"
+                    value={formData.companyName}
+                    onChangeText={(text) => handleInputChange("companyName", text)}
                 />
 
                 <FormInput
-                    label="Price (GHS)"
+                    label="Job Position Title"
                     required
-                    placeholder="0.00"
-                    keyboardType="numeric"
-                    value={formData.price}
-                    onChangeText={(text) => handleInputChange("price", text)}
+                    placeholder="e.g. Junior Front-End Developer"
+                    value={formData.title}
+                    onChangeText={(text) => handleInputChange("title", text)}
                 />
 
                 <FormInput
-                    label="Phone Number"
+                    label="Core Job Description"
                     required
-                    placeholder="e.g. 0244000000"
+                    placeholder="Outline day-to-day duties..."
+                    multiline
+                    numberOfLines={4}
+                    value={formData.description}
+                    onChangeText={(text) => handleInputChange("description", text)}
+                />
+
+                <FormInput
+                    label="Contact Phone Number"
+                    placeholder="e.g. 0244000000 (Optional)"
                     keyboardType="phone-pad"
                     maxLength={10}
                     value={formData.phoneNumber}
                     onChangeText={(text) => handleInputChange("phoneNumber", text)}
                 />
 
-                {/* Primary Category Selector */}
+                <FormInput
+                    label="Application Email Address"
+                    placeholder="e.g. careers@company.com (Optional)"
+                    keyboardType="email-address"
+                    value={formData.emailForApplications}
+                    onChangeText={(text) => handleInputChange("emailForApplications", text)}
+                />
+
+                {/* Industry Dropdown */}
                 <FormDropdown
-                    label="Category"
+                    label="Job Category / Industry"
                     required
-                    placeholder="Select a Category"
+                    placeholder="Select Industry Classification"
                     value={formData.category}
                     onPress={() => setShowCategoryModal(true)}
                 />
-
-                {/* Swapped out Text Input for a dynamic dependent Subcategory selector Dropdown */}
-                <FormDropdown
-                    label="Product Type / Subcategory"
+                 <FormDropdown
+                    label="Employment Type"
                     required
-                    placeholder={formData.category ? "Select Subcategory" : "Please select a Category first"}
-                    value={formData.productType}
+                    placeholder="Select Job Type (Full-time, Part-time...)"
+                    value={formData.jobType}
                     onPress={() => {
-                        if (!formData.category) {
-                            alert("Please choose a primary category first.");
-                            return;
-                        }
-                        setShowSubCategoryModal(true);
+                        // If you are managing JOB_TYPES via a parent modal, change this trigger accordingly
+                        Alert.alert(
+                            "Select Employment Type",
+                            "Choose an option",
+                            [
+                                { text: "Full-time", onPress: () => handleInputChange("jobType", "Full-time") },
+                                { text: "Part-time", onPress: () => handleInputChange("jobType", "Part-time") },
+                                { text: "Contract", onPress: () => handleInputChange("jobType", "Contract") },
+                                { text: "Internship", onPress: () => handleInputChange("jobType", "Internship") },
+                                { text: "Freelance", onPress: () => handleInputChange("jobType", "Freelance") },
+                                { text: "Cancel", style: "cancel" }
+                            ]
+                        );
                     }}
                 />
-
+                {/* Work Environment Settings */}
                 <FormDropdown
-                    label="Condition"
+                    label="Work Mode Arrangement"
                     required
-                    placeholder="Select Condition Status"
-                    value={formData.condition}
-                    onPress={() => setShowConditionModal(true)}
+                    placeholder="Select Work Mode (On-site, Remote...)"
+                    value={formData.workMode}
+                    onPress={() => setShowWorkModeModal(true)}
                 />
 
+                {/* Salary Group Blocks */}
+                <View className="flex-row space-x-3 w-full">
+                    <View className="flex-1">
+                        <FormInput
+                            label="Min Salary (GHS)"
+                            placeholder="Minimum salary"
+                            keyboardType="numeric"
+                            value={formData.salaryMin}
+                            onChangeText={(text) => handleInputChange("salaryMin", text)}
+                        />
+                    </View>
+                    <View className="flex-1">
+                        <FormInput
+                            label="Max Salary (GHS)"
+                            placeholder="Maximum salary"
+                            keyboardType="numeric"
+                            value={formData.salaryMax}
+                            onChangeText={(text) => handleInputChange("salaryMax", text)}
+                        />
+                    </View>
+                </View>
+
+                {/* Regional Geography Selector Parameters */}
                 <FormDropdown
                     label="Region"
                     required
-                    placeholder="Select Region"
+                    placeholder="Select Operating Region"
                     value={formData.region}
                     onPress={() => setShowRegionModal(true)}
                 />
 
                 <FormDropdown
-                    label="District"
+                    label="District / City Location"
                     required
-                    placeholder={formData.region ? "Select District" : "Please select a Region first"}
+                    placeholder={formData.region ? "Select Local District" : "Please select a Region first"}
                     value={formData.district}
                     onPress={() => {
                         if (!formData.region) {
-                            alert("Please pick a region before selecting your district.");
+                            Alert.alert("Action Required", "Please choose a primary region first.");
                             return;
                         }
                         setShowDistrictModal(true);
@@ -204,126 +240,72 @@ export const ProductFormFields = ({
                 />
 
                 <FormInput
-                    label="Specific Location / Area Landmark"
+                    label="Specific Address / Landmark"
                     required
-                    placeholder="e.g. East Legon, Spintex, near Shell Station"
+                    placeholder="e.g. Graphic Road, Opposite Total Station"
                     value={formData.location}
                     onChangeText={(text) => handleInputChange("location", text)}
                 />
 
-                <FormInput
-                    label="Description"
-                    required
-                    placeholder="Tell us more details about your item..."
-                    multiline
-                    numberOfLines={4}
-                    value={formData.description}
-                    onChangeText={(text) => handleInputChange("description", text)}
+                  {/* Interactive Visual Grid Calendar Trigger Dropdown */}
+                <FormDropdown
+                    label="Application Deadline"
+                    placeholder={
+                        formData.applicationDeadline 
+                            ? new Date(formData.applicationDeadline).toLocaleDateString('en-GH', { year: 'numeric', month: 'long', day: 'numeric' }) 
+                            : "Select closing date (Optional)"
+                    }
+                    value={formData.applicationDeadline ? "Date Selected" : ""}
+                    onPress={() => setShowCalendarModal(true)}
                 />
 
-                {/* Dynamic Optional Configurations Toggle Bar */}
+                {/* Requirements / Benefits Structured Fields */}
+                
                 <View className="mb-4">
-                    <Text className="text-black text-sm font-semibold mb-2">Additional Options (Optional)</Text>
-                    <View className="flex-row flex-wrap gap-2">
-                        <TouchableOpacity
-                            onPress={() => setShowDeliveryConfig(!showDeliveryConfig)}
-                            className={`px-3 py-2 rounded-full border ${showDeliveryConfig ? 'bg-green-100 border-green-600' : 'bg-gray-100 border-gray-300'}`}
-                        >
-                            <Text className={showDeliveryConfig ? 'text-green-700 font-medium' : 'text-gray-600'}>
-                                {showDeliveryConfig ? '✓ Delivery Info' : '+ Add Delivery'}
-                            </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            onPress={() => setShowWarrantyConfig(!showWarrantyConfig)}
-                            className={`px-3 py-2 rounded-full border ${showWarrantyConfig ? 'bg-green-100 border-green-600' : 'bg-gray-100 border-gray-300'}`}
-                        >
-                            <Text className={showWarrantyConfig ? 'text-green-700 font-medium' : 'text-gray-600'}>
-                                {showWarrantyConfig ? '✓ Warranty' : '+ Add Warranty'}
-                            </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            onPress={() => setShowDiscountConfig(!showDiscountConfig)}
-                            className={`px-3 py-2 rounded-full border ${showDiscountConfig ? 'bg-green-100 border-green-600' : 'bg-gray-100 border-gray-300'}`}
-                        >
-                            <Text className={showDiscountConfig ? 'text-green-700 font-medium' : 'text-gray-600'}>
-                                {showDiscountConfig ? '✓ Specs & Brand' : '+ Add Specs / Brand'}
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
+                    <Text className="text-gray-700 text-sm font-semibold mb-1">
+                        Job Requirements (One criteria per line)
+                    </Text>
+                    <TextInput
+                        className="w-full min-h-[100px] border border-gray-200 rounded-xl p-3 bg-gray-50/50 text-gray-800 text-base"
+                        placeholder="e.g.&#10;Proficient in React Native&#10;Good communication skills"
+                        multiline
+                        textAlignVertical="top"
+                        value={formData.requirements}
+                        onChangeText={(text) => handleInputChange("requirements", text)}
+                    />
                 </View>
-                {/* CONDITIONAL DELIVERY SECTION */}
-                {showDeliveryConfig && (
-                    <View className="p-4 bg-gray-50 border border-gray-200 rounded-xl mb-4">
-                        <Text className="text-gray-700 font-bold text-xs uppercase tracking-wider mb-2">Delivery Windows</Text>
-                        <FormInput
-                            label="Estimated Days (From)"
-                            placeholder="e.g. 1"
-                            keyboardType="numeric"
-                            value={formData.deliveryFrom || ""}
-                            onChangeText={(text) => handleInputChange("deliveryFrom", text)}
-                        />
-                        <FormInput
-                            label="Estimated Days (To)"
-                            placeholder="e.g. 3"
-                            keyboardType="numeric"
-                            value={formData.deliveryTo || ""}
-                            onChangeText={(text) => handleInputChange("deliveryTo", text)}
-                        />
-                    </View>
-                )}
 
-                {/* CONDITIONAL WARRANTY SECTION */}
-                {showWarrantyConfig && (
-                    <View className="p-4 bg-gray-50 border border-gray-200 rounded-xl mb-4">
-                        <Text className="text-gray-700 font-bold text-xs uppercase tracking-wider mb-2">Warranty Details</Text>
-                        <FormInput
-                            label="Warranty Period"
-                            placeholder="e.g. 6 Months Store Warranty, 1 Year Apple Warranty"
-                            value={formData.warranty || ""}
-                            onChangeText={(text) => handleInputChange("warranty", text)}
-                        />
-                    </View>
-                )}
+                <View className="mb-4">
+                    <Text className="text-gray-700 text-sm font-semibold mb-1">
+                        Perks & Benefits (One perk per line)
+                    </Text>
+                    <TextInput
+                        className="w-full min-h-[100px] border border-gray-200 rounded-xl p-3 bg-gray-50/50 text-gray-800 text-base"
+                        placeholder="e.g.&#10;Health Insurance Cover&#10;Paid Annual Leave"
+                        multiline
+                        textAlignVertical="top"
+                        value={formData.benefits}
+                        onChangeText={(text) => handleInputChange("benefits", text)}
+                    />
+                </View>
 
-                {/* CONDITIONAL BRAND & COLOR SECTION */}
-                {showDiscountConfig && (
-                    <View className="p-4 bg-gray-50 border border-gray-200 rounded-xl mb-4">
-                        <Text className="text-gray-700 font-bold text-xs uppercase tracking-wider mb-2">Specifications & Attributes</Text>
-                        <FormInput
-                            label="Product Brand"
-                            placeholder="e.g. Samsung, Nike, Toyota"
-                            value={formData.brand || ""}
-                            onChangeText={(text) => handleInputChange("brand", text)}
-                        />
-                        <FormInput
-                            label="Color"
-                            placeholder="e.g. Midnight Black, Pearl White"
-                            value={formData.color || ""}
-                            onChangeText={(text) => handleInputChange("color", text)}
-                        />
-                    </View>
-                )}
-
-                {/* Action CTA Button */}
+                {/* Primary Core Publishing Execution Button */}
                 <TouchableOpacity
                     onPress={handleSubmit}
                     disabled={isSubmitting}
-                    className={`w-full py-4 rounded-xl items-center justify-center mt-2 ${isSubmitting ? 'bg-gray-400' : 'bg-green-600'}`}
+                    activeOpacity={0.8}
+                    className={`w-full py-4 rounded-xl items-center flex-row justify-center mt-4 mb-12 ${
+                        isSubmitting ? 'bg-blue-400' : 'bg-blue-600'
+                    }`}
                 >
                     {isSubmitting ? (
-                        <ActivityIndicator color="#FFF" size="small" />
-                    ) : (
-                        <Text className='text-white font-bold text-base'>
-                            {isEditing ? "Update Listing" : "Publish Ad"}
-                        </Text>
-                    )}
+                        <ActivityIndicator size="small" color="#FFF" className="mr-2" />
+                    ) : null}
+                    <Text className="text-white font-bold text-base">
+                        {isSubmitting ? 'Publishing Listing...' : 'Publish Vacancy Posting'}
+                    </Text>
                 </TouchableOpacity>
-
             </View>
         </ScrollView>
-
     );
 };
-

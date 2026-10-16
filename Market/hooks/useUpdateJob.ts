@@ -1,24 +1,26 @@
 import { api } from "../lib/api"; // Your configured Axios instance
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-interface PickerImage {
+export interface PickerImage {
     uri: string;
+    isRemote?: boolean; 
     type?: string;   
     name?: string;   
 }
 
-
-interface UpdateJobVariables {
-    id: string; 
+export interface UpdateJobVariables {
+    _id: string; 
     companyName?: string;
     title?: string;
     description?: string;
     category?: string;
     jobType?: string;
     workMode?: string;
-    minSalary?: number | string | null;
-    maxSalary?: number | string | null;
+    // Normalized variables contract matching your form text fields
+    salaryMin?: number | string | null;
+    salaryMax?: number | string | null;
     currency?: string;
+    salaryPeriod?: string;
     phoneNumber?: string;
     emailForApplications?: string;
     region?: string;
@@ -36,7 +38,7 @@ export const useUpdateJob = () => {
     const updateJobMutation = useMutation({
         mutationFn: async (data: UpdateJobVariables) => {
             const formData = new FormData();
-            const { id, ...updateFields } = data;
+            const { _id, jobImage, ...updateFields } = data; // Pull out jobImage to handle conditionally
 
             
             if (updateFields.companyName !== undefined) formData.append("companyName", updateFields.companyName);
@@ -51,10 +53,11 @@ export const useUpdateJob = () => {
             if (updateFields.district !== undefined) formData.append("district", updateFields.district);
             if (updateFields.location !== undefined) formData.append("location", updateFields.location);
             if (updateFields.currency !== undefined) formData.append("currency", updateFields.currency);
+            if (updateFields.salaryPeriod !== undefined) formData.append("salaryPeriod", updateFields.salaryPeriod);
 
             
-            if (updateFields.minSalary !== undefined) formData.append("minSalary", updateFields.minSalary !== null ? String(updateFields.minSalary) : "");
-            if (updateFields.maxSalary !== undefined) formData.append("maxSalary", updateFields.maxSalary !== null ? String(updateFields.maxSalary) : "");
+            if (updateFields.salaryMin !== undefined) formData.append("salaryMin", updateFields.salaryMin !== null ? String(updateFields.salaryMin) : "0");
+            if (updateFields.salaryMax !== undefined) formData.append("salaryMax", updateFields.salaryMax !== null ? String(updateFields.salaryMax) : "0");
 
             if (updateFields.applicationDeadline !== undefined) {
                 if (updateFields.applicationDeadline === null) {
@@ -75,20 +78,25 @@ export const useUpdateJob = () => {
                 formData.append("benefits", JSON.stringify(updateFields.benefits));
             }
 
-        
-            if (updateFields.jobImage) {
-                const fileType = updateFields.jobImage.type || "image/jpeg";
-                const fileName = updateFields.jobImage.name || `job_update_${Date.now()}.jpg`;
+            
+            if (jobImage) {
+                if (jobImage.isRemote) {
+                    formData.append("jobImage", jobImage.uri);
+                } else {
+                    
+                    const fileType = jobImage.type || "image/jpeg";
+                    const fileName = jobImage.name || `job_update_${Date.now()}.jpg`;
 
-                formData.append("image", {
-                    uri: updateFields.jobImage.uri,
-                    type: fileType,
-                    name: fileName,
-                } as any);
+                    formData.append("image", {
+                        uri: jobImage.uri,
+                        type: fileType,
+                        name: fileName,
+                    } as any);
+                }
             }
 
             
-            const response = await api.patch(`/jobs/${id}`, formData, {
+            const response = await api.put(`/jobs/${_id}`, formData, {
                 headers: {
                     "Content-Type": "multipart/form-data",
                 },
@@ -98,7 +106,7 @@ export const useUpdateJob = () => {
         },
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ["jobs"] });
-            queryClient.invalidateQueries({ queryKey: ["jobs", variables.id] }); 
+            queryClient.invalidateQueries({ queryKey: ["jobs", variables._id] }); 
             queryClient.invalidateQueries({ queryKey: ["jobs", "my-posted-jobs"] });
         },
     });

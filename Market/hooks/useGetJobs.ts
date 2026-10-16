@@ -1,18 +1,17 @@
 import { api } from "../lib/api"; 
 import { useQuery } from "@tanstack/react-query";
 
-
-interface GetJobsFilters {
+export interface GetJobsFilters {
     category?: string;
     workMode?: string; 
     region?: string;
+    district?: string; 
     search?: string;   
     page?: number;
     limit?: number;
 }
 
-
-interface JobItem {
+export interface JobItem {
     _id: string;
     employer: string;
     companyName: string;
@@ -26,6 +25,7 @@ interface JobItem {
         min?: number;
         max?: number;
         currency: string;
+        period: 'monthly' | 'yearly' | 'hourly'; 
     };
     phoneNumber?: string;
     emailForApplications?: string;
@@ -36,10 +36,11 @@ interface JobItem {
     benefits: string[];
     applicationDeadline?: string;
     isOpen: boolean;
+    applications?: string[] | any[]; 
     createdAt: string;
 }
 
-interface GetJobsResponse {
+export interface GetJobsResponse {
     success: boolean;
     count: number;
     jobs: JobItem[];
@@ -53,11 +54,12 @@ export const useGetJobs = (filters: GetJobsFilters = {}) => {
     return useQuery<GetJobsResponse, Error>({
         queryKey: ["jobs", filters],
         queryFn: async () => {
-            const response = await api.get("/jobs", {
+            const response = await api.get<GetJobsResponse>("/jobs", {
                 params: {
                     category: filters.category || undefined,
                     workMode: filters.workMode || undefined,
                     region: filters.region || undefined,
+                    district: filters.district || undefined, 
                     search: filters.search || undefined,
                     page: filters.page || 1,
                     limit: filters.limit || 10,
@@ -65,8 +67,7 @@ export const useGetJobs = (filters: GetJobsFilters = {}) => {
             });
             return response.data;
         },
-        // Helpful configurations for mobile devices
-        staleTime: 1000 * 60 * 5, // Data stays fresh for 5 minutes
-        refetchOnWindowFocus: false, // Prevents aggressive battery drain on app focus switches
+        staleTime: 1000 * 60 * 5, 
+        refetchOnWindowFocus: false, 
     });
 };

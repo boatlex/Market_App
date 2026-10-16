@@ -14,11 +14,11 @@ import {
   PRODUCT_CATEGORIES,
   PRODUCT_CONDITIONS,
   CATEGORY_CONFIG,
-} from '../../constants'  
+} from '../../constants/products'  
 
 
 const SPECIAL_CATEGORY_ROUTES: Record<string, string> = {
-  "Posted Jobs": "/post-jobs",
+  "Posted Jobs": "/my-jobs",
   "Find Job": "/find-job",
   "Services": "/post-service",
 };

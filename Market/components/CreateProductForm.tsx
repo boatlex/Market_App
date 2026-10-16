@@ -9,8 +9,7 @@ import {
     GHANA_DISTRICTS_BY_REGION,
     GHANA_REGIONS, PRODUCT_CATEGORIES,
     PRODUCT_CONDITIONS, SUB_CATEGORIES_BY_CATEGORY
-} from '../constants'
-
+} from '../constants/products'
 
 interface CreateProductFormProps {
     showModal: boolean;
@@ -136,7 +135,6 @@ const CreateProductForm = ({
         }
     };
 
-
     const handleInputChange = (field: string, value: string) => {
         setFormData(prev => {
             const updated = { ...prev, [field]: value };
@@ -151,7 +149,6 @@ const CreateProductForm = ({
     };
 
     const handleSubmit = async () => {
-        // Enforce validations including Phone Number matching server rules
         if (!formData.name || !formData.price || !formData.region || !formData.condition || !formData.category || !formData.district || !formData.location || !formData.phoneNumber) {
             alert("Please fill in all the required fields including Phone Number and District/City.");
             return;
@@ -208,93 +205,73 @@ const CreateProductForm = ({
                 });
             }
 
-
             setShowModal(false);
             setEditingProduct(null);
             resetForm();
-
-
             router.replace('/my-adds' as any);
-
         } catch (error) {
             console.error("Failed to submit product request:", error);
         }
     };
 
-
     const isSubmitting = isCreatingProduct || isUpdatingProduct;
 
     return (
-        <View className='flex-1 bg-white'>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === "ios" ? "padding" : undefined}
-                className='flex-1 bg-white'
-            >
-                {/* Top Header Role of Modal */}
-                <View className="flex-row justify-between
-                 items-center px-5 py-4 border-b border-gray-100">
-                    <Text className="text-xl font-bold text-black">
-                        {isEditing ? "Edit Product Details" : "Create New Ad"}
-                    </Text>
+        <Modal visible={showModal} animationType="slide" onRequestClose={handleCloseModal}>
+            <View className="flex-1 bg-white">
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === "ios" ? "padding" : undefined}
+                    className="flex-1 bg-white"
+                >
+                    <ProductFormFields 
+                        formData={formData}
+                        handleInputChange={handleInputChange}
+                        images={images}
+                        pickImages={pickImages}
+                        takePhoto={takePhoto}
+                        removeImage={removeImage}
+                        setShowCategoryModal={setShowCategoryModal}
+                        setShowSubCategoryModal={setShowSubCategoryModal}
+                        setShowConditionModal={setShowConditionModal}
+                        setShowRegionModal={setShowRegionModal}
+                        setShowDistrictModal={setShowDistrictModal}
+                        showDeliveryConfig={showDeliveryConfig}
+                        setShowDeliveryConfig={setShowDeliveryConfig}
+                        showWarrantyConfig={showWarrantyConfig}
+                        setShowWarrantyConfig={setShowWarrantyConfig}
+                        showDiscountConfig={showDiscountConfig}
+                        setShowDiscountConfig={setShowDiscountConfig}
+                        handleSubmit={handleSubmit}
+                        isSubmitting={isSubmitting}
+                        isEditing={isEditing}
+                        handleCloseModal={handleCloseModal}
+                    />
+                </KeyboardAvoidingView>
+            </View>
 
-                    <TouchableOpacity onPress={handleCloseModal}>
-                        <Ionicons name="close" size={26} color="#333" />
-                    </TouchableOpacity>
-                </View>
+            {/* Reusable Core Selection Picker Modals */}
 
-                 <ProductFormFields
-                formData={formData}
-                handleInputChange={handleInputChange}
-                images={images}
-                pickImages={pickImages}
-                takePhoto={takePhoto} 
-                removeImage={removeImage}
-                handleSubmit={handleSubmit}
-                isSubmitting={isSubmitting}
-                isEditing={isEditing}
-                handleCloseModal={handleCloseModal}
-                
-                // Modal Toggles
-                setShowRegionModal={setShowRegionModal}
-                setShowCategoryModal={setShowCategoryModal}
-                setShowConditionModal={setShowConditionModal}
-                setShowDistrictModal={setShowDistrictModal}
-                setShowSubCategoryModal={setShowSubCategoryModal}
-                
-                // Config Section Toggles
-                showDeliveryConfig={showDeliveryConfig}
-                setShowDeliveryConfig={setShowDeliveryConfig}
-                showWarrantyConfig={showWarrantyConfig}
-                setShowWarrantyConfig={setShowWarrantyConfig}
-                showDiscountConfig={showDiscountConfig}
-                setShowDiscountConfig={setShowDiscountConfig}
-            />
-            </KeyboardAvoidingView>
 
-            {/* SELECTION MODALS */}
-
-            {/* Category Sheet Modal */}
-            <Modal visible={showCategoryModal} transparent={true} animationType="slide">
-                <View className="flex-1 bg-black/50 justify-end">
-                    <View className="bg-white rounded-t-3xl max-h-[50%] p-5">
-                        <View className="flex-row justify-between items-center mb-4">
-                            <Text className="text-lg font-bold text-black">Select Category</Text>
-                            <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
-                                <Ionicons name="close" size={24} color="#000" />
+            {/* Reusable Core Selection Picker Modals */}
+            <Modal visible={showCategoryModal} transparent animationType="slide" onRequestClose={() => setShowCategoryModal(false)}>
+                <View className="flex-1 bg-black/40 justify-end">
+                    <View className="bg-white rounded-t-3xl max-h-[75%] shadow-xl">
+                        <View className="flex-row justify-between items-center px-5 py-4 border-b border-gray-100">
+                            <Text className="text-lg font-bold text-gray-900">Select Category</Text>
+                            <TouchableOpacity onPress={() => setShowCategoryModal(false)} className="p-1 bg-gray-100 rounded-full">
+                                <Ionicons name="close" size={20} color="#4B5563" />
                             </TouchableOpacity>
                         </View>
                         <FlatList
                             data={PRODUCT_CATEGORIES}
                             keyExtractor={(item) => item}
                             renderItem={({ item }) => (
-                                <TouchableOpacity
-                                    className="py-3 border-b border-gray-100"
-                                    onPress={() => {
-                                        handleInputChange("category", item);
-                                        setShowCategoryModal(false);
-                                    }}
+                                <TouchableOpacity 
+                                    className="px-6 py-4 border-b border-gray-50 flex-row justify-between items-center active:bg-blue-50/40"
+                                    onPress={() => { handleInputChange('category', item); setShowCategoryModal(false); }}
                                 >
-                                    <Text className="text-black text-base">{item}</Text>
+                                    <Text className="text-base text-gray-700 font-medium">{item}</Text>
+                                    <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
                                 </TouchableOpacity>
                             )}
                         />
@@ -302,28 +279,55 @@ const CreateProductForm = ({
                 </View>
             </Modal>
 
-            {/* Condition Sheet Modal */}
-            <Modal visible={showConditionModal} transparent={true} animationType="slide">
-                <View className="flex-1 bg-black/50 justify-end">
-                    <View className="bg-white rounded-t-3xl p-5">
-                        <View className="flex-row justify-between items-center mb-4">
-                            <Text className="text-lg font-bold text-black">Select Condition</Text>
-                            <TouchableOpacity onPress={() => setShowConditionModal(false)}>
-                                <Ionicons name="close" size={24} color="#000" />
+            <Modal visible={showSubCategoryModal} transparent animationType="slide" onRequestClose={() => setShowSubCategoryModal(false)}>
+                <View className="flex-1 bg-black/40 justify-end">
+                    <View className="bg-white rounded-t-3xl max-h-[75%] shadow-xl">
+                        <View className="flex-row justify-between items-center px-5 py-4 border-b border-gray-100">
+                            <Text className="text-lg font-bold text-gray-900">Select Subcategory</Text>
+                            <TouchableOpacity onPress={() => setShowSubCategoryModal(false)} className="p-1 bg-gray-100 rounded-full">
+                                <Ionicons name="close" size={20} color="#4B5563" />
+                            </TouchableOpacity>
+                        </View>
+                        <FlatList
+                            data={
+                                formData.category 
+                                    ? SUB_CATEGORIES_BY_CATEGORY[formData.category as keyof typeof SUB_CATEGORIES_BY_CATEGORY] || [] 
+                                    : []
+                            }
+                            keyExtractor={(item) => item}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity 
+                                    className="px-6 py-4 border-b border-gray-50 flex-row justify-between items-center active:bg-blue-50/40"
+                                    onPress={() => { handleInputChange('productType', item); setShowSubCategoryModal(false); }}
+                                >
+                                    <Text className="text-base text-gray-700 font-medium">{item}</Text>
+                                    <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+                                </TouchableOpacity>
+                            )}
+                        />
+                    </View>
+                </View>
+            </Modal>
+
+            <Modal visible={showConditionModal} transparent animationType="slide" onRequestClose={() => setShowConditionModal(false)}>
+                <View className="flex-1 bg-black/40 justify-end">
+                    <View className="bg-white rounded-t-3xl max-h-[75%] shadow-xl">
+                        <View className="flex-row justify-between items-center px-5 py-4 border-b border-gray-100">
+                            <Text className="text-lg font-bold text-gray-900">Select Condition</Text>
+                            <TouchableOpacity onPress={() => setShowConditionModal(false)} className="p-1 bg-gray-100 rounded-full">
+                                <Ionicons name="close" size={20} color="#4B5563" />
                             </TouchableOpacity>
                         </View>
                         <FlatList
                             data={PRODUCT_CONDITIONS}
                             keyExtractor={(item) => item}
                             renderItem={({ item }) => (
-                                <TouchableOpacity
-                                    className="py-3 border-b border-gray-100"
-                                    onPress={() => {
-                                        handleInputChange("condition", item);
-                                        setShowConditionModal(false);
-                                    }}
+                                <TouchableOpacity 
+                                    className="px-6 py-4 border-b border-gray-50 flex-row justify-between items-center active:bg-blue-50/40"
+                                    onPress={() => { handleInputChange('condition', item); setShowConditionModal(false); }}
                                 >
-                                    <Text className="text-black text-base">{item}</Text>
+                                    <Text className="text-base text-gray-700 font-medium">{item}</Text>
+                                    <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
                                 </TouchableOpacity>
                             )}
                         />
@@ -331,28 +335,25 @@ const CreateProductForm = ({
                 </View>
             </Modal>
 
-            {/* Region Sheet Modal */}
-            <Modal visible={showRegionModal} transparent={true} animationType="slide">
-                <View className="flex-1 bg-black/50 justify-end">
-                    <View className="bg-white rounded-t-3xl max-h-[50%] p-5">
-                        <View className="flex-row justify-between items-center mb-4">
-                            <Text className="text-lg font-bold text-black">Select Region(16)</Text>
-                            <TouchableOpacity onPress={() => setShowRegionModal(false)}>
-                                <Ionicons name="close" size={24} color="#000" />
+            <Modal visible={showRegionModal} transparent animationType="slide" onRequestClose={() => setShowRegionModal(false)}>
+                <View className="flex-1 bg-black/40 justify-end">
+                    <View className="bg-white rounded-t-3xl max-h-[75%] shadow-xl">
+                        <View className="flex-row justify-between items-center px-5 py-4 border-b border-gray-100">
+                            <Text className="text-lg font-bold text-gray-900">Select Region</Text>
+                            <TouchableOpacity onPress={() => setShowRegionModal(false)} className="p-1 bg-gray-100 rounded-full">
+                                <Ionicons name="close" size={20} color="#4B5563" />
                             </TouchableOpacity>
                         </View>
                         <FlatList
                             data={GHANA_REGIONS}
                             keyExtractor={(item) => item}
                             renderItem={({ item }) => (
-                                <TouchableOpacity
-                                    className="py-3 border-b border-gray-100"
-                                    onPress={() => {
-                                        handleInputChange("region", item);
-                                        setShowRegionModal(false);
-                                    }}
+                                <TouchableOpacity 
+                                    className="px-6 py-4 border-b border-gray-50 flex-row justify-between items-center active:bg-blue-50/40"
+                                    onPress={() => { handleInputChange('region', item); setShowRegionModal(false); }}
                                 >
-                                    <Text className="text-black text-base">{item}</Text>
+                                    <Text className="text-base text-gray-700 font-medium">{item}</Text>
+                                    <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
                                 </TouchableOpacity>
                             )}
                         />
@@ -360,66 +361,35 @@ const CreateProductForm = ({
                 </View>
             </Modal>
 
-            {/* District Sheet Modal */}
-            <Modal visible={showDistrictModal} transparent={true} animationType="slide">
-                <View className="flex-1 bg-black/50 justify-end">
-                    <View className="bg-white rounded-t-3xl max-h-[50%] p-5">
-                        <View className="flex-row justify-between items-center mb-4">
-                            <Text className="text-lg font-bold text-black">Select District</Text>
-                            <TouchableOpacity onPress={() => setShowDistrictModal(false)}>
-                                <Ionicons name="close" size={24} color="#000" />
+            <Modal visible={showDistrictModal} transparent animationType="slide" onRequestClose={() => setShowDistrictModal(false)}>
+                <View className="flex-1 bg-black/40 justify-end">
+                    <View className="bg-white rounded-t-3xl max-h-[75%] shadow-xl">
+                        <View className="flex-row justify-between items-center px-5 py-4 border-b border-gray-100">
+                            <Text className="text-lg font-bold text-gray-900">Select District</Text>
+                            <TouchableOpacity onPress={() => setShowDistrictModal(false)} className="p-1 bg-gray-100 rounded-full">
+                                <Ionicons name="close" size={20} color="#4B5563" />
                             </TouchableOpacity>
                         </View>
                         <FlatList
-                            data={formData.region ? GHANA_DISTRICTS_BY_REGION[formData.region] || [] : []}
+                            data={GHANA_DISTRICTS_BY_REGION[formData.region as keyof typeof GHANA_DISTRICTS_BY_REGION] || []}
                             keyExtractor={(item) => item}
                             renderItem={({ item }) => (
-                                <TouchableOpacity
-                                    className="py-3 border-b border-gray-100"
-                                    onPress={() => {
-                                        handleInputChange("district", item);
-                                        setShowDistrictModal(false);
-                                    }}
+                                <TouchableOpacity 
+                                    className="px-6 py-4 border-b border-gray-50 flex-row justify-between items-center active:bg-blue-50/40"
+                                    onPress={() => { handleInputChange('district', item); setShowDistrictModal(false); }}
                                 >
-                                    <Text className="text-black text-base">{item}</Text>
+                                    <Text className="text-base text-gray-700 font-medium">{item}</Text>
+                                    <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
                                 </TouchableOpacity>
                             )}
                         />
                     </View>
                 </View>
             </Modal>
-            {/* Subcategory Sheet Modal */}
-            <Modal visible={showSubCategoryModal} transparent={true} animationType="slide">
-                <View className="flex-1 bg-black/50 justify-end">
-                    <View className="bg-white rounded-t-3xl max-h-[50%] p-5">
-                        <View className="flex-row justify-between items-center mb-4">
-                            <Text className="text-lg font-bold text-black">Select Subcategory</Text>
-                            <TouchableOpacity onPress={() => setShowSubCategoryModal(false)}>
-                                <Ionicons name="close" size={24} color="#000" />
-                            </TouchableOpacity>
-                        </View>
-                        <FlatList
-                            data={formData.category ? (SUB_CATEGORIES_BY_CATEGORY[formData.category as keyof typeof SUB_CATEGORIES_BY_CATEGORY] || []) : []}
-                            keyExtractor={(item) => item}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity
-                                    className="py-3 border-b border-gray-100"
-                                    onPress={() => {
-                                        handleInputChange("productType", item);
-                                        setShowSubCategoryModal(false);
-                                    }}
-                                >
-                                    <Text className="text-black text-base">{item}</Text>
-                                </TouchableOpacity>
-                            )}
-                        />
-                    </View>
-                </View>
-            </Modal>
-
-        </View>
+        </Modal>
     );
 };
 
 export default CreateProductForm;
+
 

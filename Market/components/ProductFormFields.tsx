@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FormInput } from './FormInput';
 import { FormDropdown } from './FormDropdown';
@@ -7,7 +7,7 @@ import { FormDropdown } from './FormDropdown';
 interface ProductFormFieldsProps {
     formData: any;
     handleInputChange: (field: string, value: any) => void;
-    images: any;
+    images: any[];
     pickImages: () => Promise<void>;
     takePhoto: () => Promise<void>;
     handleCloseModal: () => void;
@@ -49,19 +49,19 @@ export const ProductFormFields = ({
     setShowWarrantyConfig,
     showDiscountConfig,
     setShowDiscountConfig,
-      handleCloseModal,
+    handleCloseModal,
 }: ProductFormFieldsProps) => {
     
     return (
         <ScrollView
-            className={`flex-1 px-5 py-4
-             bg-white ${showDeliveryConfig || showDiscountConfig || showWarrantyConfig ? 'mb-28' : 'mb-20'}`}
+            className={`flex-1 px-5 py-4 bg-white ${showDeliveryConfig || showDiscountConfig || showWarrantyConfig ? 'mb-28' : 'mb-20'}`}
             keyboardShouldPersistTaps='handled'
             showsVerticalScrollIndicator={false}
         >
-            <View className='space-y-4 auto-cols-max pb-28'>
+            {/* FIXED: Removed layout-crashing 'auto-cols-max' grid class name */}
+            <View className='space-y-4 pb-28'>
 
-               {/* ADDED: INLINE CANCEL / TITLE ACTION BAR */}
+                {/* Inline Cancel / Title Action Bar Header */}
                 <View className="flex-row items-center justify-between pb-3 mb-2 border-b border-gray-100">
                     <View>
                         <Text className="text-gray-900 font-extrabold text-xl">
@@ -84,11 +84,10 @@ export const ProductFormFields = ({
                 {/* Media Picker Section */}
                 <View className="mb-4">
                     <Text className='text-black text-sm font-semibold mb-2'>
-                        Product Photos ({images.length}/3)
+                        Product Photos ({images?.length || 0}/3)
                     </Text>
                     <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} className="flex-row">
                         
-                        {/* 1. CAMERA BUTTON */}
                         <TouchableOpacity
                             onPress={takePhoto}
                             className='w-20 h-20 border border-gray-300 rounded-xl items-center justify-center bg-gray-100 mr-2'
@@ -97,7 +96,6 @@ export const ProductFormFields = ({
                             <Text className='text-[10px] text-gray-500 mt-0.5 font-semibold'>Take Photo</Text>
                         </TouchableOpacity>
 
-                        {/* 2. GALLERY BUTTON */}
                         <TouchableOpacity
                             onPress={pickImages}
                             className='w-20 h-20 border border-gray-300 rounded-xl items-center justify-center bg-gray-100 mr-4'
@@ -106,10 +104,9 @@ export const ProductFormFields = ({
                             <Text className='text-[10px] text-gray-500 mt-0.5 font-semibold'>Add Gallery</Text>
                         </TouchableOpacity>
 
-                        {/* PREVIEW CONTAINER IMAGES TRACK */}
-                        {images.map((img: any, index: number) => (
+                        {images && images.map((img: any, index: number) => (
                             <View key={index} className='w-20 h-20 mr-3 relative rounded-xl overflow-hidden bg-gray-100'>
-                                <Image source={{ uri: img.uri }} className='w-full h-full object-cover' />
+                                <Image source={{ uri: img.uri }} style={{ width: '100%', height: '100%' }} />
                                 <TouchableOpacity
                                     onPress={() => removeImage(index)}
                                     className='absolute top-1 right-1 bg-black/60 rounded-full w-5 h-5 items-center justify-center'
@@ -121,7 +118,7 @@ export const ProductFormFields = ({
                     </ScrollView>
                 </View>
 
-                {/* Form Inputs */}
+                {/* Form Inputs (FIXED: Bound explicitly to destructured context values) */}
                 <FormInput
                     label="Product Name"
                     required
@@ -149,7 +146,6 @@ export const ProductFormFields = ({
                     onChangeText={(text) => handleInputChange("phoneNumber", text)}
                 />
 
-                {/* Primary Category Selector */}
                 <FormDropdown
                     label="Category"
                     required
@@ -158,17 +154,13 @@ export const ProductFormFields = ({
                     onPress={() => setShowCategoryModal(true)}
                 />
 
-                {/* Swapped out Text Input for a dynamic dependent Subcategory selector Dropdown */}
                 <FormDropdown
                     label="Product Type / Subcategory"
                     required
                     placeholder={formData.category ? "Select Subcategory" : "Please select a Category first"}
                     value={formData.productType}
                     onPress={() => {
-                        if (!formData.category) {
-                            alert("Please choose a primary category first.");
-                            return;
-                        }
+                        if (!formData.category) return;
                         setShowSubCategoryModal(true);
                     }}
                 />
@@ -195,135 +187,127 @@ export const ProductFormFields = ({
                     placeholder={formData.region ? "Select District" : "Please select a Region first"}
                     value={formData.district}
                     onPress={() => {
-                        if (!formData.region) {
-                            alert("Please pick a region before selecting your district.");
-                            return;
-                        }
+                        if (!formData.region) return;
                         setShowDistrictModal(true);
                     }}
                 />
 
                 <FormInput
-                    label="Specific Location / Area Landmark"
+                    label="Specific Address / Landmark"
                     required
-                    placeholder="e.g. East Legon, Spintex, near Shell Station"
+                    placeholder="e.g. Near Total Station, Accra"
                     value={formData.location}
                     onChangeText={(text) => handleInputChange("location", text)}
                 />
 
                 <FormInput
                     label="Description"
-                    required
-                    placeholder="Tell us more details about your item..."
+                    placeholder="Provide full description details about the listing..."
                     multiline
-                    numberOfLines={4}
                     value={formData.description}
                     onChangeText={(text) => handleInputChange("description", text)}
                 />
 
-                {/* Dynamic Optional Configurations Toggle Bar */}
-                <View className="mb-4">
-                    <Text className="text-black text-sm font-semibold mb-2">Additional Options (Optional)</Text>
-                    <View className="flex-row flex-wrap gap-2">
-                        <TouchableOpacity
-                            onPress={() => setShowDeliveryConfig(!showDeliveryConfig)}
-                            className={`px-3 py-2 rounded-full border ${showDeliveryConfig ? 'bg-green-100 border-green-600' : 'bg-gray-100 border-gray-300'}`}
-                        >
-                            <Text className={showDeliveryConfig ? 'text-green-700 font-medium' : 'text-gray-600'}>
-                                {showDeliveryConfig ? '✓ Delivery Info' : '+ Add Delivery'}
-                            </Text>
-                        </TouchableOpacity>
+                {/* Additional Optional Feature Toggles */}
+                <TouchableOpacity 
+                    onPress={() => setShowWarrantyConfig(!showWarrantyConfig)}
+                    className="flex-row items-center justify-between p-3.5 bg-gray-50 border border-gray-100 rounded-xl mt-2"
+                >
+                    <Text className="text-gray-700 font-bold text-sm">Add Product Warranty</Text>
+                    <Ionicons name={showWarrantyConfig ? "checkbox" : "square-outline"} size={22} color={showWarrantyConfig ? "#2563eb" : "#9CA3AF"} />
+                </TouchableOpacity>
 
-                        <TouchableOpacity
-                            onPress={() => setShowWarrantyConfig(!showWarrantyConfig)}
-                            className={`px-3 py-2 rounded-full border ${showWarrantyConfig ? 'bg-green-100 border-green-600' : 'bg-gray-100 border-gray-300'}`}
-                        >
-                            <Text className={showWarrantyConfig ? 'text-green-700 font-medium' : 'text-gray-600'}>
-                                {showWarrantyConfig ? '✓ Warranty' : '+ Add Warranty'}
-                            </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            onPress={() => setShowDiscountConfig(!showDiscountConfig)}
-                            className={`px-3 py-2 rounded-full border ${showDiscountConfig ? 'bg-green-100 border-green-600' : 'bg-gray-100 border-gray-300'}`}
-                        >
-                            <Text className={showDiscountConfig ? 'text-green-700 font-medium' : 'text-gray-600'}>
-                                {showDiscountConfig ? '✓ Specs & Brand' : '+ Add Specs / Brand'}
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-                {/* CONDITIONAL DELIVERY SECTION */}
-                {showDeliveryConfig && (
-                    <View className="p-4 bg-gray-50 border border-gray-200 rounded-xl mb-4">
-                        <Text className="text-gray-700 font-bold text-xs uppercase tracking-wider mb-2">Delivery Windows</Text>
-                        <FormInput
-                            label="Estimated Days (From)"
-                            placeholder="e.g. 1"
-                            keyboardType="numeric"
-                            value={formData.deliveryFrom || ""}
-                            onChangeText={(text) => handleInputChange("deliveryFrom", text)}
-                        />
-                        <FormInput
-                            label="Estimated Days (To)"
-                            placeholder="e.g. 3"
-                            keyboardType="numeric"
-                            value={formData.deliveryTo || ""}
-                            onChangeText={(text) => handleInputChange("deliveryTo", text)}
-                        />
-                    </View>
-                )}
-
-                {/* CONDITIONAL WARRANTY SECTION */}
                 {showWarrantyConfig && (
-                    <View className="p-4 bg-gray-50 border border-gray-200 rounded-xl mb-4">
-                        <Text className="text-gray-700 font-bold text-xs uppercase tracking-wider mb-2">Warranty Details</Text>
-                        <FormInput
-                            label="Warranty Period"
-                            placeholder="e.g. 6 Months Store Warranty, 1 Year Apple Warranty"
-                            value={formData.warranty || ""}
-                            onChangeText={(text) => handleInputChange("warranty", text)}
-                        />
-                    </View>
+                    <FormInput
+                        label="Warranty Period"
+                        placeholder="e.g. 6 Months, 1 Year"
+                        value={formData.warranty}
+                        onChangeText={(text) => handleInputChange("warranty", text)}
+                    />
                 )}
 
-                {/* CONDITIONAL BRAND & COLOR SECTION */}
+                <TouchableOpacity 
+                    onPress={() => setShowDiscountConfig(!showDiscountConfig)}
+                    activeOpacity={0.7}
+                    className="flex-row items-center justify-between p-3.5 bg-gray-50 border border-gray-100 rounded-xl"
+                >
+                    <View className="flex-row items-center space-x-2">
+                        <Ionicons name="pricetag-outline" size={20} color="#4B5563" />
+                        <Text className="text-gray-700 font-bold ml-2 text-sm">Specify Brand & Color</Text>
+                    </View>
+                    <Ionicons name={showDiscountConfig ? "checkbox" : "square-outline"} size={22} color={showDiscountConfig ? "#2563eb" : "#9CA3AF"} />
+                </TouchableOpacity>
+
                 {showDiscountConfig && (
-                    <View className="p-4 bg-gray-50 border border-gray-200 rounded-xl mb-4">
-                        <Text className="text-gray-700 font-bold text-xs uppercase tracking-wider mb-2">Specifications & Attributes</Text>
+                    <View style={{ gap: 12 }}>
                         <FormInput
-                            label="Product Brand"
-                            placeholder="e.g. Samsung, Nike, Toyota"
-                            value={formData.brand || ""}
+                            label="Brand"
+                            placeholder="e.g. Apple, Samsung, Nike"
+                            value={formData.brand}
                             onChangeText={(text) => handleInputChange("brand", text)}
                         />
                         <FormInput
                             label="Color"
-                            placeholder="e.g. Midnight Black, Pearl White"
-                            value={formData.color || ""}
+                            placeholder="e.g. Black, Silver, Blue"
+                            value={formData.color}
                             onChangeText={(text) => handleInputChange("color", text)}
                         />
                     </View>
                 )}
 
-                {/* Action CTA Button */}
+                {/* 3. Delivery Logistical Configuration Toggle */}
+                <TouchableOpacity 
+                    onPress={() => setShowDeliveryConfig(!showDeliveryConfig)}
+                    activeOpacity={0.7}
+                    className="flex-row items-center justify-between p-3.5 bg-gray-50 border border-gray-100 rounded-xl"
+                >
+                    <View className="flex-row items-center space-x-2">
+                        <Ionicons name="bus-outline" size={20} color="#4B5563" />
+                        <Text className="text-gray-700 font-bold ml-2 text-sm">Estimated Delivery Framework</Text>
+                    </View>
+                    <Ionicons name={showDeliveryConfig ? "checkbox" : "square-outline"} size={22} color={showDeliveryConfig ? "#2563eb" : "#9CA3AF"} />
+                </TouchableOpacity>
+
+                {showDeliveryConfig && (
+                    <View className="flex-row space-x-3 w-full">
+                        <View className="flex-1">
+                            <FormInput
+                                label="Est. From (Days)"
+                                placeholder="e.g. 1"
+                                keyboardType="numeric"
+                                value={formData.deliveryFrom}
+                                onChangeText={(text) => handleInputChange("deliveryFrom", text)}
+                            />
+                        </View>
+                        <View className="flex-1">
+                            <FormInput
+                                label="Est. To (Days)"
+                                placeholder="e.g. 3"
+                                keyboardType="numeric"
+                                value={formData.deliveryTo}
+                                onChangeText={(text) => handleInputChange("deliveryTo", text)}
+                            />
+                        </View>
+                    </View>
+                )}
+
+                {/* Primary Multi-image Operational Publishing Action Button */}
                 <TouchableOpacity
                     onPress={handleSubmit}
                     disabled={isSubmitting}
-                    className={`w-full py-4 rounded-xl items-center justify-center mt-2 ${isSubmitting ? 'bg-gray-400' : 'bg-green-600'}`}
+                    activeOpacity={0.8}
+                    className={`w-full py-4 rounded-xl items-center flex-row justify-center mt-6 mb-12 ${
+                        isSubmitting ? 'bg-blue-400' : 'bg-blue-600'
+                    }`}
                 >
                     {isSubmitting ? (
-                        <ActivityIndicator color="#FFF" size="small" />
-                    ) : (
-                        <Text className='text-white font-bold text-base'>
-                            {isEditing ? "Update Listing" : "Publish Ad"}
-                        </Text>
-                    )}
+                        <ActivityIndicator size="small" color="#FFF" className="mr-2" />
+                    ) : null}
+                    <Text className="text-white font-bold text-base">
+                        {isSubmitting ? 'Uploading Assets...' : (isEditing ? 'Save Changes' : 'Publish Ad')}
+                    </Text>
                 </TouchableOpacity>
-
             </View>
         </ScrollView>
-
     );
 };
-

@@ -1,7 +1,7 @@
-import { api } from "../lib/api"; // Your configured Axios instance
+import { api } from "../lib/api"; 
 import { useQuery } from "@tanstack/react-query";
 
-interface JobItem {
+export interface JobItem {
     _id: string;
     employer: string;
     companyName: string;
@@ -15,6 +15,7 @@ interface JobItem {
         min?: number;
         max?: number;
         currency: string;
+        period: 'monthly' | 'yearly' | 'hourly';
     };
     phoneNumber?: string;
     emailForApplications?: string;
@@ -34,15 +35,15 @@ interface GetJobResponse {
 }
 
 export const useGetJob = (jobId: string) => {
-    return useQuery<GetJobResponse, Error>({
-        
+    return useQuery<GetJobResponse, Error, JobItem>({
         queryKey: ["jobs", jobId],
         queryFn: async () => {
-            const response = await api.get(`/jobs/${jobId}`);
+            const response = await api.get<GetJobResponse>(`/jobs/${jobId}`);
             return response.data;
         },
-         
+        
+        select: (data) => data.job,
         enabled: !!jobId,
-        staleTime: 1000 * 60 * 5, // Keep static job specifics fresh for 5 minutes
+        staleTime: 1000 * 60 * 5, 
     });
 };

@@ -8,7 +8,8 @@ import Header from '../../components/Header';
 
 const SellScreen = () => {
     const params = useLocalSearchParams(); 
-    const [showModal, setShowModal] = useState(false);
+    // FIXED: Default visibility to true for a seamless post-creation step workflow path
+    const [showModal, setShowModal] = useState(true); 
     const [editingProduct, setEditingProduct] = useState<any | null>(null);
     const [images, setImages] = useState<any[]>([]);
 
@@ -21,6 +22,9 @@ const SellScreen = () => {
             } catch (error) {
                 console.error("Failed to parse product parameters:", error);
             }
+        } else {
+            // Keep modal tracking active if no initial routing params exist
+            setShowModal(true);
         }
     }, [params?.productData]);
 
