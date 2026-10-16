@@ -101,6 +101,13 @@ const jobSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
+ 
+jobSchema.index({ isOpen: 1 });
+jobSchema.index({ region: 1, district: 1 });
+jobSchema.index({ category: 1 });
+jobSchema.index({ workMode: 1 });
+
 jobSchema.index({ title: 'text', companyName: 'text', description: 'text' });
+
 
 export const Job = mongoose.model("Job", jobSchema);

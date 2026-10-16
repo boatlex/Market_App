@@ -4,44 +4,48 @@ import { JobSeekerProfile } from "../models/jobseekersprofile.model.js";
 
 export const applyToJob = async (req, res, next) => {
     try {
-        const { jobId } = req.params
-        const { coverLetter } = req.body
-        const applicantId = req.user._id
+        const { jobId } = req.params;
+        const { coverLetter } = req.body;
+        const applicantId = req.user._id;
 
         const userProfile = await JobSeekerProfile.findOne({ user: applicantId });
         
         if (!userProfile || !userProfile.resumeUrl) {
             return res.status(400).json({ 
+                success: false,
                 message: "Please upload a resume to your profile dashboard before applying to jobs." 
             });
         }
 
         const job = await Job.findById(jobId);
         if (!job) {
-            return res.status(404).json({ message: "Job post not found." });
+            return res.status(404).json({ success: false, message: "Job post not found." });
         }
-        if (!job.isOpen) {
-            return res.status(400).json({ message: "This job is no longer accepting applications." });
+        if (job.isOpen === false) {
+            return res.status(400).json({ success: false, message: "This job is no longer accepting applications." });
         }
 
         const alreadyApplied = await Application.findOne({ job: jobId, applicant: applicantId });
         if (alreadyApplied) {
-            return res.status(400).json({ message: "You have already applied for this job." });
+            return res.status(400).json({ success: false, message: "You have already applied for this job." });
         }
 
         const newApplication = new Application({
             job: jobId,
             applicant: applicantId,
             resume: userProfile.resumeUrl, 
-            coverLetter
+            coverLetter: coverLetter ? coverLetter.trim() : undefined
         });
 
         const savedApplication = await newApplication.save();
 
-        job.applications.push(savedApplication._id);
-        await job.save();
+        // FIX 1: Use atomic \$push to completely eliminate multi-user race conditions
+        await Job.findByIdAndUpdate(jobId, {
+            $push: { applications: savedApplication._id }
+        });
 
         return res.status(201).json({
+            success: true,
             message: "Application submitted successfully using your profile resume!",
             application: savedApplication
         });
@@ -51,40 +55,38 @@ export const applyToJob = async (req, res, next) => {
     }
 };
 
-
-// 1. GET ALL APPLICATIONS FOR A SPECIFIC JOB (For Employers)
-export const getJobApplications = async (req, res) => {
+export const getJobApplications = async (req, res, next) => {
     try {
         const { jobId } = req.params;
         const currentUserId = req.user._id;
 
         const job = await Job.findById(jobId);
         if (!job) {
-            return res.status(404).json({ message: "Job not found" });
+            return res.status(404).json({ success: false, message: "Job not found" });
         }
         
-        
-        if (job.employer.toString() !== currentUserId.toString()) {
-            return res.status(403).json({ message: "Not authorized to view applications for this job" });
+        // Use standard Mongoose .equals for deep ObjectId checks
+        if (!job.employer.equals(currentUserId)) {
+            return res.status(403).json({ success: false, message: "Not authorized to view applications for this job" });
         }
-
         
         const applications = await Application.find({ job: jobId })
-            .populate("applicant", "name email phoneNumber") // Only grab necessary user fields
-            .sort({ createdAt: -1 }); // Newest first
+            .populate("applicant", "name email phoneNumber") 
+            .sort({ createdAt: -1 }); 
 
         return res.status(200).json({
+            success: true,
             count: applications.length,
             applications
         });
 
     } catch (error) {
-        return res.status(500).json({ message: "Server error", error: error.message });
+        // FIX 2: Standardized error forwarder
+        next(error);
     }
 };
 
-// 2. GET USER'S APPLICATION HISTORY (For Job Seekers)
-export const getMyApplications = async (req, res) => {
+export const getMyApplications = async (req, res, next) => {
     try {
         const applicantId = req.user._id;
 
@@ -96,15 +98,15 @@ export const getMyApplications = async (req, res) => {
             .sort({ createdAt: -1 });
 
         return res.status(200).json({
+            success: true,
             count: myApplications.length,
             applications: myApplications
         });
 
     } catch (error) {
-        return res.status(500).json({ message: "Server error", error: error.message });
+        next(error);
     }
 };
-
 
 export const updateApplicationStatus = async (req, res, next) => {
     try {
@@ -114,11 +116,11 @@ export const updateApplicationStatus = async (req, res, next) => {
 
         const application = await Application.findById(applicationId).populate("job");
         if (!application) {
-            return res.status(404).json({ message: "Application record not found." });
+            return res.status(404).json({ success: false, message: "Application record not found." });
         }
 
-        if (application.job.employer.toString() !== currentUserId.toString()) {
-            return res.status(403).json({ message: "Not authorized to modify applications for this job." });
+        if (!application.job || !application.job.employer.equals(currentUserId)) {
+            return res.status(403).json({ success: false, message: "Not authorized to modify applications for this job." });
         }
 
         if (status) application.status = status;
@@ -127,6 +129,7 @@ export const updateApplicationStatus = async (req, res, next) => {
         const updatedApplication = await application.save();
 
         return res.status(200).json({
+            success: true,
             message: `Application status updated to ${application.status} successfully!`,
             application: updatedApplication
         });
@@ -135,4 +138,5 @@ export const updateApplicationStatus = async (req, res, next) => {
         next(error);
     }
 };
+
 
