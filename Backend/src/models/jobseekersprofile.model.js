@@ -9,9 +9,17 @@ const workExperienceSchema = new mongoose.Schema({
         type: Date,
         validate: {
             validator: function (value) {
-                if (this.isCurrentJob && value) return false;
-                if (!this.isCurrentJob && !value) return false;
-                if (value && this.startDate && value < this.startDate) return false;
+                // 👈 FIX: Core context safety mapping block
+                // Handles parent object vs nested array upsert pipelines safely
+                const subdoc = this.ownerDocument ? this : this.parent();
+                
+                // Safely convert values to timestamps to prevent string vs date comparison logic failures
+                const startTS = subdoc.startDate ? new Date(subdoc.startDate).getTime() : null;
+                const endTS = value ? new Date(value).getTime() : null;
+
+                if (subdoc.isCurrentJob && value) return false;
+                if (!subdoc.isCurrentJob && !value) return false;
+                if (endTS && startTS && endTS < startTS) return false;
                 return true;
             },
             message: "End date is required if not your current job, and must be after the start date."
@@ -30,9 +38,15 @@ const educationSchema = new mongoose.Schema({
         type: Date,
         validate: {
             validator: function (value) {
-                if (this.isCurrentEducation && value) return false;
-                if (!this.isCurrentEducation && !value) return false;
-                if (value && this.startDate && value < this.startDate) return false;
+                // 👈 FIX: Core context safety mapping block
+                const subdoc = this.ownerDocument ? this : this.parent();
+                
+                const startTS = subdoc.startDate ? new Date(subdoc.startDate).getTime() : null;
+                const endTS = value ? new Date(value).getTime() : null;
+
+                if (subdoc.isCurrentEducation && value) return false;
+                if (!subdoc.isCurrentEducation && !value) return false;
+                if (endTS && startTS && endTS < startTS) return false;
                 return true;
             },
             message: "End date is required if you are no longer studying here, and must be after the start date."
@@ -41,6 +55,7 @@ const educationSchema = new mongoose.Schema({
     isCurrentEducation: { type: Boolean, default: false }
 });
 
+// Keep your parent jobSeekerProfileSchema exactly as it is below...
 const jobSeekerProfileSchema = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
@@ -48,60 +63,40 @@ const jobSeekerProfileSchema = new mongoose.Schema({
         required: true,
         unique: true
     },
-    profilePicture: {
-        type: String,
-        trim: true
-    },
+    profilePicture: { type: String, trim: true },
     professionalHeadline: {
         type: String,
         trim: true,
         required: [true, "Please add a professional headline summarizing your role"]
     },
-    bio: {
-        type: String,
-        trim: true
-    },
-    skills: {
-        type: [String],
-        default: []
-    },
+    bio: { type: String, trim: true },
+    skills: { type: [String], default: [] },
     experience: [workExperienceSchema],
     education: [educationSchema],
-
-    resumeUrl: {
+    resumeUrl: { type: String, trim: true },
+    region: { type: String, trim: true, index: true },
+    district: { type: String, trim: true, index: true },
+    location: { type: String, trim: true, default: "" },
+    phoneNumber: {
         type: String,
-        trim: true
+        required: [true, "Phone number is a mandatory field."],
+        trim: true,
+        validate: {
+            validator: function (v) {
+                return /^0\d{9}\$/.test(v);
+            },
+            message: props => `${props.value} is not a valid 10-digit phone number!`
+        }
     },
-
-     region: { 
-        type: String, 
-        trim: true, 
-        index: true 
-    },
-    district: { 
-        type: String, 
-        trim: true, 
-        index: true 
-    },
-   
-    location: { 
-        type: String, 
-        trim: true, 
-        default: "" 
-    },
-
     workMode: {
         type: String,
         enum: ["On-site", "Remote", "Hybrid"],
         default: "On-site",
         index: true,
-
     },
-
     preferredJobTypes: {
         type: [String],
-        lowercase: true,
-        enum: ["full-time", "part-time", "contract", "remote", "internship", "hybrid"],
+        enum: ["Full-time", "Part-time", "Contract", "Remote", "Internship", "Hybrid"],
         default: []
     },
     expectedSalary: {
@@ -115,7 +110,6 @@ const jobSeekerProfileSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-// Weighted text index optimized for algorithmic searches
 jobSeekerProfileSchema.index(
     { skills: 'text', professionalHeadline: 'text', bio: 'text' },
     { weights: { skills: 10, professionalHeadline: 5, bio: 1 } }

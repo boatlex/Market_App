@@ -1,6 +1,8 @@
 import { JobSeekerProfile } from "../models/jobseekersprofile.model.js";
 import cloudinary from "cloudinary";
 
+
+
 export const upsertJobSeekerProfile = async (req, res, next) => {
     try {
         const userId = req.user._id;
@@ -17,6 +19,7 @@ export const upsertJobSeekerProfile = async (req, res, next) => {
             region,
             district,
             location,
+            phoneNumber, 
             workMode
         } = req.body;
 
@@ -25,7 +28,6 @@ export const upsertJobSeekerProfile = async (req, res, next) => {
         if (!professionalHeadline) {
             return res.status(400).json({ message: "Professional headline is required." });
         }
-
 
         const parseSubArray = (data) => {
             if (!data) return [];
@@ -38,10 +40,9 @@ export const upsertJobSeekerProfile = async (req, res, next) => {
         };
 
         const processedSkills = parseSubArray(skills);
-        const processedJobTypes = parseSubArray(preferredJobTypes).map(t => t.toLowerCase());
+        const processedJobTypes = parseSubArray(preferredJobTypes);
         const processedExperience = parseSubArray(experience);
         const processedEducation = parseSubArray(education);
-
 
         const formatWorkMode = (mode) => {
             if (!mode) return "On-site";
@@ -49,12 +50,11 @@ export const upsertJobSeekerProfile = async (req, res, next) => {
             if (normal === "remote") return "Remote";
             if (normal === "hybrid") return "Hybrid";
             if (normal === "on-site" || normal === "onsite") return "On-site";
-            return "On-site"; 
+            return "On-site";
         };
 
         const validatedWorkMode = formatWorkMode(workMode);
 
-        
         let profilePictureUrl;
         if (profileImageFile) {
             try {
@@ -74,7 +74,6 @@ export const upsertJobSeekerProfile = async (req, res, next) => {
             }
         }
 
-        
         const updateData = {
             professionalHeadline,
             bio,
@@ -88,8 +87,10 @@ export const upsertJobSeekerProfile = async (req, res, next) => {
             region: region || "",
             district: district || "",
             location: location || "",
-            workMode: validatedWorkMode 
+            phoneNumber: phoneNumber || "",
+            workMode: validatedWorkMode
         };
+
 
         if (req.body.experience !== undefined) updateData.experience = processedExperience;
         if (req.body.education !== undefined) updateData.education = processedEducation;
@@ -98,16 +99,15 @@ export const upsertJobSeekerProfile = async (req, res, next) => {
             updateData.profilePicture = profilePictureUrl;
         }
 
-            
         const profile = await JobSeekerProfile.findOneAndUpdate(
             { user: userId },
             {
                 $setOnInsert: { user: userId },
                 $set: updateData
             },
+            
             { returnDocument: "after", upsert: true, runValidators: true }
-        ).populate("user", "name email");
-
+        ).populate("user", "firstName lastName profilePicture email");
 
         return res.status(200).json({
             message: "Profile updated successfully!",
@@ -122,47 +122,47 @@ export const upsertJobSeekerProfile = async (req, res, next) => {
 
 export const searchCandidatePool = async (req, res, next) => {
     try {
-        const { 
-            keyword,    
-            region,     
-            district,   
-            workMode,  
-            page = 1, 
-            limit = 10 
+        const {
+            keyword,
+            region,
+            district,
+            workMode,
+            page = 1,
+            limit = 10
         } = req.query;
 
-        
+
         const query = {};
 
 
         query.isSearchingForJob = true;
 
-       if (keyword) {
+        if (keyword) {
             query.$text = { $search: String(keyword) };
         }
 
         if (region) {
-            query.region = {$regex: new RegExp(`^${region.trim()}$`, "i") }; 
+            query.region = { $regex: new RegExp(`^${region.trim()}$`, "i") };
         }
 
         if (district) {
-            query.district = {$regex: new RegExp(`^${district.trim()}$`, "i") };
+            query.district = { $regex: new RegExp(`^${district.trim()}$`, "i") };
         }
 
         if (workMode) {
-            query.workMode = {$regex: new RegExp(`^${workMode.trim()}$`, "i") };
+            query.workMode = { $regex: new RegExp(`^${workMode.trim()}$`, "i") };
         }
 
         const skip = (Number(page) - 1) * Number(limit);
 
         const profiles = await JobSeekerProfile.find(query)
-            .select(keyword ? { score: {$meta: "textScore" } } : {}) 
-            .sort(keyword ? { score: {$meta: "textScore" } } : { updatedAt: -1 }) 
+            .select(keyword ? { score: { $meta: "textScore" } } : {})
+            .sort(keyword ? { score: { $meta: "textScore" } } : { updatedAt: -1 })
             .skip(skip)
             .limit(Number(limit))
             .populate("user", "firstName lastName email profilePicture");
 
-        
+
         const totalProfiles = await JobSeekerProfile.countDocuments(query);
 
         return res.status(200).json({
@@ -182,14 +182,14 @@ export const getMyJobSeekingAds = async (req, res, next) => {
     try {
         const userId = req.user._id;
 
-        const profiles = await JobSeekerProfile.find({ user: userId })
-            .populate("user", "firstName lastName email profilePicture")
-            .sort({ updatedAt: -1 });
+        // Use findOne because your upsert controller enforces 1 profile per user
+        const profile = await JobSeekerProfile.findOne({ user: userId })
+            .populate("user", "firstName lastName email profilePicture");
 
         return res.status(200).json({
             success: true,
-            resultsCount: profiles.length,
-            profiles
+            resultsCount: profile ? 1 : 0, 
+            profile: profile || null // Returns the profile object directly or null if none exists
         });
 
     } catch (error) {
@@ -197,26 +197,35 @@ export const getMyJobSeekingAds = async (req, res, next) => {
     }
 };
 
+
 export const getMyProfile = async (req, res, next) => {
     try {
         const userId = req.user._id;
+
         const profile = await JobSeekerProfile.findOne({ user: userId })
-            .populate("user", "name email");
+            .populate("user", "firstName lastName email profilePicture");
 
         if (!profile) {
             return res.status(200).json({
                 message: "New account detected.",
                 isNewUser: true,
                 profile: {
-                    user: { _id: userId, name: req.user.name, email: req.user.email },
+                    user: {
+                        _id: userId,
+                        firstName: req.user.firstName || "",
+                        lastName: req.user.lastName || "",
+                        email: req.user.email || "",
+                        profilePicture: req.user.profilePicture || ""
+                    },
                     professionalHeadline: "",
                     bio: "",
                     skills: [],
                     experience: [],
                     education: [],
                     preferredJobTypes: [],
-                    expectedSalary: { min: 0, currency: "GHS" },
+                    expectedSalary: { min: 0, currency: "GHS" }, 
                     profilePicture: "",
+                    phoneNumber: "",
                     isSearchingForJob: true
                 }
             });
@@ -231,4 +240,22 @@ export const getMyProfile = async (req, res, next) => {
         next(error);
     }
 };
+
+export const getMyJobSeekingAdById = async (req, res, next) => {
+    try {
+        const { profileId } = req.params;
+
+        const jobSeeker = await JobSeekerProfile.findById(profileId)
+            .populate("user", "firstName lastName profilePicture");
+
+        if (!jobSeeker) {
+            return res.status(404).json({ error: "Ad Not Found" });
+        }
+
+        return res.status(200).json({ data: jobSeeker });
+    } catch (error) {
+        next(error);
+    }
+};
+
 
