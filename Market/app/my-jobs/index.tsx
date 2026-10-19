@@ -201,10 +201,10 @@ const JobsScreen = () => {
                                         : item.employer;
 
                                     router.push({
-                                        pathname: `/my-job/${item._id}` as any,
+                                        pathname: '/my-job/[id]' as any,
                                         params: {
                                             id: item._id,
-                                            employerId: String(secureEmployerId) // Guarantees a pristine string mapping format contract downstream
+                                            employerId: String(secureEmployerId) 
                                         }
                                     });
                                 }}

@@ -19,7 +19,7 @@ import {
 
 const SPECIAL_CATEGORY_ROUTES: Record<string, string> = {
   "Posted Jobs": "/my-jobs",
-  "Find Job": "/find-job",
+  "Find Job": "/(profile)/my-job-applications",
   "Services": "/post-service",
 };
 

@@ -299,7 +299,7 @@ const JobDetailsScreen = () => {
               }
 
               router.push({
-                pathname: `/apply/${job._id}` as any,
+                pathname: '/apply/[jobId]' as any,
                 params: {
                   jobId: job._id,
                   jobTitle: job.title,

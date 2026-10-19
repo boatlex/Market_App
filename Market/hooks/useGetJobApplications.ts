@@ -3,7 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 
 export interface ApplicantUser {
     _id: string;
-    name: string;
+    firstName?: string; 
+    lastName?: string;  
+    name?: string;      
     email: string;
     phoneNumber?: string;
 }
@@ -14,7 +16,7 @@ export interface RecruiterApplicationItem {
     applicant: ApplicantUser;
     resume: string;
     coverLetter?: string;
-    status: 'pending' | 'reviewed' | 'shortlisted' | 'rejected' | 'accepted';
+    status: 'Pending' | 'Reviewed' | 'Shortlisted' | 'Rejected' | 'Accepted';
     notesByEmployer?: string;
     createdAt: string;
 }
@@ -29,7 +31,7 @@ export const useGetJobApplications = (jobId: string) => {
     return useQuery<GetJobApplicationsResponse, Error>({
         queryKey: ["job-applications", jobId],
         queryFn: async () => {
-            const response = await api.get<GetJobApplicationsResponse>(`/jobs/${jobId}/applications`);
+            const response = await api.get<GetJobApplicationsResponse>(`/applications/job/${jobId}`);
             return response.data;
         },
         enabled: !!jobId,

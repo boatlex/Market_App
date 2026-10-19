@@ -1,5 +1,5 @@
-export type ApplicationStatus = 'Pending' | 'Reviewed' | 'Interviewing' | 'Hired'
-export type WorkMode = 'on-site' | 'remote' | 'hybrid';
+export type ApplicationStatus = 'Pending' | 'Reviewed' | 'Interviewing' | 'Hired';
+export type WorkMode = 'On-site' | 'Remote' | 'Hybrid';
 export type NotificationType = 'call_me_back' | 'make_an_offer';
 export type ReportTargetType = 'product' | 'user' | 'comment';
 export type ReportReason = 'scam' | 'inappropriate_content' | 'fake_item' | 'harassment' | 'other';
@@ -70,7 +70,7 @@ export interface Job {
     emailForApplications?: string;
     region: string;
     district: string;
-    location:string,
+    location: string;
     requirements: string[];
     benefits: string[];
     applications: string[];
@@ -85,23 +85,28 @@ export interface WorkExperience {
     companyName: string;
     jobTitle: string;
     location?: string;
-    startDate: string;
-    endDate?: string;
+    startDate: string; 
+    endDate?: string;  
     isCurrentJob: boolean;
     description?: string;
 }
+
 export interface Education {
     _id?: string;
     schoolName: string;
     degree: string;
     fieldOfStudy?: string;
-    startDate: string;
-    endDate?: string;
+    startDate: string; 
+    endDate?: string;  
+    isCurrentEducation: boolean; 
 }
+
 export interface ExpectedSalary {
     min?: number;
     currency: string;
 }
+
+
 export interface JobSeekerProfile {
     _id: string;
     user: string | User;
@@ -112,6 +117,10 @@ export interface JobSeekerProfile {
     experience: WorkExperience[];
     education: Education[];
     resumeUrl?: string;
+    region: string;
+    district: string;
+    location?: string; 
+    workMode: WorkMode; 
     preferredJobTypes: string[];
     expectedSalary: ExpectedSalary;
     isSearchingForJob: boolean;
@@ -144,6 +153,7 @@ export interface DeliveryTimeline {
     from?: string;
     to?: string;
 }
+
 export interface Product {
     _id: string;
     seller: string | User;
@@ -168,12 +178,11 @@ export interface Product {
     updatedAt: string;
 }
 
-
 export interface Report {
     _id: string;
     reporterId: string;
     targetType: ReportTargetType;
-    targetId: string; // Can be a string ID, or dynamically populated based on targetType
+    targetId: string; 
     reason: ReportReason;
     description?: string;
     status: ReportStatus;
@@ -196,6 +205,7 @@ export interface ServiceProviderPricing {
     basis: PricingBasis;
     currency: string;
 }
+
 export interface ServiceProvider {
     _id: string;
     user: string | User;
@@ -217,21 +227,21 @@ export interface ServiceProvider {
 }
 
 export interface User {
- _id?: string;
- id?: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  clerkId?: string;
-  password?: string; 
-  verified: boolean;
-  resetPasswordToken?: string;
-  resetPasswordExpires?: string;
-  otp?: string;
-  otp_expiry_time?: string;     
-  profilePicture: string;
-  role: UserRole;
-  wishList: string[]
-  createdAt: string;
-  updatedAt: string;
+    _id?: string;
+    id?: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    clerkId?: string;
+    password?: string; 
+    verified: boolean;
+    resetPasswordToken?: string;
+    resetPasswordExpires?: string;
+    otp?: string;
+    otp_expiry_time?: string;     
+    profilePicture: string;
+    role: UserRole;
+    wishList: string[];
+    createdAt: string;
+    updatedAt: string;
 }

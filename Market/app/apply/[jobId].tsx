@@ -35,7 +35,6 @@ const ApplyJobScreen = () => {
                 ]);
             },
             onError: (error: any) => {
-                // Catch message arrays from your controller
                 const serverErrorMessage = error?.response?.data?.message || "An unexpected error occurred during submission.";
                 Alert.alert("Application Blocked", serverErrorMessage);
             }

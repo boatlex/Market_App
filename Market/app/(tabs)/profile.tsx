@@ -22,9 +22,10 @@ const Menu_Items: MenuItem[] = [
   { id: 5, icon: "megaphone-outline", title: "My Ads", color: "#3B82F6", action: "/(profile)/my-adds" as Href },
   { id: 6, icon: "help-circle-outline", title: "FAQ", color: "#3B82F6", action: "/(profile)/faq" as Href },
   { id: 7, icon: "game-controller-outline", title: "Play Game", color: "#3B82F6", action: "/(profile)/game-center" as Href },
-];
+  { id: 8, icon: "document-text-outline", title: "My Applications", color: "#3B82F6", action: "/(profile)/my-job-applications" as Href },
+]
 
-const SplashImage = 'https://unsplash.com';
+ const SplashImage = 'https://unsplash.com';
 
 export default function ProfileScreen() {
   const { user } = useAuth();
@@ -50,7 +51,7 @@ export default function ProfileScreen() {
       <ScrollView
         className="flex-1 bg-gray-50"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 150 }}
       >
         {/* Header Profile Summary */}
         <View className="bg-white items-center pt-8 pb-6 px-4 shadow-sm rounded-b-[40px]">

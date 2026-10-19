@@ -11,7 +11,8 @@ export interface ApplicationItem {
         district: string;
         isOpen: boolean;
     };
-    status: 'pending' | 'reviewed' | 'shortlisted' | 'rejected' | 'accepted';
+    // Aligned to match your Mongoose Schema status flags capitalization
+    status: 'Pending' | 'Reviewed' | 'Interviewing' | 'Hired' | 'Rejected'; 
     notesByEmployer?: string;
     createdAt: string;
 }
@@ -26,7 +27,7 @@ export const useGetMyApplications = () => {
     return useQuery<GetApplicationsResponse, Error>({
         queryKey: ["my-applications"],
         queryFn: async () => {
-            const response = await api.get<GetApplicationsResponse>("/jobs/applications/my-applications");
+            const response = await api.get<GetApplicationsResponse>("/applications/my-applications");
             return response.data;
         },
         staleTime: 1000 * 60 * 3, 

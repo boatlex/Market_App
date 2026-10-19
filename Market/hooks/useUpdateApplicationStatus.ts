@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface UpdateStatusVariables {
     applicationId: string;
-    status: 'pending' | 'reviewed' | 'shortlisted' | 'rejected' | 'accepted';
+    status: 'Pending' | 'Reviewed' | 'Interviewing' | 'Hired' | 'Rejected';
     notesByEmployer?: string;
 }
 
@@ -12,14 +12,13 @@ export const useUpdateApplicationStatus = (jobId: string) => {
 
     return useMutation({
         mutationFn: async ({ applicationId, status, notesByEmployer }: UpdateStatusVariables) => {
-            const response = await api.put(`/jobs/applications/${applicationId}/status`, {
+            const response = await api.patch(`/applications/${applicationId}/status`, {
                 status,
                 notesByEmployer
             });
             return response.data;
         },
         onSuccess: () => {
-        
             queryClient.invalidateQueries({ queryKey: ["job-applications", jobId] });
             queryClient.invalidateQueries({ queryKey: ["my-applications"] });
         }
