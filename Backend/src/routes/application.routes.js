@@ -6,11 +6,17 @@ import { applyToJob, getJobApplications, getMyApplications, updateApplicationSta
 
 const router = express.Router()
 
+router.get("/my-applications", protectRoute, getMyApplications);
 
-router.get("/employee", protectRoute, getMyApplications )
-router.post("/:jobId/apply", protectRoute, applyToJob);
-router.get("/employer/:jobId", protectRoute, getJobApplications)
-router.patch("/status/:applicationId", protectRoute, updateApplicationStatus);
+
+router.post("/job/:jobId/apply", protectRoute, applyToJob);
+
+
+router.get("/job/:jobId", protectRoute, getJobApplications);
+
+
+router.patch("/:applicationId/status", protectRoute, updateApplicationStatus);
+
 
 
 export default router

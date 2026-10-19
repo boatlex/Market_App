@@ -44,7 +44,7 @@ const jobSchema = new mongoose.Schema({
         trim: true,
         lowercase: true,
         enum: {
-            values: ['on-site', 'remote', 'hybrid'],
+            values: ['On-site', 'Remote', 'Hybrid'],
             message: '{VALUE} is not a valid work mode'
         }
     },

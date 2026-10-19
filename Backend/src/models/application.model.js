@@ -18,7 +18,7 @@ const applicationSchema = new mongoose.Schema({
     },
     coverLetter: {
         type: String,
-        trim: true // Optional text if they want to introduce themselves
+        trim: true 
     },
     status: {
         type: String,

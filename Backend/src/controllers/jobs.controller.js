@@ -155,8 +155,6 @@ export const createJob = async (req, res, next) => {
 };
 
 
-
-
 export const getAllJobs = async (req, res, next) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -165,13 +163,12 @@ export const getAllJobs = async (req, res, next) => {
 
         const filter = { isOpen: true };
 
-        // 1. Dynamic Search Construction
+    
         if (req.query.search && String(req.query.search).trim()) {
             const cleanSearch = String(req.query.search).trim();
             
-            // OPTIMIZATION: Fallback logic for small terms or partial strings
+            
             if (cleanSearch.length < 3) {
-                // Use case-insensitive regex for short words (like "it", "dev") to avoid empty text index returns
                 filter.$or = [
                     { title: { $regex: cleanSearch, $options: "i" } },
                     { companyName: { $regex: cleanSearch, $options: "i" } }
@@ -182,25 +179,22 @@ export const getAllJobs = async (req, res, next) => {
             }
         }
 
-        // 2. Normalize Strict Field Filters
         if (req.query.category) filter.category = String(req.query.category).trim().toLowerCase();
         if (req.query.jobType) filter.jobType = String(req.query.jobType).trim().toLowerCase();
         if (req.query.workMode) filter.workMode = String(req.query.workMode).trim().toLowerCase();
         if (req.query.region) filter.region = String(req.query.region).trim();
         if (req.query.district) filter.district = String(req.query.district).trim();
 
-        // 3. Define Clean Select Criteria
+        
         const selectFields = "companyName jobImage title description category jobType workMode salary region district location createdAt";
 
-        // Build execution pipelines
+        
         let queryExec = Job.find(filter).lean();
 
-        // FIX 1: Chain projections cleanly. TextScore metadata projection must be chained 
-        // separately via .select() string paths to prevent mixed-object compiler crashes.
         if (filter.$text) {
             queryExec = queryExec
                 .select(selectFields)
-                .select({ score: { $meta: "textScore" } }) // Layer metadata independently
+                .select({ score: { $meta: "textScore" } }) 
                 .sort({ score: { $meta: "textScore" } });
         } else {
             queryExec = queryExec
@@ -208,12 +202,11 @@ export const getAllJobs = async (req, res, next) => {
                 .sort({ createdAt: -1 });
         }
 
-        // FIX 2: Double check field definitions. (Adjusting selection paths safely to fall back if necessary)
         const [jobs, totalJobs] = await Promise.all([
             queryExec
                 .skip(skip)
                 .limit(limit)
-                .populate("employer", "name firstName lastName profilePicture"), // Safely pulls single name or split parameters
+                .populate("employer", "name firstName lastName profilePicture"), 
             Job.countDocuments(filter)
         ]);
 

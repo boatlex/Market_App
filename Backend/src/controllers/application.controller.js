@@ -9,11 +9,11 @@ export const applyToJob = async (req, res, next) => {
         const applicantId = req.user._id;
 
         const userProfile = await JobSeekerProfile.findOne({ user: applicantId });
-        
+
         if (!userProfile || !userProfile.resumeUrl) {
-            return res.status(400).json({ 
+            return res.status(400).json({
                 success: false,
-                message: "Please upload a resume to your profile dashboard before applying to jobs." 
+                message: "Please upload a resume to your profile dashboard before applying to jobs."
             });
         }
 
@@ -33,13 +33,13 @@ export const applyToJob = async (req, res, next) => {
         const newApplication = new Application({
             job: jobId,
             applicant: applicantId,
-            resume: userProfile.resumeUrl, 
+            resume: userProfile.resumeUrl,
             coverLetter: coverLetter ? coverLetter.trim() : undefined
         });
 
+
         const savedApplication = await newApplication.save();
 
-        // FIX 1: Use atomic \$push to completely eliminate multi-user race conditions
         await Job.findByIdAndUpdate(jobId, {
             $push: { applications: savedApplication._id }
         });
@@ -51,7 +51,13 @@ export const applyToJob = async (req, res, next) => {
         });
 
     } catch (error) {
-        next(error); 
+        if (error.code === 11000) {
+            return res.status(400).json({
+                success: false,
+                message: "You have already applied for this job opening."
+            });
+        }
+        next(error);
     }
 };
 
@@ -64,14 +70,14 @@ export const getJobApplications = async (req, res, next) => {
         if (!job) {
             return res.status(404).json({ success: false, message: "Job not found" });
         }
-        
+
         if (!job.employer.equals(currentUserId)) {
             return res.status(403).json({ success: false, message: "Not authorized to view applications for this job" });
         }
-        
+
         const applications = await Application.find({ job: jobId })
-            .populate("applicant", "name email phoneNumber") 
-            .sort({ createdAt: -1 }); 
+            .populate("applicant", "name email phoneNumber")
+            .sort({ createdAt: -1 });
 
         return res.status(200).json({
             success: true,
@@ -91,7 +97,7 @@ export const getMyApplications = async (req, res, next) => {
         const myApplications = await Application.find({ applicant: applicantId })
             .populate({
                 path: "job",
-                select: "title companyName region district isOpen"  
+                select: "title companyName region district isOpen"
             })
             .sort({ createdAt: -1 });
 
@@ -112,23 +118,45 @@ export const updateApplicationStatus = async (req, res, next) => {
         const { status, notesByEmployer } = req.body;
         const currentUserId = req.user._id;
 
+        
         const application = await Application.findById(applicationId).populate("job");
         if (!application) {
             return res.status(404).json({ success: false, message: "Application record not found." });
         }
 
-        if (!application.job || !application.job.employer.equals(currentUserId)) {
-            return res.status(403).json({ success: false, message: "Not authorized to modify applications for this job." });
+        
+        const jobCreatorId = application.job?.employer || application.job?.user || application.job?.postedBy;
+
+        if (!application.job || !jobCreatorId || !jobCreatorId.equals(currentUserId)) {
+            return res.status(403).json({ 
+                success: false, 
+                message: "Not authorized to modify applications for this job posting." 
+            });
         }
 
-        if (status) application.status = status;
-        if (notesByEmployer) application.notesByEmployer = notesByEmployer;
+        
+        if (status) {
+            const normalStatus = status.trim().toLowerCase();
+            let validatedStatus = application.status; 
+
+            if (normalStatus === "pending") validatedStatus = "Pending";
+            if (normalStatus === "reviewed") validatedStatus = "Reviewed";
+            if (normalStatus === "interviewing" || normalStatus === "shortlisted") validatedStatus = "Interviewing";
+            if (normalStatus === "hired" || normalStatus === "accepted") validatedStatus = "Hired";
+            if (normalStatus === "rejected") validatedStatus = "Rejected";
+
+            application.status = validatedStatus;
+        }
+
+        if (notesByEmployer !== undefined) {
+            application.notesByEmployer = notesByEmployer.trim();
+        }
 
         const updatedApplication = await application.save();
 
         return res.status(200).json({
             success: true,
-            message: `Application status updated to ${application.status} successfully!`,
+            message: `Application status updated to ${updatedApplication.status} successfully!`,
             application: updatedApplication
         });
 
@@ -136,5 +164,6 @@ export const updateApplicationStatus = async (req, res, next) => {
         next(error);
     }
 };
+
 
 
