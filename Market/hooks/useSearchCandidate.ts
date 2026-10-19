@@ -1,45 +1,37 @@
 import { useQuery } from "@tanstack/react-query";
-import { api } from "../lib/api"; // Your custom configured Axios instance
-import { JobSeekerProfile } from "../types"; // Your candidate interface types file
+import { api } from "../lib/api";
+import { JobSeekerProfile } from "../types";
 
-// 1. Define explicit structures for search arguments input states
 export interface SearchCandidatesFilters {
-    keyword?: string;
-    region?: string;
-    district?: string;
-    workMode?: string;
-    page?: number;
-    limit?: number;
+    page: number;
+    limit: number;
+    keyword: string;
+    region: string;
+    district: string;
+    workMode: string;
 }
 
-interface SearchCandidatesResponse {
+interface SearchResponse {
     success: boolean;
-    resultsCount: number;
-    totalPages: number;
-    currentPage: number;
     profiles: JobSeekerProfile[];
+    resultsCount: number;
 }
-
-const fetchCandidatePool = async (filters: SearchCandidatesFilters): Promise<SearchCandidatesResponse> => {
-    const response = await api.get<SearchCandidatesResponse>("/jobseeker/search", {
-        params: {
-            keyword: filters.keyword || undefined,
-            region: filters.region || undefined,
-            district: filters.district || undefined,
-            workMode: filters.workMode || undefined,
-            page: filters.page || 1,
-            limit: filters.limit || 10,
-        },
-    });
-    return response.data;
-};
 
 export const useSearchCandidate = (filters: SearchCandidatesFilters) => {
-    return useQuery<SearchCandidatesResponse, Error>({
-        
+    return useQuery<SearchResponse, Error>({
         queryKey: ["search-candidates", filters],
-        queryFn: () => fetchCandidatePool(filters),
+        queryFn: async () => {
+            const { data } = await api.get<SearchResponse>("/jobseekerprofiles/search", {
+                params: filters
+            });
+            return data;
+        },
+        
+        enabled: !!filters,
+        retry: false,
+        refetchOnWindowFocus: false,
         placeholderData: (previousData) => previousData, 
-        staleTime: 1000 * 60 * 2,
+        refetchOnReconnect: false,   
+        refetchOnMount: false,   
     });
 };

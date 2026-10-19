@@ -1,4 +1,4 @@
-import { View, Modal, KeyboardAvoidingView, Platform, Alert, Text, TouchableOpacity, FlatList, ActivityIndicator, Switch, TextInput } from 'react-native'
+import { View, Modal, KeyboardAvoidingView, Platform, Alert, Text, TouchableOpacity, FlatList, ActivityIndicator, Switch, TextInput, ScrollView } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'expo-router'
 import { useUpsertJobSeekerProfile } from '../../hooks/useUpsertJobSeekerProfile'
@@ -7,10 +7,12 @@ import { Ionicons } from '@expo/vector-icons'
 import { FormInput } from '../FormInput'
 import {
     GHANA_DISTRICTS_BY_REGION,
-    GHANA_REGIONS, JOB_CATEGORIES,
-    WORK_MODE, JOB_TYPES
+    GHANA_REGIONS, 
+    JOB_CATEGORIES,
+    WORK_MODE, 
+    JOB_TYPES
 } from '../../constants/seekJob'
-
+import SafeScreen from '../SafeScreen'
 
 type WorkModeType = typeof WORK_MODE[number];
 
@@ -25,7 +27,6 @@ interface SeekJobFormProps {
     takePhoto: () => Promise<void>;
     removeImage: (index: number) => void;
 }
-
 
 const FlatListPickerModal = ({
     visible,
@@ -82,20 +83,15 @@ const SeekJobForm = ({
     removeImage
 }: SeekJobFormProps) => {
     const router = useRouter();
-
-    // 2. Extracted your designated hook properties
     const { mutateAsync, isPending } = useUpsertJobSeekerProfile();
 
     const [educationList, setEducationList] = useState<any[]>([]);
     const [showAddEducationModal, setShowAddEducationModal] = useState(false);
-    // Modal open/close visibility states
+    
     const [showRegionModal, setShowRegionModal] = useState(false);
     const [showDistrictModal, setShowDistrictModal] = useState(false);
-    const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [showWorkModeModal, setShowWorkModeModal] = useState(false);
-    const [showJobTypeModal, setShowJobTypeModal] = useState(false);
 
-    
     const [newEducation, setNewEducation] = useState({
         schoolName: "",
         degree: "",
@@ -115,6 +111,7 @@ const SeekJobForm = ({
         region: "",
         district: "",
         location: "",
+        phoneNumber: "",
         workMode: "On-site" as WorkModeType
     });
 
@@ -130,13 +127,12 @@ const SeekJobForm = ({
                 region: editingJob.region || "",
                 district: editingJob.district || "",
                 location: editingJob.location || "",
-
+                phoneNumber: editingJob.phoneNumber || "",
                 workMode: editingJob.workMode || "On-site"
             });
               
-              setEducationList(editingJob.education || []);
+            setEducationList(editingJob.education || []);
             setImages(editingJob.profilePicture ? [{ uri: editingJob.profilePicture, isRemote: true }] : []);
-             
         } else {
             resetForm();
         }
@@ -153,12 +149,13 @@ const SeekJobForm = ({
             region: "",
             district: "",
             location: "",
+            phoneNumber: "",
             workMode: "On-site"
         });
         setImages([]);
+        setEducationList([]);
         setShowDistrictModal(false);
     };
-
 
     const handleCloseModal = () => {
         setShowModal(false);
@@ -182,7 +179,7 @@ const SeekJobForm = ({
         });
     };
 
-      const handleAddEducation = () => {
+    const handleAddEducation = () => {
         if (!newEducation.schoolName || !newEducation.degree || !newEducation.startDate) {
             Alert.alert("Missing Fields", "Please populate school name, degree type, and start date.");
             return;
@@ -200,7 +197,7 @@ const SeekJobForm = ({
         setShowAddEducationModal(false);
     };
 
-       const handleSubmit = async () => {
+    const handleSubmit = async () => {
         if (!formData.professionalHeadline) {
             Alert.alert("Missing Information", "Professional headline is required.");
             return;
@@ -212,154 +209,190 @@ const SeekJobForm = ({
 
         const localImageFile = images.find(img => !img.isRemote);
 
-        // Explicitly packing the real-time education state lists array parameter
-        const profilePayload = {
-            professionalHeadline: formData.professionalHeadline,
-            bio: formData.bio || undefined,
-            skills: parsedSkillsArray,
-            experience: editingJob?.experience || [], 
-            education: educationList, // Pipes live input data array to hook
-            preferredJobTypes: editingJob?.preferredJobTypes || [],
-            expectedSalaryMin: Number(formData.expectedSalaryMin) || 0,
-            expectedSalaryCurrency: formData.expectedSalaryCurrency,
-            isSearchingForJob: formData.isSearchingForJob,
-            region: formData.region,
-            district: formData.district,
-            location: formData.location || undefined,
-            workMode: formData.workMode,
-            profilePictureFile: localImageFile ? {
-                uri: localImageFile.uri,
-                name: localImageFile.name || `profile_${Date.now()}.jpg`,
-                type: localImageFile.type || 'image/jpeg'
-            } : null
-        };
-
         try {
-            await mutateAsync(profilePayload);
-            Alert.alert("Success 🎉", "Your candidate profile was successfully synchronized!");
-            setShowModal(false);
-            setEditingJob(null);
-            resetForm();
-            router.replace('/(tabs)/profile' as any);
-        } catch (error) {
-            console.error("Failed to submit job seeker profile:", error);
-            Alert.alert("Update Error", "Something went wrong when trying to upload your profile updates.");
+            await mutateAsync({
+                professionalHeadline: formData.professionalHeadline,
+                bio: formData.bio || undefined,
+                skills: parsedSkillsArray,
+                experience: editingJob?.experience || [], 
+                education: educationList, 
+                preferredJobTypes: editingJob?.preferredJobTypes || [],
+                expectedSalaryMin: Number(formData.expectedSalaryMin) || 0,
+                expectedSalaryCurrency: formData.expectedSalaryCurrency,
+                isSearchingForJob: formData.isSearchingForJob,
+                region: formData.region,
+                district: formData.district,
+                location: formData.location || undefined,
+                phoneNumber: formData.phoneNumber,
+                workMode: formData.workMode,
+                profilePictureFile: localImageFile ? {
+                    uri: localImageFile.uri,
+                    name: localImageFile.name || `profile_${Date.now()}.jpg`,
+                    type: localImageFile.type || 'image/jpeg'
+                } : null
+            });
+
+            Alert.alert("Success", "Your profile has been saved successfully!", [
+                { text: "OK", onPress: handleCloseModal }
+            ]);
+        } catch (error: any) {
+            console.error("Profile submission hook error:", error);
+            const errMsg = error?.response?.data?.message || "Failed to update profile. Please try again.";
+            Alert.alert("Submission Error", errMsg);
         }
     };
 
-    const activeDistrictData = formData.region ? (GHANA_DISTRICTS_BY_REGION as any)[formData.region] || [] : [];
-
+    const availableDistricts = formData.region
+        ? GHANA_DISTRICTS_BY_REGION[formData.region as keyof typeof GHANA_DISTRICTS_BY_REGION] || []
+        : [];
 
     return (
-        <Modal visible={showModal} animationType="fade" onRequestClose={handleCloseModal}>
-            <KeyboardAvoidingView 
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
-                className="flex-1 bg-white"
-            >
-                {/* Header Navbar Strip */}
-                <View className="flex-row justify-between items-center px-6 py-4 border-b border-gray-100">
-                    <TouchableOpacity onPress={handleCloseModal}>
-                        <Ionicons name="close" size={26} color="#1F2937" />
-                    </TouchableOpacity>
-                    <Text className="text-gray-950 font-black text-lg">
-                        {editingJob ? 'Edit Candidate Profile' : 'Setup Profile'}
-                    </Text>
-                    <TouchableOpacity disabled={isPending} onPress={handleSubmit}>
-                        {isPending ? (
-                            <ActivityIndicator size="small" color="#2563EB" />
-                        ) : (
-                            <Text className="text-blue-600 font-extrabold text-base">Save</Text>
-                        )}
-                    </TouchableOpacity>
-                </View>
-
-                {/* Form Inputs Component Canvas */}
-                <SeekJobFormFields
-                    formData={formData}
-                    handleInputChange={handleInputChange}
-                    images={images}
-                    pickImages={pickImages}
-                    takePhoto={takePhoto}
-                    removeImage={removeImage}
-                    educationList={educationList} 
-                    setEducationList={setEducationList}
-                    openEducationModal={() => setShowAddEducationModal(true)} 
-                    openRegionPicker={() => setShowRegionModal(true)}
-                    openDistrictPicker={() => {
-                        if (!formData.region) {
-                            Alert.alert("Region Required", "Please select a region first.");
-                            return;
-                        }
-                        setShowDistrictModal(true);
-                    }}
-                    openCategoryPicker={() => setShowCategoryModal(true)}
-                    openWorkModePicker={() => setShowWorkModeModal(true)}
-                    openJobTypePicker={() => setShowJobTypeModal(true)}
-                />
-
-                {/* Dynamic Academic Records Generation Overlay Sheet Modal */}
-                <Modal visible={showAddEducationModal} animationType="slide" transparent>
-                    <View className="flex-1 justify-end bg-black/60">
-                        <KeyboardAvoidingView 
-                            behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
-                            className="bg-white rounded-t-3xl p-6 max-h-[85%]"
+        <Modal visible={showModal} animationType="slide" onRequestClose={handleCloseModal}>
+            <SafeScreen>
+                <KeyboardAvoidingView 
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+                    className="flex-1 bg-white"
+                >
+                    {/* Header Navbar Top Panel */}
+                    <View className="w-full border-b border-gray-100 px-6 py-4 flex-row justify-between items-center bg-white shadow-sm">
+                        <TouchableOpacity onPress={handleCloseModal} className="p-1">
+                            <Ionicons name="close" size={26} color="#1F2937" />
+                        </TouchableOpacity>
+                                              {/* Continuing exactly from the Navbar heading text */}
+                        <Text className="font-extrabold text-lg text-gray-900">
+                            {editingJob ? "Edit Job Ad" : "Create Job Seek Ad"}
+                        </Text>
+                        <TouchableOpacity 
+                            onPress={handleSubmit} 
+                            disabled={isPending}
+                            className="bg-blue-600 px-4 py-2 rounded-xl flex-row items-center"
                         >
-                            <View className="flex-row justify-between items-center mb-4 pb-2 border-b border-gray-100">
-                                <Text className="text-gray-950 font-black text-base">Add Academic Qualification</Text>
-                                <TouchableOpacity onPress={() => setShowAddEducationModal(false)}>
-                                    <Ionicons name="close" size={22} color="#4B5563" />
-                                </TouchableOpacity>
+                            {isPending ? (
+                                <ActivityIndicator size="small" color="#FFF" />
+                            ) : (
+                                <Text className="text-white font-bold text-sm">Save</Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Main Core Rendered Input Form Segment Fields Component */}
+                    <View className="flex-1">
+                        <SeekJobFormFields
+                            formData={formData}
+                            setFormData={setFormData}
+                            handleInputChange={handleInputChange}
+                            images={images}
+                            pickImages={pickImages}
+                            takePhoto={takePhoto}
+                            removeImage={removeImage}
+                            educationList={educationList}
+                            setEducationList={setEducationList}
+                            openEducationModal={() => setShowAddEducationModal(true)}
+                            openRegionPicker={() => setShowRegionModal(true)}
+                            openDistrictPicker={() => {
+                                if (!formData.region) {
+                                    Alert.alert("Region Required", "Please select a region first.");
+                                    return;
+                                }
+                                setShowDistrictModal(true);
+                            }}
+                            openCategoryPicker={() => {}} 
+                            openWorkModePicker={() => setShowWorkModeModal(true)}
+                            openJobTypePicker={() => {}} 
+                        />
+                    </View>
+                </KeyboardAvoidingView>
+            </SafeScreen>
+
+            {/* Custom Modals Selection Picker Overlays System */}
+            <FlatListPickerModal
+                visible={showWorkModeModal}
+                title="Select Work Arrangement Mode"
+                data={WORK_MODE}
+                onSelect={(val) => handleInputChange("workMode", val)}
+                onClose={() => setShowWorkModeModal(false)}
+            />
+
+            <FlatListPickerModal
+                visible={showRegionModal}
+                title="Select Preferred Location Region"
+                data={GHANA_REGIONS}
+                onSelect={(val) => handleInputChange("region", val)}
+                onClose={() => setShowRegionModal(false)}
+            />
+
+            <FlatListPickerModal
+                visible={showDistrictModal}
+                title={`Select District in ${formData.region}`}
+                data={availableDistricts}
+                onSelect={(val) => handleInputChange("district", val)}
+                onClose={() => setShowDistrictModal(false)}
+            />
+
+            {/* Sub-Timeline Modal: Add Education History Popup */}
+            <Modal visible={showAddEducationModal} animationType="slide" transparent={true}>
+                <View className="flex-1 justify-end bg-black/50">
+                    <KeyboardAvoidingView 
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        className="bg-white rounded-t-3xl max-h-[85%] p-6"
+                    >
+                        <View className="flex-row justify-between items-center mb-4 pb-2 border-b border-gray-100">
+                            <Text className="text-gray-900 font-extrabold text-lg">Add Education Info</Text>
+                            <TouchableOpacity onPress={() => setShowAddEducationModal(false)}>
+                                <Ionicons name="close" size={24} color="#4B5563" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+                            <View className="mb-4">
+                                <FormInput
+                                    label="School / University Name *"
+                                    placeholder="e.g., University of Ghana"
+                                    value={newEducation.schoolName}
+                                    onChangeText={(val) => setNewEducation(p => ({ ...p, schoolName: val }))}
+                                />
+                            </View>
+                            <View className="mb-4">
+                                <FormInput
+                                    label="Degree / Certification *"
+                                    placeholder="e.g., Bachelor of Science"
+                                    value={newEducation.degree}
+                                    onChangeText={(val) => setNewEducation(p => ({ ...p, degree: val }))}
+                                />
+                            </View>
+                            <View className="mb-4">
+                                <FormInput
+                                    label="Field of Study"
+                                    placeholder="e.g., Computer Science"
+                                    value={newEducation.fieldOfStudy}
+                                    onChangeText={(val) => setNewEducation(p => ({ ...p, fieldOfStudy: val }))}
+                                />
+                            </View>
+                            <View className="mb-4">
+                                <FormInput
+                                    label="Start Year / Date *"
+                                    placeholder="e.g., 2020"
+                                    value={newEducation.startDate}
+                                    onChangeText={(val) => setNewEducation(p => ({ ...p, startDate: val }))}
+                                />
                             </View>
                             
-                           <FormInput
-                                label="School / Institution Name"
-                                placeholder="e.g., University of Ghana"
-                                value={newEducation.schoolName}
-                                onChangeText={(val) => setNewEducation(p => ({...p, schoolName: val}))}
-                            />
-
-                            <FormInput
-                                label="Degree / Certification"
-                                placeholder="e.g., Bachelor of Science"
-                                value={newEducation.degree}
-                                onChangeText={(val) => setNewEducation(p => ({...p, degree: val}))}
-                            />
-
-                            <FormInput
-                                label="Field of Study / Major"
-                                placeholder="e.g., Computer Science"
-                                value={newEducation.fieldOfStudy}
-                                onChangeText={(val) => setNewEducation(p => ({...p, fieldOfStudy: val}))}
-                            />
-
-                            <View className="flex-row gap-3">
-                                <View className="flex-1">
+                            {!newEducation.isCurrentEducation && (
+                                <View className="mb-4">
                                     <FormInput
-                                        label="Start Date"
-                                        placeholder="YYYY-MM-DD"
-                                        value={newEducation.startDate}
-                                        onChangeText={(val) => setNewEducation(p => ({...p, startDate: val}))}
+                                        label="End Year / Date"
+                                        placeholder="e.g., 2024"
+                                        value={newEducation.endDate}
+                                        onChangeText={(val) => setNewEducation(p => ({ ...p, endDate: val }))}
                                     />
                                 </View>
-                                {!newEducation.isCurrentEducation && (
-                                    <View className="flex-1">
-                                        <FormInput
-                                            label="End Date"
-                                            placeholder="YYYY-MM-DD"
-                                            value={newEducation.endDate}
-                                            onChangeText={(val) => setNewEducation(p => ({...p, endDate: val}))}
-                                        />
-                                    </View>
-                                )}
-                            </View>
+                            )}
 
-                            <View className="flex-row justify-between items-center mb-6 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                                <Text className="text-gray-800 font-bold text-xs">Currently Studying Here</Text>
-                                <Switch 
-                                    value={newEducation.isCurrentEducation} 
-                                    trackColor={{ false: "#E5E7EB", true: "#93C5FD" }}
-                                    thumbColor={newEducation.isCurrentEducation ? "#2563EB" : "#9CA3AF"}
-                                    onValueChange={(val) => setNewEducation(p => ({...p, isCurrentEducation: val, endDate: val ? "" : p.endDate}))}
+                            <View className="mb-6 flex-row items-center justify-between p-3 bg-gray-50 rounded-xl">
+                                <Text className="text-gray-800 font-bold text-sm">I am currently studying here</Text>
+                                <Switch
+                                    value={newEducation.isCurrentEducation}
+                                    onValueChange={(val) => setNewEducation(p => ({ ...p, isCurrentEducation: val, endDate: val ? "" : p.endDate }))}
                                 />
                             </View>
 
@@ -367,56 +400,14 @@ const SeekJobForm = ({
                                 onPress={handleAddEducation}
                                 className="w-full bg-blue-600 py-3.5 rounded-xl items-center justify-center shadow-sm active:bg-blue-700"
                             >
-                                <Text className="text-white font-extrabold text-sm">Append Qualification</Text>
+                                <Text className="text-white font-bold text-base">Add to Profile</Text>
                             </TouchableOpacity>
-                        </KeyboardAvoidingView>
-                    </View>
-                </Modal>
-
-                {/* Dropdown Lists Selectors Modals */}
-                <FlatListPickerModal
-                    visible={showRegionModal}
-                    title="Select Region"
-                    data={GHANA_REGIONS}
-                    onSelect={(val) => handleInputChange("region", val)}
-                    onClose={() => setShowRegionModal(false)}
-                />
-
-                <FlatListPickerModal
-                    visible={showDistrictModal}
-                    title="Select District"
-                    data={activeDistrictData}
-                    onSelect={(val) => handleInputChange("district", val)}
-                    onClose={() => setShowDistrictModal(false)}
-                />
-
-                <FlatListPickerModal
-                    visible={showCategoryModal}
-                    title="Employment Sector"
-                    data={JOB_CATEGORIES}
-                    onSelect={(val) => handleInputChange("category", val)}
-                    onClose={() => setShowCategoryModal(false)}
-                />
-
-                <FlatListPickerModal
-                    visible={showWorkModeModal}
-                    title="Working Arrangement"
-                    data={WORK_MODE}
-                    onSelect={(val) => handleInputChange("workMode", val as WorkModeType)}
-                    onClose={() => setShowWorkModeModal(false)}
-                />
-
-                <FlatListPickerModal
-                    visible={showJobTypeModal}
-                    title="Contract Type"
-                    data={JOB_TYPES}
-                    onSelect={(val) => handleInputChange("jobType", val)}
-                    onClose={() => setShowJobTypeModal(false)}
-                />
-            </KeyboardAvoidingView>
+                        </ScrollView>
+                    </KeyboardAvoidingView>
+                </View>
+            </Modal>
         </Modal>
     );
 };
 
 export default SeekJobForm;
-

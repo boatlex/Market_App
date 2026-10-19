@@ -14,7 +14,8 @@ export interface UpsertProfileVariables {
     isSearchingForJob: boolean;
     region?: string;    
     district?: string;  
-    location?: string;  
+    location?: string; 
+    phoneNumber: string; 
     workMode?: string;  
     profilePictureFile?: {
         uri: string;
@@ -35,31 +36,28 @@ export const useUpsertJobSeekerProfile = () => {
         mutationFn: async (variables) => {
             const formData = new FormData();
 
-            
             formData.append("professionalHeadline", variables.professionalHeadline);
             if (variables.bio) formData.append("bio", variables.bio);
             formData.append("expectedSalaryMin", String(variables.expectedSalaryMin || 0));
             formData.append("expectedSalaryCurrency", variables.expectedSalaryCurrency);
             formData.append("isSearchingForJob", String(variables.isSearchingForJob));
             
-            
             if (variables.region) formData.append("region", variables.region);
             if (variables.district) formData.append("district", variables.district);
             if (variables.location) formData.append("location", variables.location);
             if (variables.workMode) formData.append("workMode", variables.workMode);
 
-            
+        
+            if (variables.phoneNumber) formData.append("phoneNumber", variables.phoneNumber);
+
             formData.append("skills", JSON.stringify(variables.skills));
             formData.append("preferredJobTypes", JSON.stringify(variables.preferredJobTypes));
             formData.append("experience", JSON.stringify(variables.experience));
             formData.append("education", JSON.stringify(variables.education));
 
-            
             if (variables.profilePictureFile) {
                 formData.append("image", variables.profilePictureFile as any);
             }
-
-        
             
             const response = await api.put<UpsertProfileResponse>(
                 "/jobseekerprofiles/profile", 
@@ -73,8 +71,12 @@ export const useUpsertJobSeekerProfile = () => {
 
             return response.data;
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["my-profile"] });
-        },
+      onSuccess: (data) => {
+    queryClient.setQueryData(["my-job-seeking-ads"], data.profile);
+    queryClient.setQueryData(["my-profile"], data.profile);
+
+    queryClient.invalidateQueries({ queryKey: ["search-candidates"], refetchType: "none" });
+},
+
     });
 };

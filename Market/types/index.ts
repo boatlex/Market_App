@@ -119,7 +119,8 @@ export interface JobSeekerProfile {
     resumeUrl?: string;
     region: string;
     district: string;
-    location?: string; 
+    location?: string;
+    phoneNumber:string, 
     workMode: WorkMode; 
     preferredJobTypes: string[];
     expectedSalary: ExpectedSalary;

@@ -3,10 +3,12 @@ import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal, Scrol
 import { Ionicons } from '@expo/vector-icons';
 import SafeScreen from '../../components/SafeScreen';
 import { useSearchCandidate, SearchCandidatesFilters } from '../../hooks/useSearchCandidate';
-import { useGetMyJobSeekerAds } from '../../hooks/useGetMyjoSeekerAds'; // Your custom ad hook
+import { useGetMyJobSeekerAds } from '../../hooks/useGetMyjoSeekerAds'; 
 import { FormInput } from '../../components/FormInput';
-import SeekJobCard from '../../components/lookForJob/SeekJodCard';  
+import SeekJobCard from '../../components/lookForJob/SeekJodCard';
 import { useRouter } from 'expo-router';
+
+import { useAuth } from '../../contexts/authContext';
 
 import {
     GHANA_REGIONS,
@@ -18,7 +20,7 @@ import {
 const JobSeekerScreen = () => {
     const router = useRouter();
 
-    // Toggle Tab switch state: 'all' = Search pool, 'my-ads' = Personal listings
+    const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<'all' | 'my-ads'>('all');
 
     const [showFilterSheet, setShowFilterSheet] = useState(false);
@@ -39,27 +41,36 @@ const JobSeekerScreen = () => {
 
     const [tempFilters, setTempFilters] = useState<SearchCandidatesFilters>({ ...activeFilters });
 
-    // 1. Fetching Stream A: Global Search Candidates Hook
-    const { 
-        data: searchData, 
-        isLoading: isSearchLoading, 
-        refetch: refetchSearch, 
-        isFetching: isSearchFetching 
+    const {
+        data: searchData,
+        isLoading: isSearchLoading,
+        refetch: refetchSearch,
+        isFetching: isSearchFetching
     } = useSearchCandidate(activeFilters);
 
-    // 2. Fetching Stream B: Logged-in User's Ad Listings Hook
-    const { 
-        data: myAdsData, 
-        isLoading: isMyAdsLoading, 
-        refetch: refetchMyAds, 
-        isFetching: isMyAdsFetching 
+
+    const {
+        data: myAdsData,
+        isLoading: isMyAdsLoading,
+        refetch: refetchMyAds,
+        isFetching: isMyAdsFetching
     } = useGetMyJobSeekerAds();
 
-    // Dynamically derive active rendering array and loading indicators
-const candidateProfiles = activeTab === 'all' ? (searchData?.profiles || []) : (myAdsData || []);
+
+    
+    const candidateProfiles = activeTab === 'all'
+        ? (searchData?.profiles || [])
+        : (myAdsData ? [myAdsData] : []);
+
+    
+    const adsCount = activeTab === 'all'
+        ? (searchData?.profiles?.length || 0)
+        : (myAdsData ? 1 : 0);
+
     const isLoading = activeTab === 'all' ? isSearchLoading : isMyAdsLoading;
     const isFetching = activeTab === 'all' ? isSearchFetching : isMyAdsFetching;
     const currentRefetch = activeTab === 'all' ? refetchSearch : refetchMyAds;
+
 
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
@@ -73,7 +84,7 @@ const candidateProfiles = activeTab === 'all' ? (searchData?.profiles || []) : (
         setTempFilters(prev => {
             const updated = { ...prev, [field]: value };
             if (field === "region") {
-                updated.district = ""; 
+                updated.district = "";
             }
             return updated;
         });
@@ -154,9 +165,10 @@ const candidateProfiles = activeTab === 'all' ? (searchData?.profiles || []) : (
 
                     <View className="flex-1 items-center justify-center px-2">
                         <Text className="font-extrabold text-lg text-gray-900 text-center" numberOfLines={1}>
-                            {activeTab === 'all' ? `Available Talent (${candidateProfiles.length})` : `My Job Ads (${candidateProfiles.length})`}
+                            {activeTab === 'all' ? `Available Talent (${adsCount})` : `My Job Ads (${adsCount})`}
                         </Text>
                     </View>
+
 
                     <TouchableOpacity
                         onPress={() => router.push("/apply-for-job" as any)}
@@ -169,13 +181,13 @@ const candidateProfiles = activeTab === 'all' ? (searchData?.profiles || []) : (
 
                 {/* Sub Tab Switch Bar */}
                 <View className="flex-row bg-white px-4 pt-2 border-b border-gray-100">
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={() => setActiveTab('all')}
                         className={`flex-1 pb-3 items-center border-b-2 ${activeTab === 'all' ? 'border-blue-600' : 'border-transparent'}`}
                     >
                         <Text className={`font-bold text-sm ${activeTab === 'all' ? 'text-blue-600' : 'text-gray-400'}`}>All Talents</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={() => setActiveTab('my-ads')}
                         className={`flex-1 pb-3 items-center border-b-2 ${activeTab === 'my-ads' ? 'border-blue-600' : 'border-transparent'}`}
                     >
@@ -208,7 +220,7 @@ const candidateProfiles = activeTab === 'all' ? (searchData?.profiles || []) : (
                 )}
 
                 {/* Main dynamic Stream rendering profiles */}
-                                {/* Main dynamic Stream rendering profiles */}
+
                 {isLoading ? (
                     <View className="flex-1 items-center justify-center">
                         <ActivityIndicator color="#2563eb" size="large" />
@@ -225,10 +237,10 @@ const candidateProfiles = activeTab === 'all' ? (searchData?.profiles || []) : (
                         onRefresh={currentRefetch}
                         refreshing={isFetching && !isLoading}
                         renderItem={({ item }) => (
-                            <SeekJobCard 
+                            <SeekJobCard
                                 item={item}
                                 onPress={() => router.push({
-                                    pathname: '/my-job/[id]',
+                                    pathname: '/seek-job/[id]',
                                     params: { id: item._id }
                                 } as any)}
                             />
@@ -251,7 +263,7 @@ const candidateProfiles = activeTab === 'all' ? (searchData?.profiles || []) : (
                             <Text className="text-xl font-black text-gray-900 mb-2">Filter Candidates</Text>
 
                             {/* Region Picker */}
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 onPress={() => setShowRegionModal(true)}
                                 className="border border-gray-200 rounded-xl p-4 bg-gray-50 flex-row justify-between"
                             >
@@ -260,19 +272,18 @@ const candidateProfiles = activeTab === 'all' ? (searchData?.profiles || []) : (
                             </TouchableOpacity>
 
                             {/* District Picker */}
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 onPress={() => setShowDistrictModal(true)}
                                 disabled={!tempFilters.region}
-                                className={`border border-gray-200 rounded-xl p-4 flex-row justify-between ${
-                                    !tempFilters.region ? 'bg-gray-100 opacity-50' : 'bg-gray-50'
-                                }`}
+                                className={`border border-gray-200 rounded-xl p-4 flex-row justify-between ${!tempFilters.region ? 'bg-gray-100 opacity-50' : 'bg-gray-50'
+                                    }`}
                             >
                                 <Text className="text-gray-700">{tempFilters.district || "Select District"}</Text>
                                 <Ionicons name="chevron-down" size={18} color="#4B5563" />
                             </TouchableOpacity>
 
                             {/* Work Mode Picker */}
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 onPress={() => setShowWorkModeModal(true)}
                                 className="border border-gray-200 rounded-xl p-4 bg-gray-50 flex-row justify-between"
                             >
@@ -335,7 +346,7 @@ export default JobSeekerScreen;
 // import SafeScreen from '../../components/SafeScreen';
 // import { useSearchCandidate, SearchCandidatesFilters } from '../../hooks/useSearchCandidate';
 // import { FormInput } from '../../components/FormInput';
-// import SeekJobCard from '../../components/lookForJob/SeekJodCard';  
+// import SeekJobCard from '../../components/lookForJob/SeekJodCard';
 // import { useRouter } from 'expo-router';
 
 // import {
@@ -366,7 +377,7 @@ export default JobSeekerScreen;
 
 //     const [tempFilters, setTempFilters] = useState<SearchCandidatesFilters>({ ...activeFilters });
 
-//     // 2. Invoke candidate tracking search hook 
+//     // 2. Invoke candidate tracking search hook
 //     const { data, isLoading, refetch, isFetching } = useSearchCandidate(activeFilters);
 
 //     const candidateProfiles = data?.profiles || [];
@@ -375,7 +386,7 @@ export default JobSeekerScreen;
 //         setTempFilters(prev => {
 //             const updated = { ...prev, [field]: value };
 //             if (field === "region") {
-//                 updated.district = ""; 
+//                 updated.district = "";
 //             }
 //             return updated;
 //         });
@@ -513,13 +524,13 @@ export default JobSeekerScreen;
 //                         refreshing={isFetching}
 //                         onRefresh={refetch}
 //                         renderItem={({ item }) => (
-                            // <SeekJobCard
-                            //     item={item}
-                                // onPress={() => router.push({
-                                //     pathname: '/my-job/[id]',
-                                //     params: { id: item._id }
-                                // } as any)}
-                            // />
+// <SeekJobCard
+//     item={item}
+// onPress={() => router.push({
+//     pathname: '/my-job/[id]',
+//     params: { id: item._id }
+// } as any)}
+// />
 //                         )}
 //                         ListEmptyComponent={
 //                             <View className="flex-1 items-center justify-center mt-12 px-6">
@@ -546,7 +557,7 @@ export default JobSeekerScreen;
 //                             <ScrollView showsVerticalScrollIndicator={false} className="space-y-4">
 //                                 {/* Arrangement WorkMode Selector Trigger Row */}
 //                                 <Text className="text-gray-700 text-xs font-bold mb-1 uppercase tracking-wide">Work Preference</Text>
-//                                 <TouchableOpacity 
+//                                 <TouchableOpacity
 //                                     onPress={() => setShowWorkModeModal(true)}
 //                                     className="border border-gray-200 rounded-xl p-4 bg-gray-50/50 flex-row justify-between items-center mb-3"
 //                                 >
@@ -558,7 +569,7 @@ export default JobSeekerScreen;
 
 //                                 {/* Region Selection Trigger Row */}
 //                                 <Text className="text-gray-700 text-xs font-bold mb-1 uppercase tracking-wide">Region Location</Text>
-//                                 <TouchableOpacity 
+//                                 <TouchableOpacity
 //                                     onPress={() => setShowRegionModal(true)}
 //                                     className="border border-gray-200 rounded-xl p-4 bg-gray-50/50 flex-row justify-between items-center mb-3"
 //                                 >
@@ -570,7 +581,7 @@ export default JobSeekerScreen;
 
 //                                 {/* District Selection Trigger Row */}
 //                                 <Text className="text-gray-700 text-xs font-bold mb-1 uppercase tracking-wide">Municipal District</Text>
-//                                 <TouchableOpacity 
+//                                 <TouchableOpacity
 //                                     onPress={() => setShowDistrictModal(true)}
 //                                     disabled={!tempFilters.region}
 //                                     className={`border border-gray-200 rounded-xl p-4 bg-gray-50/50 flex-row justify-between items-center mb-6 ${!tempFilters.region ? 'opacity-50' : ''}`}
@@ -583,13 +594,13 @@ export default JobSeekerScreen;
 
 //                                 {/* Action Buttons Panel Container Row */}
 //                                 <View className="flex-row gap-3 pt-2">
-//                                     <TouchableOpacity 
+//                                     <TouchableOpacity
 //                                         onPress={handleResetFilters}
 //                                         className="flex-1 bg-gray-100 py-3.5 rounded-xl items-center justify-center border border-gray-200"
 //                                     >
 //                                         <Text className="text-gray-700 font-extrabold text-sm">Clear All</Text>
 //                                     </TouchableOpacity>
-//                                     <TouchableOpacity 
+//                                     <TouchableOpacity
 //                                         onPress={handleApplyFilters}
 //                                         className="flex-1 bg-blue-600 py-3.5 rounded-xl items-center justify-center shadow-sm shadow-blue-500/10 active:bg-blue-700"
 //                                     >

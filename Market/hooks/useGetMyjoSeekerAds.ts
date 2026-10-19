@@ -1,18 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
-import { api } from "../lib/api"; // Your custom configured Axios instance
+import { api } from "../lib/api"; 
 import { JobSeekerProfile } from "../types"; 
 
 interface MyAdsResponse {
     success: boolean;
     resultsCount: number;
-    profiles: JobSeekerProfile[];
+    profile: JobSeekerProfile[];
 }
 
 const fetchMyAds = async (): Promise<JobSeekerProfile[]> => {
-  // FIXED: Corrected the endpoint URL path string to combine with your server.js prefix
+  
     const { data } = await api.get<MyAdsResponse>("/jobseekerprofiles/jobseeker/my-ads");
-    console.log("🔥 Raw Backend Response Profiles Data:", data.profiles);
-    return data.profiles;
+    console.log("🔥 Raw Backend Response Profiles Data:", data.profile);
+    return data.profile;
 };
 
 
@@ -22,4 +22,4 @@ export const useGetMyJobSeekerAds = () => {
         queryFn: fetchMyAds,
         staleTime: 1000 * 60 * 3, 
     });
-};
+}

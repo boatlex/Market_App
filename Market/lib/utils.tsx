@@ -29,6 +29,7 @@ export default function RootApp() {
             role: "user", 
             profilePicture: clerkUser.imageUrl || "",
             verified: true,
+            wishList:[],
             createdAt: clerkUser.createdAt ? clerkUser.createdAt.toISOString() : new Date().toISOString(),
             updatedAt: clerkUser.updatedAt ? clerkUser.updatedAt.toISOString() : new Date().toISOString()
           };
@@ -51,3 +52,6 @@ export default function RootApp() {
 
   return null; 
 }
+
+
+
