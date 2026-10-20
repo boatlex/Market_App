@@ -139,7 +139,7 @@ export const loginUserManual = async (req, res, next) => {
     }
 
     const token = signToken(user._id, currentRole);
-    
+      
     return res.status(200).json({
       success: true,
       message: "Logged in successfully!",
@@ -291,7 +291,7 @@ export const protectRoute = async (req, res, next) => {
 
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.split(' ')[1];
-
+      
       try {
         const decoded = jwt.verify(token, ENV.JWT_SECRET);
 

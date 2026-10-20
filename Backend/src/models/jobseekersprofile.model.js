@@ -83,7 +83,7 @@ const jobSeekerProfileSchema = new mongoose.Schema({
         trim: true,
         validate: {
             validator: function (v) {
-                return /^0\d{9}\$/.test(v);
+                return /^0\d{9}$/.test(v);
             },
             message: props => `${props.value} is not a valid 10-digit phone number!`
         }

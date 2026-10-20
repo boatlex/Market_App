@@ -11,7 +11,7 @@ import upload from "../middleware/jobmulter.middleware.js";
 const router = express.Router();
 
 
-router.get("/:id", getMyJobSeekingAdById);
+router.get("/:profileId", getMyJobSeekingAdById);
 
 
 router.get("/profile", protectRoute, getMyProfile);
