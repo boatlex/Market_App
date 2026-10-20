@@ -3,7 +3,7 @@ import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal, Scrol
 import { Ionicons } from '@expo/vector-icons';
 import SafeScreen from '../../components/SafeScreen';
 import { useSearchCandidate, SearchCandidatesFilters } from '../../hooks/useSearchCandidate';
-import { useGetMyJobSeekerAds } from '../../hooks/useGetMyjoSeekerAds'; 
+import { useGetMyJobSeekerAds } from '../../hooks/useGetMyjoSeekerAds';
 import { FormInput } from '../../components/FormInput';
 import SeekJobCard from '../../components/lookForJob/SeekJodCard';
 import { useRouter } from 'expo-router';
@@ -16,6 +16,7 @@ import {
     JOB_CATEGORIES,
     WORK_MODE,
 } from '../../constants/seekJob';
+import { JobSeekerProfile } from '../../types';
 
 const JobSeekerScreen = () => {
     const router = useRouter();
@@ -57,12 +58,13 @@ const JobSeekerScreen = () => {
     } = useGetMyJobSeekerAds();
 
 
-    
+
+
     const candidateProfiles = activeTab === 'all'
         ? (searchData?.profiles || [])
         : (myAdsData ? [myAdsData] : []);
 
-    
+
     const adsCount = activeTab === 'all'
         ? (searchData?.profiles?.length || 0)
         : (myAdsData ? 1 : 0);
@@ -228,7 +230,7 @@ const JobSeekerScreen = () => {
                     </View>
                 ) : (
                     <FlatList
-                        data={candidateProfiles}
+                        data={candidateProfiles as JobSeekerProfile[]}
                         keyExtractor={(item) => item._id || Math.random().toString()}
                         contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 16, paddingBottom: 60 }}
                         showsVerticalScrollIndicator={false}
@@ -239,10 +241,21 @@ const JobSeekerScreen = () => {
                         renderItem={({ item }) => (
                             <SeekJobCard
                                 item={item}
-                                onPress={() => router.push({
-                                    pathname: '/seek-job/[id]',
-                                    params: { id: item._id }
-                                } as any)}
+
+                                onPress={() => {
+                                    const secureSeekerId = item.user && typeof item.user === 'object'
+                                        ? (item.user as any)._id || (item.user as any).id
+                                        : item.user;
+
+                                    router.push({
+                                        pathname: '/seek-job/[id]',
+                                        params: {
+                                            id: item._id,
+                                            jobSeekerId: secureSeekerId
+                                        }
+                                    } as any);
+                                }}
+
                             />
                         )}
                         ListEmptyComponent={() => (

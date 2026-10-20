@@ -13,20 +13,19 @@ import { useAuth } from '../../contexts/authContext';
 const { width } = Dimensions.get("window")
 
 const SeekJobDetailsScreen = () => {
-  const { id, sellerID } = useLocalSearchParams<{ id: string; sellerID: string }>();
+  const { id, jobSeekerId} = useLocalSearchParams<{ id: string; jobSeekerId:string }>();
   const { user } = useAuth()
- console.log(user)
+
    
   const { data: product, isError, isLoading } = useGetJobSeekerById(id)
 
   const [isFavorite, setIsFavorite] = useState(false)
   const [isZoomVisible, setIsZoomVisible] = useState(false);
- 
+  
   const userId = user?.id
-  const owner = userId === (Array.isArray(sellerID) ? sellerID[0] : sellerID);
+  const owner = userId === (Array.isArray(jobSeekerId) ? jobSeekerId[0] : jobSeekerId);
 
   const handleCallSeller = () => {
-    // 1. Guard Check: If no authenticated user context exists, redirect to login
     if (!user) {
       Alert.alert(
         "Authentication Required", 

@@ -2,27 +2,28 @@ import { api } from '../lib/api'
 import { useQuery } from '@tanstack/react-query'
 import { JobSeekerProfile } from '../types'
 
-export const useGetJobSeekerById = (profileId: string ) => {
-    const results = useQuery<JobSeekerProfile>({
-        queryKey: ["jobseeker-profile-by-id", profileId || 'skip'],
+export const useGetJobSeekerById = (profileId: string) => {
+    console.log("1. Hook received profileId:", profileId);
+
+    return useQuery<JobSeekerProfile>({
+        queryKey: ["force-fresh-jobseeker-profile", profileId],
+        
         queryFn: async () => {
-            if (!profileId || profileId === '[id]') {
-                throw new Error("A valid profile ID path parameter is required");
+            
+            try {
+                const response = await api.get(`/jobseekerprofiles/${profileId}`); 
+                return response.data.data;
+            } catch (networkError) {
+                console.error("AXIOS NETWORK ERROR DETAILS:", networkError);
+                throw networkError;
             }
-            
-            const { data } = await api.get(`/jobseekerprofiles/${profileId}`);
-            
-            if (!data || data.data === undefined) {
-                throw new Error("Profile data not found in server response");
-            }
-            
-            return data.data;
         },
         
-        enabled: !!profileId,
-        retry: false,
-        staleTime: 1000 * 60 * 5, 
-    });
+    
 
-    return results;
+        enabled: typeof profileId === 'string' && profileId.length > 5 && profileId !== '[id]',
+        
+        retry: false,
+        staleTime: 0,
+    });
 };
