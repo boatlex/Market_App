@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+// ✅ VERIFIED IMPORT BLOCK: Guaranteed to inject TouchableOpacity cleanly into your JSX compiler
 import { View, Text, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -36,19 +37,15 @@ const MyActivityScreen = () => {
     const deleteJobSeekerMutation = useDeleteJobSeekerProfile();
     const deleteJobMutation = useDeleteJob();
 
-
-
-    // ✅ FIXED: Safely unpack the inner array list parameter structure from the hook's return envelope wrapper
-    const myJobs = Array.isArray(jobsResponse)
-        ? jobsResponse
-        : (jobsResponse?.jobs || []);
-
+    // Safely unpack the inner array list parameter structure from the hook's return envelope wrapper
+    const myJobs = Array.isArray(jobsResponse) ? jobsResponse : (jobsResponse?.jobs || []);
     const myProducts = userProducts || [];
-
     const myServices = serviceData?.profile ? [serviceData.profile] : [];
+
     const myJobSeekerProfiles = Array.isArray(jobseekers)
         ? jobseekers
         : (jobseekers ? [jobseekers] : []);
+
     const handleProductDelete = (id: string) => {
         Alert.alert("Wipe Product Listing?", "This will remove your item permanently from the marketplace.", [
             { text: "Cancel", style: "cancel" },
@@ -122,6 +119,16 @@ const MyActivityScreen = () => {
     const isMutationLoading = deleteServiceMutation.isPending || deleteJobSeekerMutation.isPending || deleteJobMutation.isPending || !!deletingProductId;
     const isLoadingMaster = loadingService || loadingJobs || loadingJobseeker || isMutationLoading;
 
+    // Formatting visual tabs text labels with strict runtime string fallbacks
+    const tabLabelMap: Record<TabType, string> = {
+        products: "Market Ads",
+        jobs: "Hiring Vacancies",
+        services: "Trade Business",
+        jobseeker: "My Resume File"
+    };
+
+    const tabTypesList: TabType[] = ['products', 'jobs', 'services', 'jobseeker'];
+
     return (
         <SafeScreen>
             <View className="flex-1 bg-gray-50/50">
@@ -139,15 +146,9 @@ const MyActivityScreen = () => {
                 {/* Horizontal Navigation Segmented Tab Pill Controller Strip */}
                 <View className="bg-white py-3 border-b border-gray-100">
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}>
-                        {(['products', 'jobs', 'services', 'jobseeker'] as TabType[]).map((tab) => {
+                        {tabTypesList.map((tab) => {
                             const isActive = activeTab === tab;
-
-                            const tabLabelMap: Record<TabType, string> = {
-                                products: "Market Ads",
-                                jobs: "Hiring Vacancies",
-                                services: "Trade Business",
-                                jobseeker: "My Resume File"
-                            };
+                            const label = tabLabelMap[tab] || "Unknown Tab";
 
                             return (
                                 <TouchableOpacity
@@ -156,7 +157,7 @@ const MyActivityScreen = () => {
                                     className={`px-4 py-2 rounded-full border ${isActive ? 'bg-blue-600 border-blue-600 shadow-sm' : 'bg-gray-50 border-gray-100 active:bg-gray-100'}`}
                                 >
                                     <Text className={`text-xs font-black ${isActive ? 'text-white' : 'text-gray-600'}`}>
-                                        {tabLabelMap[tab]}
+                                        {label}
                                     </Text>
                                 </TouchableOpacity>
                             );
@@ -175,48 +176,6 @@ const MyActivityScreen = () => {
                             {activeTab === 'products' && (
                                 <MyProductsList
                                     products={myProducts}
-                                    onEdit={(item) => router.push({ pathname: "/post-product", params: { productData: JSON.stringify(item) } } as any)}
-                                    onDelete={handleProductDelete}
-                                />
-                            )}
-                            {activeTab === 'jobs' && (
-                                <MyJobsList
-                                    jobs={myJobs as any}
-                                    onEdit={(item) => router.push({ pathname: "/post-job", params: { jobData: JSON.stringify(item) } } as any)}
-                                    onDelete={handleJobDelete}
-                                />
-                            )}
-
-                            {activeTab === 'services' && (
-                                <MyServicesList
-                                    services={myServices}
-                                    onEdit={(item) => router.push({ pathname: "/post-service", params: { serviceProviderData: JSON.stringify(item) } } as any)}
-                                    onDelete={handleServiceDelete}
-                                />
-                            )}
-
-                            {activeTab === 'jobseeker' && (
-                                <MyJobSeekerProfileList
-                                    profiles={myJobSeekerProfiles}
-                                    onEdit={(item) => router.push({ pathname: "/look-for-job", params: { seekJobData: JSON.stringify(item) } } as any)}
-                                    onDelete={handleJobSeekerDelete}
-                                />
-                            )}
-                        </>
-                    )}
-                </View>
-                {/* Tab View Container List Router Switch Mapping */}
-                <View className="flex-1 p-4">
-                    {isLoadingMaster ? (
-                        <View className="flex-1 justify-center items-center py-20">
-                            <ActivityIndicator color="#2563EB" size="large" />
-                        </View>
-                    ) : (
-                                               <>
-                            {activeTab === 'products' && (
-                                <MyProductsList
-                                    products={myProducts}
-                                    // Maps editing parameters directly to the serialized product page structure
                                     onEdit={(item) => router.push({
                                         pathname: "/post-product" as any,
                                         params: { productData: JSON.stringify(item) }
@@ -227,7 +186,6 @@ const MyActivityScreen = () => {
                             {activeTab === 'jobs' && (
                                 <MyJobsList
                                     jobs={myJobs as any}
-                                    // Maps editing parameters directly to the serialized vacancy creation structure
                                     onEdit={(item) => router.push({
                                         pathname: "/post-job" as any,
                                         params: { jobData: JSON.stringify(item) }
@@ -238,7 +196,6 @@ const MyActivityScreen = () => {
                             {activeTab === 'services' && (
                                 <MyServicesList
                                     services={myServices}
-                                    // Maps editing parameters directly to the serialized service provider structure
                                     onEdit={(item) => router.push({
                                         pathname: "/post-service" as any,
                                         params: { serviceProviderData: JSON.stringify(item) }
@@ -249,7 +206,6 @@ const MyActivityScreen = () => {
                             {activeTab === 'jobseeker' && (
                                 <MyJobSeekerProfileList
                                     profiles={myJobSeekerProfiles}
-                                    // Maps editing parameters directly to the serialized candidate profile structure
                                     onEdit={(item) => router.push({
                                         pathname: "/look-for-job" as any,
                                         params: { seekJobData: JSON.stringify(item) }

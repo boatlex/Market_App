@@ -25,7 +25,7 @@ const Menu_Items: MenuItem[] = [
   { id: 8, icon: "document-text-outline", title: "My Applications", color: "#3B82F6", action: "/(profile)/my-job-applications" as Href },
 ]
 
- const SplashImage = 'https://unsplash.com';
+const SplashImage = 'https://unsplash.com';
 
 export default function ProfileScreen() {
   const { user } = useAuth();
@@ -89,7 +89,11 @@ export default function ProfileScreen() {
         <View className="px-4 py-6">
           <Text className="text-lg font-bold text-gray-800 mb-3">My Marketplace</Text>
           <View className="flex-row gap-3">
-            <TouchableOpacity className="flex-1 bg-white p-4 rounded-2xl shadow-sm items-center">
+            <TouchableOpacity className="flex-1 bg-white p-4 rounded-2xl shadow-sm items-center"
+              onPress={() => router.push('/my-activity' as any)}
+              activeOpacity={0.7}
+            >
+
               <Ionicons name="shirt" size={28} color="#1DB954" />
               <Text className="font-semibold text-black mt-1">My Listings</Text>
               <Text className="text-gray-400 text-xs">(12 Active)</Text>
