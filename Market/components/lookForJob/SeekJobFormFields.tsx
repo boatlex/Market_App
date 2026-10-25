@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image, Switch } from 'react-native';
+import { View, Text, TouchableOpacity, Image, Switch } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FormInput } from '../FormInput';
 import { FormDropdown } from '../FormDropdown';
@@ -26,7 +26,7 @@ interface SeekJobFormFieldsProps {
         district: string;
         location: string;
         phoneNumber: string;
-        workMode: "On-site" | "Remote" | "Hybrid"; 
+        workMode: "On-site" | "Remote" | "Hybrid";
     };
     handleInputChange: (field: string, value: string | boolean) => void;
     images: any[];
@@ -34,12 +34,9 @@ interface SeekJobFormFieldsProps {
     pickImages: () => Promise<void>;
     takePhoto: () => Promise<void>;
     removeImage: (index: number) => void;
-    
-    // 🌟 FIXED: Swapped 'any[]' out to use your strict structural interface definitions
     educationList: EducationItem[];
     setEducationList: React.Dispatch<React.SetStateAction<EducationItem[]>>;
     openEducationModal: () => void;
-
     openRegionPicker: () => void;
     openDistrictPicker: () => void;
     openCategoryPicker: () => void;
@@ -60,9 +57,7 @@ export const SeekJobFormFields = ({
     openEducationModal,
     openRegionPicker,
     openDistrictPicker,
-    openCategoryPicker,
     openWorkModePicker,
-    openJobTypePicker
 }: SeekJobFormFieldsProps) => {
 
     const handleRemoveEducation = (indexToRemove: number) => {
@@ -70,15 +65,11 @@ export const SeekJobFormFields = ({
     };
 
     return (
-        <ScrollView
-            className="flex-1 px-6 pt-4"
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-        >
+        <View className="flex-1 pt-2">
             {/* 1. Profile Picture Management Canvas Segment */}
-            <Text className="text-gray-700 text-sm font-bold mb-2">Profile Avatar / Avatar Banner</Text>
+            <Text className="text-gray-700 text-sm font-bold mb-2">Profile Avatar / Portrait Photo</Text>
             <View className="mb-5 flex-row items-center gap-4">
-                {images.length > 0 ? (
+                {images && images.length > 0 && images[0]?.uri ? (
                     <View className="relative w-24 h-24 rounded-2xl overflow-hidden border border-gray-200">
                         <Image source={{ uri: images[0].uri }} className="w-full h-full" />
                         <TouchableOpacity
@@ -132,7 +123,7 @@ export const SeekJobFormFields = ({
                 value={formData.skillsString}
                 onChangeText={(val) => handleInputChange("skillsString", val)}
             />
-            
+
             {/* 3. Phone Number */}
             <FormInput
                 label="Phone Number (Optional)"
@@ -140,12 +131,11 @@ export const SeekJobFormFields = ({
                 keyboardType="number-pad"
                 value={formData.phoneNumber}
                 maxLength={10}
-                // 🌟 FIXED: Aligned type safety parameters inside the inline text modifier function block
                 onChangeText={(text) => {
                     const cleanedText = text.replace(/[^0-9]/g, "");
-                    setFormData((prev: SeekJobFormFieldsProps['formData']) => ({ 
-                        ...prev, 
-                        phoneNumber: cleanedText 
+                    setFormData((prev: SeekJobFormFieldsProps['formData']) => ({
+                        ...prev,
+                        phoneNumber: cleanedText
                     }));
                 }}
             />
@@ -163,7 +153,7 @@ export const SeekJobFormFields = ({
                 </View>
                 <View className="w-[100px] mb-4">
                     <Text className="text-gray-700 text-sm font-bold mb-1.5">Currency</Text>
-                    <View className="w-full border border-gray-200 rounded-xl py-3.5 bg-gray-100 text-gray-500 items-center justify-center">
+                    <View className="w-full border border-gray-200 rounded-xl py-3.5 bg-gray-100 items-center justify-center">
                         <Text className="text-base font-bold text-gray-700">{formData.expectedSalaryCurrency}</Text>
                     </View>
                 </View>
@@ -192,56 +182,82 @@ export const SeekJobFormFields = ({
             />
 
             {/* 6. Interactive Education Timeline Entry List Block */}
-            <View className="mb-12 mt-2">
+            <View className="mb-6 mt-2">
                 <View className="flex-row justify-between items-center mb-3">
                     <Text className="text-gray-700 text-sm font-bold">Education History</Text>
                     <TouchableOpacity
                         onPress={openEducationModal}
-                        className="flex-row items-center gap-1 bg-gray-100 px-3 py-1.5 rounded-lg"
+                        className="flex-row items-center bg-blue-50 px-3 py-1.5 rounded-lg active:bg-blue-100"
                     >
-                        <Ionicons name="add-circle-outline" size={16} color="#2563EB" />
-                        <Text className="text-blue-600 text-xs font-bold">Add New</Text>
+                        <Ionicons name="add" size={16} color="#2563EB" />
+                        <Text className="text-blue-600 font-extrabold text-xs ml-0.5">Add School</Text>
                     </TouchableOpacity>
                 </View>
 
                 {educationList.length === 0 ? (
-                    <View className="p-4 bg-gray-50 rounded-xl border border-gray-100 items-center">
-                        <Text className="text-gray-400 text-xs font-medium">No education details added yet.</Text>
+                    <View className="border border-dashed border-gray-200 rounded-xl p-4 items-center justify-center bg-gray-50/30">
+                        <Text className="text-gray-400 font-medium text-xs">No education details appended yet.</Text>
                     </View>
                 ) : (
-                    <View className="gap-2">
-                        {/* Continuing exactly from the educationList mapping loop */}
-                        {educationList.map((edu: EducationItem, idx: number) => (
-                            <View key={idx} className="p-3 bg-gray-50/80 rounded-xl border border-gray-100 flex-row justify-between items-center">
-                                <View className="flex-1 pr-2">
-                                    <Text className="text-gray-900 font-bold text-sm" numberOfLines={1}>{edu.schoolName}</Text>
-                                    <Text className="text-gray-500 text-xs mt-0.5" numberOfLines={1}>{edu.degree} {edu.fieldOfStudy ? `in ${edu.fieldOfStudy}` : ''}</Text>
+                    educationList.map((item, index) => {
+                        const start = item.startDate ? new Date(item.startDate).getFullYear() : '';
+                        const end = item.isCurrentEducation ? 'Present' : (item.endDate ? new Date(item.endDate).getFullYear() : '');
+
+                        return (
+                            <View key={index} className="flex-row items-center bg-white border border-gray-100 p-3.5 rounded-xl justify-between mb-2 shadow-sm">
+                                <View className="flex-row items-start flex-1 mr-3">
+                                    <View className="p-2 bg-gray-50 border border-gray-100 rounded-lg mt-0.5">
+                                        <Ionicons name="school-outline" size={16} color="#4B5563" />
+                                    </View>
+                                    <View className="ml-3 flex-1">
+                                        <Text className="text-gray-950 text-xs font-black" numberOfLines={1}>
+                                            {item.schoolName}
+                                        </Text>
+                                        <Text className="text-gray-500 font-medium text-[11px] mt-0.5" numberOfLines={1}>
+                                            {item.degree} • {item.fieldOfStudy || 'General'}
+                                        </Text>
+                                        <Text className="text-[10px] text-gray-400 font-bold uppercase mt-1 tracking-wider">
+                                            {start} - {end}
+                                        </Text>
+                                    </View>
                                 </View>
-                                <TouchableOpacity onPress={() => handleRemoveEducation(idx)} className="p-1">
-                                    <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                                <TouchableOpacity
+                                    onPress={() => handleRemoveEducation(index)}
+                                    className="p-1.5 bg-rose-50 border border-rose-100 rounded-full active:bg-rose-100"
+                                >
+                                    <Ionicons name="trash-outline" size={14} color="#E11D48" />
                                 </TouchableOpacity>
                             </View>
-                        ))}
-                    </View>
+                        );
+                    })
                 )}
             </View>
 
-            {/* 7. Toggle Switch for Active Job Hunting Status */}
-            <View className="mb-14 p-4 bg-gray-50 rounded-2xl border border-gray-100 flex-row justify-between items-center">
-                <View className="flex-1 pr-4">
-                    <Text className="text-gray-900 font-bold text-sm mb-0.5">Visible to Recruiters</Text>
-                    <Text className="text-gray-500 text-xs leading-normal">
-                        Turn this on to appear in candidate pool searches across the platform.
+            {/* 7. Active Job Seeking Visibility Switch Toggle */}
+            <View className="flex-row justify-between items-center bg-gray-50 border border-gray-100 p-4 rounded-2xl mb-12">
+                <View className="flex-1 mr-4">
+                    <Text className="text-gray-900 font-black text-sm mb-0.5">Visible to Employers</Text>
+                    <Text className="text-gray-400 font-semibold text-[11px] leading-normal">
+                        When enabled, your profile card flows instantly into the public Ghana candidate pool stream.
                     </Text>
                 </View>
                 <Switch
-                    trackColor={{ false: "#E5E7EB", true: "#93C5FD" }}
-                    thumbColor={formData.isSearchingForJob ? "#2563EB" : "#F3F4F6"}
+                    trackColor={{ false: '#E5E7EB', true: '#BFDBFE' }}
+                    // Strict string-to-boolean runtime casting maps prevent Native state toggle locks
+                    thumbColor={
+                        formData.isSearchingForJob === true || String(formData.isSearchingForJob) === 'true'
+                            ? '#2563EB'
+                            : '#9CA3AF'
+                    }
                     ios_backgroundColor="#E5E7EB"
-                    value={formData.isSearchingForJob}
-                    onValueChange={(text) => handleInputChange("isSearchingForJob", text)}
+                    onValueChange={(val) => {
+                        handleInputChange("isSearchingForJob", Boolean(val));
+                    }}
+                    value={formData.isSearchingForJob === true || String(formData.isSearchingForJob) === 'true'}
                 />
             </View>
-        </ScrollView>
+        </View>
     );
 };
+
+export default SeekJobFormFields;

@@ -25,6 +25,8 @@ const SeekJobDetailsScreen = () => {
   const userId = user?.id
   const owner = userId === (Array.isArray(jobSeekerId) ? jobSeekerId[0] : jobSeekerId);
 
+  //const owner = undefined
+
   const handleCallSeller = () => {
     if (!user) {
       Alert.alert(
@@ -196,7 +198,7 @@ const SeekJobDetailsScreen = () => {
 
       {/* Floating Action Call Button Footer */}
       {!owner && (
-        <View className="absolute bottom-6 left-6 right-6">
+        <View className="absolute bottom-6 left-6 right-6 pb-10">
           <TouchableOpacity
             className="bg-green-600 h-14 rounded-2xl flex-row items-center justify-center gap-2 shadow-lg"
             activeOpacity={0.8}

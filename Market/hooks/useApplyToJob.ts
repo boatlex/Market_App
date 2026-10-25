@@ -18,7 +18,6 @@ export const useApplyToJob = () => {
 
     return useMutation<ApplyJobResponse, Error, ApplyJobVariables>({   
         mutationFn: async ({ jobId, coverLetter }) => {
-            console.log("Submitting job application setup payload details:", "JobId:", jobId, "Coverletter:", coverLetter);
             
             const response = await api.post<ApplyJobResponse>(`/applications/job/${jobId}/apply`, {
                 coverLetter

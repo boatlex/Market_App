@@ -24,7 +24,7 @@ const JobDetailsScreen = () => {
   const [isZoomVisible, setIsZoomVisible] = useState(false)
 
   const owner = user?.id === (Array.isArray(employerId) ? employerId[0] : employerId);
-  //const owner = user?.id === undefined
+ // const owner = user?.id === undefined
 
 
   const handleCallEmployer = () => {

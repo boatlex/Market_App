@@ -16,6 +16,13 @@ import SafeScreen from '../SafeScreen'
 
 type WorkModeType = typeof WORK_MODE[number];
 
+interface FileAttachmentMeta {
+    uri: string;
+    type: string;
+    name: string;
+    isRemote: boolean;
+}
+
 interface SeekJobFormProps {
     showModal: boolean;
     setShowModal: (show: boolean) => void;
@@ -26,6 +33,9 @@ interface SeekJobFormProps {
     pickImages: () => Promise<void>;
     takePhoto: () => Promise<void>;
     removeImage: (index: number) => void;
+    resumeFile: FileAttachmentMeta | null;
+    pickResume: () => Promise<void>;
+    removeResume: () => void;
 }
 
 const FlatListPickerModal = ({
@@ -80,7 +90,10 @@ const SeekJobForm = ({
     setImages,
     pickImages,
     takePhoto,
-    removeImage
+    removeImage,
+    resumeFile,
+    pickResume,
+    removeResume
 }: SeekJobFormProps) => {
     const router = useRouter();
     const { mutateAsync, isPending } = useUpsertJobSeekerProfile();
@@ -169,9 +182,13 @@ const SeekJobForm = ({
         }
     };
 
-    const handleInputChange = (field: string, value: string | boolean) => {
+    const handleInputChange = (field: string, value: any) => {
         setFormData(prev => {
-            const updated = { ...prev, [field]: value };
+            let processedValue = value;
+            if (field === 'isSearchingForJob') {
+                processedValue = value === true || String(value) === 'true';
+            }
+            const updated = { ...prev, [field]: processedValue };
             if (field === "region") {
                 updated.district = "";
             }
@@ -208,6 +225,7 @@ const SeekJobForm = ({
             : [];
 
         const localImageFile = images.find(img => !img.isRemote);
+        const localResumeFile = resumeFile && !resumeFile.isRemote ? resumeFile : null;
 
         try {
             await mutateAsync({
@@ -227,185 +245,184 @@ const SeekJobForm = ({
                 workMode: formData.workMode,
                 profilePictureFile: localImageFile ? {
                     uri: localImageFile.uri,
-                    name: localImageFile.name || `profile_${Date.now()}.jpg`,
+                    name: localImageFile.name || 'avatar.jpg',
                     type: localImageFile.type || 'image/jpeg'
+                } : null,
+                resumeFile: localResumeFile ? {
+                    uri: localResumeFile.uri,
+                    name: localResumeFile.name,
+                    type: localResumeFile.type
                 } : null
             });
 
-            Alert.alert("Success", "Your profile has been saved successfully!", [
-                { text: "OK", onPress: handleCloseModal }
-            ]);
-        } catch (error: any) {
-            console.error("Profile submission hook error:", error);
-            const errMsg = error?.response?.data?.message || "Failed to update profile. Please try again.";
-            Alert.alert("Submission Error", errMsg);
+            Alert.alert("Success 🎉", "Profile information saved successfully.");
+            handleCloseModal();
+        } catch (err: any) {
+            console.error("Mutation failed:", err);
+            Alert.alert("Save Error", err.message || "Could not update your profile.");
         }
     };
 
-    const availableDistricts = formData.region
-        ? GHANA_DISTRICTS_BY_REGION[formData.region as keyof typeof GHANA_DISTRICTS_BY_REGION] || []
-        : [];
-
     return (
-        <Modal visible={showModal} animationType="slide" onRequestClose={handleCloseModal}>
+        <Modal visible={showModal} animationType="fade" onRequestClose={handleCloseModal}>
             <SafeScreen>
-                <KeyboardAvoidingView 
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-                    className="flex-1 bg-white"
-                >
-                    {/* Header Navbar Top Panel */}
-                    <View className="w-full border-b border-gray-100 px-6 py-4 flex-row justify-between items-center bg-white shadow-sm">
-                        <TouchableOpacity onPress={handleCloseModal} className="p-1">
-                            <Ionicons name="close" size={26} color="#1F2937" />
-                        </TouchableOpacity>
-                                              {/* Continuing exactly from the Navbar heading text */}
-                        <Text className="font-extrabold text-lg text-gray-900">
-                            {editingJob ? "Edit Job Ad" : "Create Job Seek Ad"}
-                        </Text>
-                        <TouchableOpacity 
-                            onPress={handleSubmit} 
-                            disabled={isPending}
-                            className="bg-blue-600 px-4 py-2 rounded-xl flex-row items-center"
-                        >
-                            {isPending ? (
-                                <ActivityIndicator size="small" color="#FFF" />
-                            ) : (
-                                <Text className="text-white font-bold text-sm">Save</Text>
-                            )}
-                        </TouchableOpacity>
-                    </View>
+                {/* Header Section */}
+                <View className="flex-row justify-between items-center px-6 py-4 border-b border-gray-100 bg-white">
+                    <Text className="text-xl font-black text-gray-900">
+                        {editingJob ? "Modify Profile" : "Setup Profile"}
+                    </Text>
+                    <TouchableOpacity onPress={handleCloseModal} className="p-2 bg-gray-50 border border-gray-100 rounded-full">
+                        <Ionicons name="close" size={20} color="#1F2937" />
+                    </TouchableOpacity>
+                </View>
 
-                    {/* Main Core Rendered Input Form Segment Fields Component */}
-                    <View className="flex-1">
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
+                    <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
+                        
+                        {/* Resume File Upload Widget Section */}
+                        <View className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm mb-6">
+                            <Text className="text-gray-950 font-black text-sm mb-1.5">Resume Attachment Document</Text>
+                            <Text className="text-gray-400 text-xs font-semibold mb-4 leading-relaxed">
+                                Upload a PDF copy of your CV so employers in Ghana can review your application directly.
+                            </Text>
+
+                            {resumeFile ? (
+                                <View className="flex-row items-center bg-gray-50 border border-gray-100 p-3 rounded-xl justify-between">
+                                    <View className="flex-row items-center flex-1 mr-3">
+                                        <Ionicons name="document-text" size={24} color="#2563EB" />
+                                        <View className="ml-2.5 flex-1">
+                                            <Text className="text-gray-800 text-xs font-bold" numberOfLines={1}>
+                                                {resumeFile.name}
+                                            </Text>
+                                            <Text className="text-[10px] text-gray-400 font-medium uppercase tracking-wider mt-0.5">
+                                                {resumeFile.isRemote ? "Stored on Cloudinary" : "Staged Upload"}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <TouchableOpacity onPress={removeResume} className="p-1.5 bg-rose-50 rounded-full border border-rose-100 active:bg-rose-100">
+                                        <Ionicons name="trash-outline" size={16} color="#E11D48" />
+                                    </TouchableOpacity>
+                                </View>
+                            ) : (
+                                <TouchableOpacity 
+                                    onPress={pickResume}
+                                    className="border-2 border-dashed border-blue-200 bg-blue-50/20 rounded-xl py-4 flex-row items-center justify-center active:bg-blue-50"
+                                >
+                                    <Ionicons name="cloud-upload-outline" size={18} color="#2563EB" />
+                                    <Text className="text-blue-600 font-extrabold text-xs ml-2">Attach PDF Resume</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+
+                        {/* Input Fields Content Layer */}
                         <SeekJobFormFields
                             formData={formData}
-                            setFormData={setFormData}
                             handleInputChange={handleInputChange}
                             images={images}
                             pickImages={pickImages}
                             takePhoto={takePhoto}
                             removeImage={removeImage}
+                            setFormData={setFormData}
                             educationList={educationList}
                             setEducationList={setEducationList}
                             openEducationModal={() => setShowAddEducationModal(true)}
                             openRegionPicker={() => setShowRegionModal(true)}
-                            openDistrictPicker={() => {
-                                if (!formData.region) {
-                                    Alert.alert("Region Required", "Please select a region first.");
-                                    return;
-                                }
-                                setShowDistrictModal(true);
-                            }}
-                            openCategoryPicker={() => {}} 
+                            openDistrictPicker={() => setShowDistrictModal(true)}
                             openWorkModePicker={() => setShowWorkModeModal(true)}
-                            openJobTypePicker={() => {}} 
+                            openCategoryPicker={() => {}}
+                            openJobTypePicker={() => {}}
                         />
-                    </View>
+
+                        {/* Submit Button Component */}
+                        <TouchableOpacity
+                            onPress={handleSubmit}
+                            disabled={isPending}
+                            className={`w-full py-4 rounded-xl mt-6 flex-row items-center justify-center ${
+                                isPending ? 'bg-blue-400' : 'bg-blue-600 active:bg-blue-700 shadow-sm'
+                            }`}
+                        >
+                            {isPending ? (
+                                <>
+                                    <ActivityIndicator size="small" color="#ffffff" className="mr-2" />
+                                    <Text className="text-white font-extrabold text-base">Uploading to Cloudinary...</Text>
+                                </>
+                            ) : (
+                                <Text className="text-white font-extrabold text-base">Save & Sync Profile</Text>
+                            )}
+                        </TouchableOpacity>
+
+                    </ScrollView>
                 </KeyboardAvoidingView>
-            </SafeScreen>
 
-            {/* Custom Modals Selection Picker Overlays System */}
-            <FlatListPickerModal
-                visible={showWorkModeModal}
-                title="Select Work Arrangement Mode"
-                data={WORK_MODE}
-                onSelect={(val) => handleInputChange("workMode", val)}
-                onClose={() => setShowWorkModeModal(false)}
-            />
-
-            <FlatListPickerModal
-                visible={showRegionModal}
-                title="Select Preferred Location Region"
-                data={GHANA_REGIONS}
-                onSelect={(val) => handleInputChange("region", val)}
-                onClose={() => setShowRegionModal(false)}
-            />
-
-            <FlatListPickerModal
-                visible={showDistrictModal}
-                title={`Select District in ${formData.region}`}
-                data={availableDistricts}
-                onSelect={(val) => handleInputChange("district", val)}
-                onClose={() => setShowDistrictModal(false)}
-            />
-
-            {/* Sub-Timeline Modal: Add Education History Popup */}
-            <Modal visible={showAddEducationModal} animationType="slide" transparent={true}>
-                <View className="flex-1 justify-end bg-black/50">
-                    <KeyboardAvoidingView 
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        className="bg-white rounded-t-3xl max-h-[85%] p-6"
-                    >
-                        <View className="flex-row justify-between items-center mb-4 pb-2 border-b border-gray-100">
-                            <Text className="text-gray-900 font-extrabold text-lg">Add Education Info</Text>
-                            <TouchableOpacity onPress={() => setShowAddEducationModal(false)}>
-                                <Ionicons name="close" size={24} color="#4B5563" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
-                            <View className="mb-4">
-                                <FormInput
-                                    label="School / University Name *"
-                                    placeholder="e.g., University of Ghana"
-                                    value={newEducation.schoolName}
-                                    onChangeText={(val) => setNewEducation(p => ({ ...p, schoolName: val }))}
-                                />
+                {/* Independent Education popover modal containing KeyboardAvoidingView checks */}
+                <Modal visible={showAddEducationModal} animationType="slide" transparent={true}>
+                    <View className="flex-1 justify-end bg-black/50">
+                        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="bg-white rounded-t-3xl max-h-[90%] pb-8">
+                            <View className="flex-row justify-between items-center px-6 py-4 border-b border-gray-100">
+                                <Text className="text-gray-900 font-black text-base">Add Education Milestone</Text>
+                                <TouchableOpacity onPress={() => setShowAddEducationModal(false)} className="p-1.5 bg-gray-100 rounded-full">
+                                    <Ionicons name="close" size={18} color="#4B5563" />
+                                </TouchableOpacity>
                             </View>
-                            <View className="mb-4">
-                                <FormInput
-                                    label="Degree / Certification *"
-                                    placeholder="e.g., Bachelor of Science"
-                                    value={newEducation.degree}
-                                    onChangeText={(val) => setNewEducation(p => ({ ...p, degree: val }))}
-                                />
-                            </View>
-                            <View className="mb-4">
-                                <FormInput
-                                    label="Field of Study"
-                                    placeholder="e.g., Computer Science"
-                                    value={newEducation.fieldOfStudy}
-                                    onChangeText={(val) => setNewEducation(p => ({ ...p, fieldOfStudy: val }))}
-                                />
-                            </View>
-                            <View className="mb-4">
-                                <FormInput
-                                    label="Start Year / Date *"
-                                    placeholder="e.g., 2020"
-                                    value={newEducation.startDate}
-                                    onChangeText={(val) => setNewEducation(p => ({ ...p, startDate: val }))}
-                                />
-                            </View>
-                            
-                            {!newEducation.isCurrentEducation && (
-                                <View className="mb-4">
-                                    <FormInput
-                                        label="End Year / Date"
-                                        placeholder="e.g., 2024"
-                                        value={newEducation.endDate}
-                                        onChangeText={(val) => setNewEducation(p => ({ ...p, endDate: val }))}
+                            <ScrollView contentContainerStyle={{ padding: 24 }} keyboardShouldPersistTaps="handled">
+                                <FormInput label="School Name *" placeholder="e.g., Ashesi University" value={newEducation.schoolName} onChangeText={(text) => setNewEducation((p: any) => ({ ...p, schoolName: text }))} />
+                                <FormInput label="Degree / Certificate *" placeholder="e.g., Bachelor of Science" value={newEducation.degree} onChangeText={(text) => setNewEducation((p: any) => ({ ...p, degree: text }))} />
+                                <FormInput label="Field of Study" placeholder="e.g., Computer Science" value={newEducation.fieldOfStudy} onChangeText={(text) => setNewEducation((p: any) => ({ ...p, fieldOfStudy: text }))} />
+                                <FormInput label="Start Year *" placeholder="e.g., 2020" keyboardType="numeric" value={newEducation.startDate} onChangeText={(text) => setNewEducation((p: any) => ({ ...p, startDate: text }))} />
+                                
+                                {!newEducation.isCurrentEducation && (
+                                    <FormInput label="End Year" placeholder="e.g., 2024" keyboardType="numeric" value={newEducation.endDate} onChangeText={(text) => setNewEducation((p: any) => ({ ...p, endDate: text }))} />
+                                )}
+
+                                <View className="flex-row justify-between items-center bg-gray-50 border border-gray-100 p-3.5 rounded-xl mb-6 mt-2">
+                                    <View className="flex-1 mr-2">
+                                        <Text className="text-gray-900 font-black text-xs">Still Studying Here</Text>
+                                        <Text className="text-gray-400 font-semibold text-[10px]">Toggle on if you haven't graduated yet.</Text>
+                                    </View>
+                                    <Switch
+                                        trackColor={{ false: '#E5E7EB', true: '#BFDBFE' }}
+                                        thumbColor={newEducation.isCurrentEducation ? '#2563EB' : '#9CA3AF'}
+                                        value={newEducation.isCurrentEducation}
+                                        onValueChange={(val) => setNewEducation((p: any) => ({ ...p, isCurrentEducation: val, endDate: val ? "" : p.endDate }))}
                                     />
                                 </View>
-                            )}
 
-                            <View className="mb-6 flex-row items-center justify-between p-3 bg-gray-50 rounded-xl">
-                                <Text className="text-gray-800 font-bold text-sm">I am currently studying here</Text>
-                                <Switch
-                                    value={newEducation.isCurrentEducation}
-                                    onValueChange={(val) => setNewEducation(p => ({ ...p, isCurrentEducation: val, endDate: val ? "" : p.endDate }))}
-                                />
-                            </View>
+                                <TouchableOpacity
+                                    onPress={handleAddEducation}
+                                    className="w-full bg-blue-600 py-3.5 rounded-xl flex-row items-center justify-center active:bg-blue-700 shadow-sm"
+                                >
+                                    <Text className="text-white font-extrabold text-sm">Save to Timeline</Text>
+                                </TouchableOpacity>
+                            </ScrollView>
+                        </KeyboardAvoidingView>
+                    </View>
+                </Modal>
 
-                            <TouchableOpacity 
-                                onPress={handleAddEducation}
-                                className="w-full bg-blue-600 py-3.5 rounded-xl items-center justify-center shadow-sm active:bg-blue-700"
-                            >
-                                <Text className="text-white font-bold text-base">Add to Profile</Text>
-                            </TouchableOpacity>
-                        </ScrollView>
-                    </KeyboardAvoidingView>
-                </View>
-            </Modal>
+                {/* Dropdown region, district, and work mode pickers mapping parameters */}
+                <FlatListPickerModal 
+                    visible={showRegionModal} 
+                    title="Select Region" 
+                    data={GHANA_REGIONS} 
+                    onSelect={(val) => handleInputChange("region", val)} 
+                    onClose={() => setShowRegionModal(false)} 
+                />
+                
+                <FlatListPickerModal 
+                    visible={showDistrictModal} 
+                    title="Select District" 
+                    data={formData.region ? GHANA_DISTRICTS_BY_REGION[formData.region as keyof typeof GHANA_DISTRICTS_BY_REGION] || [] : []} 
+                    onSelect={(val) => handleInputChange("district", val)} 
+                    onClose={() => setShowDistrictModal(false)} 
+                />
+                
+                <FlatListPickerModal 
+                    visible={showWorkModeModal} 
+                    title="Select Work Mode" 
+                    data={WORK_MODE} 
+                    onSelect={(val) => handleInputChange("workMode", val)} 
+                    onClose={() => setShowWorkModeModal(false)} 
+                />
+            </SafeScreen>
         </Modal>
     );
 };

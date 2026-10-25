@@ -12,7 +12,7 @@ export interface ApplicationItem {
         isOpen: boolean;
     };
     // Aligned to match your Mongoose Schema status flags capitalization
-    status: 'Pending' | 'Reviewed' | 'Interviewing' | 'Hired' | 'Rejected'; 
+    status: 'Pending' | 'Reviewed' | 'Interviewing' | 'Hired' | 'Rejected'|'Shortlisted'|'Accepted'; 
     notesByEmployer?: string;
     createdAt: string;
 }

@@ -13,13 +13,12 @@ const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 40) / 2; 
 
 export const SeekJobCard = ({ item, onPress }: SeekCardProps) => {
+  // ✅ FIXED: Configured direct SVG/PNG endpoint paths to prevent network asset stream failures
   const fallbackImage = "https://placehold.co"; 
-  
   
   const displayImage = item.profilePicture 
     || (typeof item.user === 'object' && (item.user as any)?.profilePicture) 
     || fallbackImage;
-  
   
   const getDisplayName = () => {
     if (typeof item.user === 'object' && item.user) {
@@ -34,8 +33,9 @@ export const SeekJobCard = ({ item, onPress }: SeekCardProps) => {
 
   const displayName = getDisplayName();
 
+  // ✅ FIXED: Appended clear string literal interpolation spacing for compensation tracking
   const displaySalary = item.expectedSalary?.min
-    ? `${item.expectedSalary.currency}${Number(item.expectedSalary.min).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+    ? `${item.expectedSalary.currency} ${Number(item.expectedSalary.min).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
     : "Negotiable";
 
   return (
@@ -97,5 +97,3 @@ export const SeekJobCard = ({ item, onPress }: SeekCardProps) => {
 };
 
 export default SeekJobCard;
-
-

@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import SafeScreen from '../../components/SafeScreen';
 import { useGetMyApplications, ApplicationItem } from '../../hooks/useGetMyApplications';
 
-type TabStatusType = 'all' | 'pending' | 'shortlisted' | 'rejected';
+type TabStatusType = 'all' | 'Pending' | 'Shortlisted' | 'Rejected';
 
 const MyApplicationsScreen = () => {
     const router = useRouter();
@@ -17,19 +17,19 @@ const MyApplicationsScreen = () => {
     // Filter application arrays conditionally based on selected sub-tab index segment
     const filteredApplications = allApplications.filter(app => {
         if (activeTab === 'all') return true;
-        if (activeTab === 'shortlisted') return app.status === 'shortlisted' || app.status === 'accepted';
+        if (activeTab === 'Shortlisted') return app.status === 'Shortlisted' || app.status === 'Accepted';
         return app.status === activeTab;
     });
 
     // Helper mapping utility for atomic status text pill badges colors
     const getStatusStyle = (status: ApplicationItem['status']) => {
         switch (status) {
-            case 'accepted':
-            case 'shortlisted':
+            case 'Accepted':
+            case 'Shortlisted':
                 return { bg: 'bg-emerald-50 border-emerald-100', text: 'text-emerald-700', label: 'Shortlisted' };
-            case 'rejected':
+            case 'Rejected':
                 return { bg: 'bg-rose-50 border-rose-100', text: 'text-rose-700', label: 'Declined' };
-            case 'reviewed':
+            case 'Reviewed':
                 return { bg: 'bg-purple-50 border-purple-100', text: 'text-purple-700', label: 'Reviewed' };
             default:
                 return { bg: 'bg-amber-50 border-amber-100', text: 'text-amber-700', label: 'Pending' };
@@ -113,7 +113,7 @@ const MyApplicationsScreen = () => {
 
                 {/* Category Segmentation Filter Tabs Controller */}
                 <View className="flex-row bg-white border-b border-gray-100 px-4 py-2 gap-1.5">
-                    {(['all', 'pending', 'shortlisted', 'rejected'] as TabStatusType[]).map((tab) => (
+                    {(['all', 'Pending', 'Shortlisted', 'Rejected'] as TabStatusType[]).map((tab) => (
                         <TouchableOpacity
                             key={tab}
                             onPress={() => setActiveTab(tab)}

@@ -1,4 +1,4 @@
-export type ApplicationStatus = 'Pending' | 'Reviewed' | 'Interviewing' | 'Hired';
+export type ApplicationStatus = 'Pending' | 'Reviewed' | 'Interviewing' | 'Hired'|'Shortlisted'|'Accepted';
 export type WorkMode = 'On-site' | 'Remote' | 'Hybrid';
 export type NotificationType = 'call_me_back' | 'make_an_offer';
 export type ReportTargetType = 'product' | 'user' | 'comment';
@@ -209,22 +209,24 @@ export interface ServiceProviderPricing {
 
 export interface ServiceProvider {
     _id: string;
-    user: string | User;
+    user: string | User; 
     businessName: string;
-    serviceType: string;
+    category:string;
+    serviceType: string; 
     description: string;
     pricing: ServiceProviderPricing;
     phoneNumber: string;
     whatsappNumber?: string;
     region: string;
     district: string;
-    portfolioImages: string[];
+    location: string;
+    portfolioImages: string[]; 
     availabilityStatus: AvailabilityStatus;
     averageRating: number;
     totalReviews: number;
-    isVerifiedProvider: boolean;
-    createdAt: string;
-    updatedAt: string;
+    isVerifiedProvider: boolean; 
+    createdAt: string; 
+    updatedAt: string
 }
 
 export interface User {
