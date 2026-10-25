@@ -33,10 +33,11 @@ export const applyToJob = async (req, res, next) => {
         const newApplication = new Application({
             job: jobId,
             applicant: applicantId,
-            resume: userProfile.resumeUrl,
+            resume: userProfile?.resumeUrl,
             coverLetter: coverLetter ? coverLetter.trim() : undefined
         });
 
+       
 
         const savedApplication = await newApplication.save();
 

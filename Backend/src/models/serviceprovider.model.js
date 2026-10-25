@@ -3,20 +3,26 @@ import mongoose from "mongoose";
 const serviceProviderSchema = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User", 
+        ref: "User",
         required: true,
-        unique: true 
+        unique: true
     },
     businessName: {
         type: String,
         trim: true,
         required: [true, "Please add a business or trade name"]
     },
+     category: {
+        type: String,
+        required: true,
+        trim: true,
+        lowercase: true
+    },
     serviceType: {
         type: String,
         required: true,
         trim: true,
-        lowercase: true 
+        lowercase: true
     },
     description: {
         type: String,
@@ -25,23 +31,35 @@ const serviceProviderSchema = new mongoose.Schema({
     },
     pricing: {
         rate: { type: Number, required: true, min: 0 }, // The base price numerical value
-        basis: { 
-            type: String, 
-            required: true, 
-            enum: ["per hour", "per day", "fixed project", "contact for quote"] 
+        basis: {
+            type: String,
+            required: true,
+            enum: ["per hour", "per day", "fixed project", "contact for quote"]
         },
         currency: { type: String, default: "GHS", trim: true }
     },
     phoneNumber: {
         type: String,
-        required: true,
-        trim: true
+        required: [true, "Phone number is a mandatory field."],
+        trim: true,
+        validate: {
+            validator: function (v) {
+                return /^0\d{9}$/.test(v);
+            },
+            message: props => `${props.value} is not a valid 10-digit phone number!`
+        }
     },
     whatsappNumber: {
         type: String,
-        trim: true
+        trim: true,
+        validate: {
+            validator: function (v) {
+                return /^0\d{9}$/.test(v);
+            },
+            message: props => `${props.value} is not a valid 10-digit phone number!`
+        }
     },
-    
+
     region: {
         type: String,
         required: true,
@@ -52,9 +70,14 @@ const serviceProviderSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
+    location: {
+        type: String,
+        required: true,
+        trim: true
+    },
     portfolioImages: [
         {
-            type: String 
+            type: String
         }
     ],
     availabilityStatus: {
@@ -62,7 +85,7 @@ const serviceProviderSchema = new mongoose.Schema({
         default: "Available",
         enum: ["Available", "Busy", "Away"]
     },
-    
+
     averageRating: {
         type: Number,
         default: 0,

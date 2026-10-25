@@ -23,12 +23,11 @@ export const upsertJobSeekerProfile = async (req, res, next) => {
             workMode
         } = req.body;
 
-        const profileImageFile = req.file;
-
         if (!professionalHeadline) {
             return res.status(400).json({ message: "Professional headline is required." });
         }
 
+        // Sub-array parser
         const parseSubArray = (data) => {
             if (!data) return [];
             if (Array.isArray(data)) return data;
@@ -44,35 +43,13 @@ export const upsertJobSeekerProfile = async (req, res, next) => {
         const processedExperience = parseSubArray(experience);
         const processedEducation = parseSubArray(education);
 
-        const formatWorkMode = (mode) => {
+        const validatedWorkMode = ((mode) => {
             if (!mode) return "On-site";
             const normal = mode.trim().toLowerCase();
             if (normal === "remote") return "Remote";
             if (normal === "hybrid") return "Hybrid";
-            if (normal === "on-site" || normal === "onsite") return "On-site";
             return "On-site";
-        };
-
-        const validatedWorkMode = formatWorkMode(workMode);
-
-        let profilePictureUrl;
-        if (profileImageFile) {
-            try {
-                const base64Image = `data:${profileImageFile.mimetype};base64,${profileImageFile.buffer.toString('base64')}`;
-                const uploadResponse = await cloudinary.uploader.upload(base64Image, {
-                    folder: "user_profiles",
-                    resource_type: "image",
-                    transformation: [
-                        { width: 400, height: 400, crop: "thumb", gravity: "face" },
-                        { quality: "auto" }
-                    ]
-                });
-                profilePictureUrl = uploadResponse.secure_url;
-            } catch (uploadError) {
-                console.error("Cloudinary profile picture upload error:", uploadError);
-                return res.status(400).json({ message: "Failed to upload profile picture." });
-            }
-        }
+        })(workMode);
 
         const updateData = {
             professionalHeadline,
@@ -91,12 +68,47 @@ export const upsertJobSeekerProfile = async (req, res, next) => {
             workMode: validatedWorkMode
         };
 
-
         if (req.body.experience !== undefined) updateData.experience = processedExperience;
         if (req.body.education !== undefined) updateData.education = processedEducation;
 
-        if (profilePictureUrl) {
-            updateData.profilePicture = profilePictureUrl;
+        // 🛠️ MULTI-FILE CLOUDINARY ENGINE LOGIC
+        if (req.files) {
+            // 1. Process Profile Picture if present
+            if (req.files["image"] && req.files["image"][0]) {
+                const imgFile = req.files["image"][0];
+                try {
+                    const base64Image = `data:${imgFile.mimetype};base64,${imgFile.buffer.toString('base64')}`;
+                    const uploadResponse = await cloudinary.v2.uploader.upload(base64Image, {
+                        folder: "user_profiles",
+                        resource_type: "image",
+                        transformation: [
+                            { width: 400, height: 400, crop: "thumb", gravity: "face" },
+                            { quality: "auto" }
+                        ]
+                    });
+                    updateData.profilePicture = uploadResponse.secure_url;
+                } catch (uploadError) {
+                    console.error("Cloudinary image upload error:", uploadError);
+                    return res.status(400).json({ message: "Failed to upload profile picture." });
+                }
+            }
+
+            // 2. Process Resume Document PDF if present
+            if (req.files["resume"] && req.files["resume"][0]) {
+                const docFile = req.files["resume"][0];
+                try {
+                    const base64Doc = `data:${docFile.mimetype};base64,${docFile.buffer.toString('base64')}`;
+                    const uploadResponse = await cloudinary.v2.uploader.upload(base64Doc, {
+                        folder: "user_resumes",
+                        resource_type: "raw", // 👈 Crucial for raw PDF document file assets
+                        flags: "attachment"
+                    });
+                    updateData.resumeUrl = uploadResponse.secure_url;
+                } catch (uploadError) {
+                    console.error("Cloudinary resume upload error:", uploadError);
+                    return res.status(400).json({ message: "Failed to upload resume file document." });
+                }
+            }
         }
 
         const profile = await JobSeekerProfile.findOneAndUpdate(
@@ -105,7 +117,6 @@ export const upsertJobSeekerProfile = async (req, res, next) => {
                 $setOnInsert: { user: userId },
                 $set: updateData
             },
-            
             { returnDocument: "after", upsert: true, runValidators: true }
         ).populate("user", "firstName lastName profilePicture email");
 
@@ -257,5 +268,84 @@ export const getMyJobSeekingAdById = async (req, res, next) => {
         next(error);
     }
 };
+
+
+export const deleteJobSeekerProfile = async (req, res, next) => {
+    try {
+        const userId = req.user._id;
+
+    
+        const profile = await JobSeekerProfile.findOne({ user: userId });
+        
+        if (!profile) {
+            return res.status(404).json({
+                success: false,
+                message: "No active candidate profile registry row found for this account entry."
+            });
+        }
+
+        const publicIdsToDestroy = [];
+
+        const extractPublicId = (url, folderName) => {
+            try {
+                const urlSegments = url.split("/");
+                const filenameWithExtension = urlSegments[urlSegments.length - 1];
+                const publicIdWithoutExtension = filenameWithExtension.split(".")[0];
+                return `${folderName}/${publicIdWithoutExtension}`;
+            } catch (err) {
+                console.error("Failed to parse publicId from url:", url, err);
+                return null;
+            }
+        };
+
+    
+        if (profile.profilePicture && profile.profilePicture.includes("cloudinary.com")) {
+            const imgId = extractPublicId(profile.profilePicture, "user_profiles");
+            if (imgId) publicIdsToDestroy.push({ id: imgId, type: "image" });
+        }
+
+        
+        if (profile.resumeUrl && profile.resumeUrl.includes("cloudinary.com")) {
+            const docId = extractPublicId(profile.resumeUrl, "user_resumes");
+            if (docId) publicIdsToDestroy.push({ id: docId, type: "raw" });
+        }
+
+        
+        if (publicIdsToDestroy.length > 0) {
+            try {
+                await Promise.all(
+                    publicIdsToDestroy.map((asset) => 
+                        cloudinary.v2.uploader.destroy(asset.id, { resource_type: asset.type })
+                    )
+                );
+            } catch (cloudinaryError) {
+                console.error("Cloudinary storage background purge dropped:", cloudinaryError);
+            
+            }
+        }
+
+        
+        try {
+            await Job.updateMany(
+                { applications: profile._id },
+                { $pull: { applications: profile._id } }
+            );
+        } catch (relationError) {
+            console.error("Relational schema cascade cleanup error:", relationError);
+        }
+
+    
+        await JobSeekerProfile.findOneAndDelete({ user: userId });
+
+        return res.status(200).json({
+            success: true,
+            message: "Your job seeker candidate profile and associated storage assets have been permanently removed."
+        });
+
+    } catch (error) {
+        next(error);
+    }
+};
+
 
 
