@@ -3,12 +3,11 @@ import cloudinary from "cloudinary";
 
 
 
-
-
 export const upsertServiceProviderProfile = async (req, res, next) => {
     try {
         const userId = req.user._id;
         const {
+            serviceId, 
             businessName,
             category,      
             serviceType,
@@ -24,20 +23,19 @@ export const upsertServiceProviderProfile = async (req, res, next) => {
             availabilityStatus
         } = req.body;
 
-        if (!businessName || !category || !serviceType || !description || !rate || !basis || !region || !district || !location || !phoneNumber) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Please fill in all mandatory provider fields." 
-            });
+        const isRateRequiredButMissing = basis !== 'contact for quote' && !rate;
+        if (!businessName || !category || !serviceType || !description || isRateRequiredButMissing || !basis || !region || !district || !location || !phoneNumber) {
+            return res.status(400).json({ success: false, message: "Please fill in all mandatory provider fields." });
         }
 
         const updateData = {
+            user: userId, 
             businessName,
             category: category.trim().toLowerCase(),         
             serviceType: serviceType.trim().toLowerCase(), 
             description,
             pricing: {
-                rate: Number(rate) || 0,
+                rate: basis === 'contact for quote' ? 0 : (Number(rate) || 0),
                 basis,
                 currency: currency || "GHS"
             },
@@ -49,42 +47,38 @@ export const upsertServiceProviderProfile = async (req, res, next) => {
             availabilityStatus: availabilityStatus || "Available"
         };
 
+        const updatePayload = { $set: updateData };
+
         if (req.files && req.files.length > 0) {
             try {
                 const uploadPromises = req.files.map(async (file) => {
                     const base64File = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
                     const uploadResponse = await cloudinary.v2.uploader.upload(base64File, {
-                        folder: "service_providers_portfolio",
-                        resource_type: "image",
-                        transformation: [{ width: 800, quality: "auto" }]
+                        folder: "service_providers_portfolio"
                     });
                     return uploadResponse.secure_url;
                 });
-
                 const uploadedUrls = await Promise.all(uploadPromises);
-                
-                // Securely append multi-file uploads directly to the document array
-                updateData.$push = { portfolioImages: { $each: uploadedUrls } };
+                updatePayload.$push = { portfolioImages: { $each: uploadedUrls } };
             } catch (uploadError) {
-                console.error("Cloudinary portfolio upload error:", uploadError);
                 return res.status(400).json({ success: false, message: "Failed to upload portfolio pictures." });
             }
         }
 
-        
-        const updatePayload = updateData.$push 
-            ? { $set: { ...updateData, $push: undefined }, $push: updateData.$push }
-            : { $set: updateData };
+        // 🔑 2. CONDITION CHECK SWITCHER: 
+        // If serviceId exists, query and update that specific document instance.
+        // If serviceId is empty, generate a completely fresh listing copy instead of overwriting!
+        const queryTarget = serviceId ? { _id: serviceId, user: userId } : { _id: new mongoose.Types.ObjectId() };
 
         const providerProfile = await ServiceProvider.findOneAndUpdate(
-            { user: userId },
+            queryTarget,
             updatePayload,
             { returnDocument: "after", upsert: true, runValidators: true }
         ).populate("user", "firstName lastName profilePicture email");
 
         return res.status(200).json({
             success: true,
-            message: "Service Provider profile synchronized successfully!",
+            message: serviceId ? "Profile updated successfully!" : "New service posted successfully!",
             profile: providerProfile
         });
 
@@ -158,32 +152,24 @@ export const searchServiceProviders = async (req, res, next) => {
     }
 };
 
-
 export const getMyProviderProfile = async (req, res, next) => {
     try {
         const userId = req.user._id;
 
-        const profile = await ServiceProvider.findOne({ user: userId })
-            .populate("user", "firstName lastName email profilePicture");
-
-        if (!profile) {
-            return res.status(200).json({
-                message: "No provider registry row mapped.",
-                isNewProvider: true,
-                profile: null
-            });
-        }
+        const services = await ServiceProvider.find({ user: userId })
+            .populate("user", "firstName lastName profilePicture email")
+            .sort({ createdAt: -1 }); 
 
         return res.status(200).json({
             success: true,
-            isNewProvider: false,
-            profile
+            data: services 
         });
 
     } catch (error) {
         next(error);
     }
 };
+
 
 
 export const getServiceProviderById = async (req, res, next) => {
