@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, FlatList, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { Job } from '../../types';
+import { Job } from '../../types'
 
 interface MyJobsListProps {
   jobs: Job[];

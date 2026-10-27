@@ -9,6 +9,7 @@ export interface FormDataFile {
 }
 
 export interface UpsertServiceProviderVariables {
+    serviceId?: string; // 🔑 1. Added optional identifier payload parameter
     businessName: string;
     category: string; 
     serviceType: string; 
@@ -38,6 +39,11 @@ export const useUpsertServiceProvider = () => {
         mutationFn: async (variables) => {
             const formData = new FormData();
 
+            
+            if (variables.serviceId) {
+                formData.append("serviceId", variables.serviceId);
+            }
+
             // Text primitives structural mappings
             formData.append("businessName", variables.businessName);
             formData.append("category", variables.category); 
@@ -61,24 +67,17 @@ export const useUpsertServiceProvider = () => {
                 });
             }
 
-            const response = await api.put<UpsertServiceProviderResponse>(
-                "/serviceproviders/profile", 
-                formData, 
-                {
-                    headers: {
-                        "Content-Type": "multipart/form-data",
-                    },
-                }
-            );
+            // 🔑 3. DYNAMIC VERB SWITCHER:
+            // Use PUT if modifying a specific serviceId, fall back to POST to create a clean additional listing
+            const requestUrl = "/serviceproviders/profile";
+            const response = variables.serviceId
+                ? await api.put<UpsertServiceProviderResponse>(requestUrl, formData, { headers: { "Content-Type": "multipart/form-data" } })
+                : await api.post<UpsertServiceProviderResponse>(requestUrl, formData, { headers: { "Content-Type": "multipart/form-data" } });
 
             return response.data;
         },
-        onSuccess: (data) => {
-            queryClient.setQueryData(["my-provider-profile"], { 
-                success: true, 
-                isNewProvider: false, 
-                profile: data.profile 
-            });
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: ["my-provider-profile"] });
             queryClient.invalidateQueries({ queryKey: ["search-service-providers"] });
         },
     });

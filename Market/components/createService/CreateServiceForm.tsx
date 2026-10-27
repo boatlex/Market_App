@@ -2,19 +2,16 @@ import { View, Modal, KeyboardAvoidingView, Platform, Alert, Text, TouchableOpac
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'expo-router'
 import { useUpsertServiceProvider } from '../../hooks/useUpsertServiceProvider'
-import { CreateServiceFormFields } from '../createService/CreateServiceFormFields'
+import {CreateServiceFormFields} from '../createService/CreateServiceFormFields'
 import { Ionicons } from '@expo/vector-icons'
 
 import {
     GHANA_DISTRICTS_BY_REGION,
     GHANA_REGIONS, 
-    JOB_CATEGORIES,
-    WORK_MODE, 
-    JOB_TYPES
+    JOB_CATEGORIES
 } from '../../constants/createJobs'
 import SafeScreen from '../SafeScreen'
-
-type WorkModeType = typeof WORK_MODE[number];
+import { ServiceProvider, PricingBasis, AvailabilityStatus } from '../../types'
 
 export interface SelectedFileMeta {
     uri: string;
@@ -23,7 +20,7 @@ export interface SelectedFileMeta {
     isRemote: boolean;
 }
 
-interface CreateJobFormProps {
+interface CreateServiceFormProps {
     showModal: boolean;
     setShowModal: (show: boolean) => void;
     editingService: any | null;
@@ -45,63 +42,57 @@ const CreateServiceForm = ({
     pickImages,
     takePhoto,
     removePortfolioImage
-}: CreateJobFormProps) => {
+}: CreateServiceFormProps) => {
     const isEditing = !!editingService;
     const router = useRouter();
 
-    // ✅ FIXED: Destructured the correct native mutation triggers from useUpsertServiceProvider
     const { mutateAsync, isPending } = useUpsertServiceProvider();
 
     // Modal open/close visibility states
     const [showRegionModal, setShowRegionModal] = useState(false);
     const [showDistrictModal, setShowDistrictModal] = useState(false);
     const [showCategoryModal, setShowCategoryModal] = useState(false);
-    const [showWorkModeModal, setShowWorkModeModal] = useState(false);
-    const [showJobTypeModal, setShowJobTypeModal] = useState(false);
+    const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
+    const [showBasisModal, setShowBasisModal] = useState(false); 
+    const [validationErrors, setValidationErrors] = useState<string[]>([])
 
-    // Form inputs state tracker
+    // Form state structure matching your clean schema types model
     const [formData, setFormData] = useState({
         businessName: "",
-        serviceType: "",
-        description: "",
         category: "",
-        jobType: "", 
-        workMode: "On-site" as WorkModeType,
-        currency: "GHS",
-        salaryMin: "",
-        salaryMax: "",
-        salaryPeriod: "monthly",
+        serviceType: "", 
+        description: "",
+        pricing: {
+            rate: 0,
+            basis: 'per hour' as PricingBasis,
+            currency: 'GHS'
+        },
         phoneNumber: "",
-        emailForApplications: "",
+        whatsappNumber: "",
         region: "",
         district: "",
         location: "",
-        requirements: "", 
-        benefits: "",     
-        applicationDeadline: ""
+        availabilityStatus: 'Available' as AvailabilityStatus
     });
 
     useEffect(() => {
         if (editingService) {
             setFormData({
                 businessName: editingService.businessName || "",
+                category: editingService.category || "",
                 serviceType: editingService.serviceType || "",
                 description: editingService.description || "",
-                category: editingService.category || "",
-                jobType: editingService.jobType || "",
-                workMode: editingService.workMode || "On-site",
-                currency: editingService.pricing?.currency || "GHS",
-                salaryMin: editingService.pricing?.rate ? String(editingService.pricing.rate) : "",
-                salaryMax: "",
-                salaryPeriod: editingService.pricing?.basis || "per hour",
+                pricing: {
+                    rate: editingService.pricing?.rate ? Number(editingService.pricing.rate) : 0,
+                    basis: (editingService.pricing?.basis || "per hour") as PricingBasis,
+                    currency: editingService.pricing?.currency || "GHS"
+                },
                 phoneNumber: editingService.phoneNumber || "",
-                emailForApplications: "",
+                whatsappNumber: editingService.whatsappNumber || "",
                 region: editingService.region || "",
                 district: editingService.district || "",
                 location: editingService.location || "",
-                requirements: "",
-                benefits: "",
-                applicationDeadline: ""
+                availabilityStatus: (editingService.availabilityStatus || "Available") as AvailabilityStatus
             });
             
             setPortfolioImages(editingService.portfolioImages ? editingService.portfolioImages.map((url: string, i: number) => ({
@@ -115,41 +106,37 @@ const CreateServiceForm = ({
     const resetForm = () => {
         setFormData({
             businessName: "",
+            category: "",
             serviceType: "",
             description: "",
-            category: "",
-            jobType: "",
-            workMode: "On-site",
-            currency: "GHS",
-            salaryMin: "",
-            salaryMax: "",
-            salaryPeriod: "monthly",
+            pricing: {
+                rate: 0,
+                basis: 'per hour',
+                currency: 'GHS'
+            },
             phoneNumber: "",
-            emailForApplications: "",
+            whatsappNumber: "",
             region: "",
             district: "",
             location: "",
-            requirements: "",
-            benefits: "",
-            applicationDeadline: ""
+            availabilityStatus: 'Available'
         });
         setPortfolioImages([]);
-        setShowDistrictModal(false);
+        setValidationErrors([]);
     };
 
     const handleCloseModal = () => {
         setShowModal(false);
         setEditingService(null);
         resetForm();
-
         if (router.canGoBack()) {
             router.back();
         } else {
-            router.replace('/my-jobs' as any); 
+            router.replace('/my-activity' as any); 
         }
     };
 
-    const handleInputChange = (field: string, value: string) => {
+    const handleInputChange = (field: string, value: any) => {
         setFormData(prev => {
             const updated = { ...prev, [field]: value };
             if (field === "region") {
@@ -159,59 +146,75 @@ const CreateServiceForm = ({
         });
     };
 
-    const handleSubmit = async () => {
-        // Enforce required fields validation check before uploading assets
-        if (
-            !formData.businessName || 
-            !formData.serviceType || 
-            !formData.description || 
-            !formData.category || 
-            !formData.region || 
-            !formData.district || 
-            !formData.location ||
-            !formData.phoneNumber
-        ) {
-            Alert.alert("Missing Information", "Please fill out all mandatory fields tagged with an asterisk.");
-            return;
-        }
 
-        const localPicks = portfolioImages.filter(img => !img.isRemote);
 
-        try {
-            // ✅ FIXED: Remapped final fields payload to match UpsertServiceProviderVariables expectations
-            await mutateAsync({
-                businessName: formData.businessName,
-                category: formData.category,
-                serviceType: formData.serviceType,
-                description: formData.description,
-                rate: Number(formData.salaryMin) || 0,
-                basis: formData.salaryPeriod as any,
-                currency: formData.currency,
-                phoneNumber: formData.phoneNumber,
-                region: formData.region,
-                district: formData.district,
-                location: formData.location,
-                availabilityStatus: "Available",
-                portfolioImageFiles: localPicks.length > 0 ? localPicks.map(img => ({
-                    uri: img.uri,
-                    name: img.name || 'upload.jpg',
-                    type: img.type || 'image/jpeg'
-                })) : null
-            });
+const handleSubmit = async () => {
 
-            Alert.alert("Success 🎉", "Service provider profile saved and synchronized successfully.");
-            setShowModal(false);
-            setEditingService(null);
-            resetForm();
-            router.replace('/my-jobs' as any);
+    const activeErrors: string[] = [];
+    
+    // Check individual model properties sequentially
+    if (!formData.businessName) activeErrors.push('businessName');
+    if (!formData.serviceType) activeErrors.push('serviceType');
+    if (!formData.description) activeErrors.push('description');
+    if (!formData.region) activeErrors.push('region');
+    if (!formData.district) activeErrors.push('district');
+    if (!formData.location) activeErrors.push('location');
+    if (!formData.phoneNumber) activeErrors.push('phoneNumber');
+    
+    if (formData.pricing.basis !== 'contact for quote' && !formData.pricing.rate) {
+        activeErrors.push('rate');
+    }
 
-        } catch (error: any) {
-            console.error("Failed to submit profile listing:", error);
-            Alert.alert("Submission Error", error.message || "Could not complete your request at this time.");
-        }
-    };
+    // Save identified errors down to state to trigger red layouts
+    setValidationErrors(activeErrors);
 
-    // Reusable FlatList Picker Modal Component
+    if (activeErrors.length > 0) {
+        Alert.alert("Missing Information", "Please correct the highlighted fields before submitting.");
+        return;
+    }
+
+    const localPicks = portfolioImages.filter(img => !img.isRemote);
+
+    try {
+        await mutateAsync({
+            serviceId: editingService?._id || undefined,
+            businessName: formData.businessName,
+            category: formData.category || "Services", 
+            serviceType: formData.serviceType,
+            description: formData.description,
+            rate: Number(formData.pricing.rate) || 0,
+            basis: formData.pricing.basis as any,
+            currency: formData.pricing.currency,
+            phoneNumber: formData.phoneNumber,
+            whatsappNumber: formData.whatsappNumber || undefined,
+            region: formData.region,
+            district: formData.district,
+            location: formData.location,
+            availabilityStatus: formData.availabilityStatus,
+            portfolioImageFiles: localPicks.length > 0 ? localPicks.map(img => ({
+                uri: img.uri,
+                name: img.name || 'upload.jpg',
+                type: img.type || 'image/jpeg'
+            })) : null
+        } as any);
+
+        Alert.alert("Success 🎉", "Service provider profile saved successfully.");
+        setShowModal(false);
+        setEditingService(null);
+        resetForm();
+        setValidationErrors([]); // Clear errors array
+        router.replace('/my-activity' as any);
+
+    } catch (error: any) {
+        console.error("Failed to submit profile listing:", error);
+        Alert.alert("Submission Error", error.message || "Could not complete your request at this time.");
+    }
+};
+
+
+
+
+
     const FlatListPickerModal = ({ 
         visible, 
         title, 
@@ -229,26 +232,22 @@ const CreateServiceForm = ({
             <View className="flex-1 justify-end bg-black/50">
                 <View className="bg-white rounded-t-3xl max-h-[80%] pb-6">
                     <View className="flex-row justify-between items-center px-6 py-4 border-b border-gray-100">
-                        <Text className="text-gray-900 font-black text-base">{title}</Text>
+                        <Text className="text-gray-950 font-black text-base">{title}</Text>
                         <TouchableOpacity onPress={onClose} className="p-1 bg-gray-100 rounded-full">
-                            <Ionicons name="close" size={18} color="#4B5563" />
+                            <Ionicons name="close" size={20} color="#1F2937" />
                         </TouchableOpacity>
                     </View>
                     <FlatList
-                        data={data as string[]}
+                        data={data}
                         keyExtractor={(item) => item}
                         renderItem={({ item }) => (
-                            <TouchableOpacity
-                                className="px-6 py-4 border-b border-gray-50 active:bg-blue-50"
-                                onPress={() => {
-                                    onSelect(item);
-                                    onClose();
-                                }}
+                            <TouchableOpacity 
+                                onPress={() => { onSelect(item); onClose(); }}
+                                className="px-6 py-4 border-b border-gray-50 active:bg-gray-50"
                             >
-                                <Text className="text-gray-800 font-semibold text-sm">{item}</Text>
+                                <Text className="text-gray-700 font-semibold text-sm">{item}</Text>
                             </TouchableOpacity>
                         )}
-                        showsVerticalScrollIndicator={false}
                     />
                 </View>
             </View>
@@ -258,67 +257,116 @@ const CreateServiceForm = ({
     return (
         <Modal visible={showModal} animationType="fade" onRequestClose={handleCloseModal}>
             <SafeScreen>
-                               {/* Header Action Banner */}
-                <View className="flex-row justify-between items-center px-6 py-4 border-b border-gray-100 bg-white">
-                    <Text className="text-xl font-black text-gray-900">
-                        {isEditing ? "Modify Business Profile" : "Register Trade Service"}
-                    </Text>
-                    <TouchableOpacity onPress={handleCloseModal} className="p-2 bg-gray-50 border border-gray-100 rounded-full">
-                        <Ionicons name="close" size={20} color="#1F2937" />
-                    </TouchableOpacity>
-                </View>
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-white">
+                    
+                    <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-100">
+                        <TouchableOpacity onPress={handleCloseModal} className="p-1">
+                            <Ionicons name="arrow-back" size={24} color="#111827" />
+                        </TouchableOpacity>
+                        <Text className="text-gray-950 font-black text-base">
+                            {isEditing ? 'Modify Service Profile' : 'Create Trade Listing'}
+                        </Text>
+                        <View className="w-6" /> 
+                    </View>
 
-                {/* Form Body Wrap */}
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
-                    <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 60 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                        
+                    <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
                         <CreateServiceFormFields
                             formData={formData}
                             handleInputChange={handleInputChange}
-                            images={portfolioImages} 
+                            errors={validationErrors}
+                            images={portfolioImages}
                             pickImages={pickImages}
                             takePhoto={takePhoto}
-                            removeImage={removePortfolioImage} 
+                            removeImage={removePortfolioImage}
                             openRegionPicker={() => setShowRegionModal(true)}
-                            openDistrictPicker={() => setShowDistrictModal(true)}
+                            openDistrictPicker={() => {
+                                if (!formData.region) {
+                                    Alert.alert("Region Required", "Please select a region before choosing a district.");
+                                    return;
+                                }
+                                setShowDistrictModal(true);
+                            }}
                             openCategoryPicker={() => setShowCategoryModal(true)}
-                            openWorkModePicker={() => setShowWorkModeModal(true)}
-                            openJobTypePicker={() => setShowJobTypeModal(true)}
-                            openDatePicker={() => {}} 
+                            openWorkModePicker={() => setShowAvailabilityModal(true)}
+                            openBasisPicker={() => setShowBasisModal(true)} // 🔑 Triggers separate basis modal context switcher channel
                         />
 
-                        {/* Submit Operations Button */}
+                        {/* Submit Action Pipeline Button */}
                         <TouchableOpacity
                             onPress={handleSubmit}
                             disabled={isPending}
-                            className={`w-full py-4 rounded-xl mt-6 flex-row items-center justify-center ${
-                                isPending ? 'bg-blue-400' : 'bg-blue-600 active:bg-blue-700 shadow-sm'
+                            className={`w-full py-4 rounded-2xl items-center justify-center mt-6 ${
+                                isPending ? 'bg-gray-400' : 'bg-gray-950'
                             }`}
                         >
                             {isPending ? (
-                                <>
-                                    <ActivityIndicator size="small" color="#ffffff" className="mr-2" />
-                                    <Text className="text-white font-extrabold text-base">Uploading to Cloudinary...</Text>
-                                </>
+                                <ActivityIndicator size="small" color="#FFFFFF" />
                             ) : (
-                                <Text className="text-white font-extrabold text-base">
-                                    {isEditing ? "Update Business Profile" : "Publish Service Listing"}
+                                <Text className="text-white font-black text-sm">
+                                    {isEditing ? 'Save Modifications' : 'Publish Business Profile'}
                                 </Text>
                             )}
                         </TouchableOpacity>
-
                     </ScrollView>
-                </KeyboardAvoidingView>
 
-                {/* Dropdown Selection Picker Overlays */}
-                <FlatListPickerModal visible={showRegionModal} title="Select Region" data={GHANA_REGIONS} onSelect={(val) => handleInputChange("region", val)} onClose={() => setShowRegionModal(false)} />
-                <FlatListPickerModal visible={showDistrictModal} title="Select District" data={formData.region ? GHANA_DISTRICTS_BY_REGION[formData.region as keyof typeof GHANA_DISTRICTS_BY_REGION] || [] : []} onSelect={(val) => handleInputChange("district", val)} onClose={() => setShowDistrictModal(false)} />
-                <FlatListPickerModal visible={showCategoryModal} title="Select Trade Category" data={JOB_CATEGORIES} onSelect={(val) => handleInputChange("category", val)} onClose={() => setShowCategoryModal(false)} />
-                <FlatListPickerModal visible={showWorkModeModal} title="Select Arrangement Mode" data={WORK_MODE} onSelect={(val) => handleInputChange("workMode", val)} onClose={() => setShowWorkModeModal(false)} />
-                <FlatListPickerModal visible={showJobTypeModal} title="Select Service Type" data={JOB_TYPES} onSelect={(val) => handleInputChange("jobType", val)} onClose={() => setShowJobTypeModal(false)} />
+                </KeyboardAvoidingView>
             </SafeScreen>
+
+            {/* ========================================================================= */}
+            {/* 🔑 FIXED MODEL-ALIGNED CUSTOM PICKER SHEETS CONTAINER LAYOUT ROW */}
+            {/* ========================================================================= */}
+
+            {/* 1. Region Selector Sheet */}
+            <FlatListPickerModal
+                visible={showRegionModal}
+                title="Select Region"
+                data={GHANA_REGIONS}
+                onSelect={(item) => handleInputChange("region", item)}
+                onClose={() => setShowRegionModal(false)}
+            />
+
+            {/* 2. District Selector Sheet */}
+            <FlatListPickerModal
+                visible={showDistrictModal}
+                title="Select District"
+                data={formData.region ? GHANA_DISTRICTS_BY_REGION[formData.region as keyof typeof GHANA_DISTRICTS_BY_REGION] || [] : []}
+                onSelect={(item) => handleInputChange("district", item)}
+                onClose={() => setShowDistrictModal(false)}
+            />
+
+            {/* 3. Specialty Trade/Category Picker Sheet */}
+            <FlatListPickerModal
+                visible={showCategoryModal}
+                title="Select Service Category"
+                data={JOB_CATEGORIES}
+                onSelect={(item) => {
+                    handleInputChange("serviceType", item);
+                    handleInputChange("category", "Services"); // Automatically flags core structural category fallback context
+                }}
+                onClose={() => setShowCategoryModal(false)}
+            />
+
+            {/* 4. Availability Enums Tracker Sheet */}
+            <FlatListPickerModal
+                visible={showAvailabilityModal}
+                title="Select Availability"
+                data={['Available', 'Busy', 'Away']}
+                onSelect={(item) => handleInputChange("availabilityStatus", item as AvailabilityStatus)}
+                onClose={() => setShowAvailabilityModal(false)}
+            />
+
+            {/* 5. 🔑 FIXED: Isolated Pricing Basis Picker Sheet */}
+            <FlatListPickerModal
+                visible={showBasisModal}
+                title="Select Pricing Basis"
+                data={['per hour', 'per day', 'fixed project', 'contact for quote']}
+                onSelect={(item) => handleInputChange("pricing", { ...formData.pricing, basis: item as PricingBasis })}
+                onClose={() => setShowBasisModal(false)}
+            />
+
         </Modal>
     );
 };
 
 export default CreateServiceForm;
+

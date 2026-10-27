@@ -195,7 +195,6 @@ const JobsScreen = () => {
                             <JobCard
                                 item={item}
                                 onPress={() => {
-                                    // 🛠️ FIX: Cast 'item.employer' as any to safely parse fields without 'never' layout type restrictions
                                     const secureEmployerId = item.employer && typeof item.employer === 'object'
                                         ? (item.employer as any)._id || (item.employer as any).id
                                         : item.employer;

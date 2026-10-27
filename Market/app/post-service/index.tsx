@@ -56,10 +56,11 @@ const PostServiceScreen = () => {
 
         const result = await ImagePicker.launchCameraAsync({
             mediaTypes: ['images'],
-            quality: 0.7,
+            quality: 0.8,
         });
 
         if (!result.canceled && result.assets && result.assets.length > 0) {
+            // 🔑 Fixed: Read explicitly from index [0] array block
             const asset = result.assets[0];
             const capturedImage = {
                 uri: asset.uri,
@@ -89,10 +90,11 @@ const PostServiceScreen = () => {
             mediaTypes: ['images'],
             allowsMultipleSelection: true, 
             selectionLimit: remainingSlots,
-            quality: 0.7,
+            quality: 0.8,
         });
 
         if (!result.canceled && result.assets && result.assets.length > 0) {
+            // 🔑 Fixed Type: Mapped asset arrays strictly typed as SelectedFileMeta[]
             const mappedAssets: SelectedFileMeta[] = result.assets.map((asset) => ({
                 uri: asset.uri,
                 type: asset.mimeType || 'image/jpeg',
@@ -112,7 +114,6 @@ const PostServiceScreen = () => {
         <SafeScreen>
             <Header title={editingService ? 'Edit Trade Profile' : 'Register Business'} />
 
-            {/* Correctly wires elements down into the matching trade form layout */}
             <CreateServiceForm
                 showModal={showModal}
                 setShowModal={setShowModal}

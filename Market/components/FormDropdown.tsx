@@ -8,9 +8,17 @@ interface FormDropdownProps {
     placeholder: string;
     onPress: () => void;
     required?: boolean;
+    className?: string; 
 }
 
-export const FormDropdown = ({ label, value, placeholder, onPress, required = false }: FormDropdownProps) => {
+export const FormDropdown = ({ 
+    label, 
+    value, 
+    placeholder, 
+    onPress, 
+    required = false,
+    className = '' 
+}: FormDropdownProps) => {
     return (
         <View className="mb-4">
             <Text className="text-black text-sm font-semibold mb-1">
@@ -18,7 +26,8 @@ export const FormDropdown = ({ label, value, placeholder, onPress, required = fa
             </Text>
             <TouchableOpacity
                 onPress={onPress}
-                className="border border-gray-300 rounded-lg p-3 bg-gray-100 flex-row justify-between items-center"
+                // 🔑 Template literal merging allows error class overrides to apply natively
+                className={`border border-gray-300 rounded-lg p-3 bg-gray-100 flex-row justify-between items-center ${className}`}
             >
                 <Text className={value ? 'text-black' : 'text-gray-400'}>
                     {value || placeholder}
@@ -28,3 +37,5 @@ export const FormDropdown = ({ label, value, placeholder, onPress, required = fa
         </View>
     );
 };
+
+

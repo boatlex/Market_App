@@ -5,20 +5,32 @@ import { Image } from 'expo-image';
 import { JobSeekerProfile } from '../../types';
 
 interface MyJobSeekerProfileListProps {
-  profiles: JobSeekerProfile[];
+  profiles: JobSeekerProfile[] | JobSeekerProfile | any;
   onEdit: (profile: JobSeekerProfile) => void;
   onDelete: (id: string) => void;
 }
 
 export const MyJobSeekerProfileList = ({ profiles, onEdit, onDelete }: MyJobSeekerProfileListProps) => {
+  console.log("Incoming Profiles Payload:", profiles);
+
+  // 🔑 Fixed Normalization: If it's an array, use it. If it has nested arrays, use them.
+  // If it's a singular object (has an _id), wrap it inside a flat array bracket.
+  const normalizedProfiles = Array.isArray(profiles)
+    ? profiles
+    : (profiles as any)?.data || (profiles as any)?.profiles || (profiles as any)?.ads 
+      ? (profiles as any)?.data || (profiles as any)?.profiles || (profiles as any)?.ads
+      : profiles && typeof profiles === 'object' && (profiles._id || (profiles as any).user?._id)
+        ? [profiles]
+        : [];
+
   return (
     <FlatList
-      data={profiles}
-      keyExtractor={(item) => item._id}
+      data={normalizedProfiles}
+      keyExtractor={(item) => item?._id || Math.random().toString()}
       contentContainerStyle={{ paddingBottom: 100 }}
       ListEmptyComponent={() => (
         <View className="items-center justify-center py-20 bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-          <Ionicons name="person-search-outline" size={48} color="#9CA3AF" />
+          <Ionicons name="person-add-outline" size={48} color="#9CA3AF" />
           <Text className="text-gray-500 font-extrabold text-sm mt-3 text-center">No Candidate Resume File Setup</Text>
           <Text className="text-gray-400 font-medium text-xs mt-1 text-center">Setup a profile card to start matching with employers in Ghana.</Text>
         </View>
@@ -26,6 +38,7 @@ export const MyJobSeekerProfileList = ({ profiles, onEdit, onDelete }: MyJobSeek
       renderItem={({ item }) => (
         <View className="bg-white border border-gray-100 p-4 rounded-2xl mb-3 flex-row items-center justify-between shadow-sm">
           <View className="flex-row items-center flex-1 mr-3">
+            {/* 🔑 Fixed placeholder endpoint dimension structure to prevent empty image box errors */}
             <Image 
               source={{ uri: item.profilePicture || 'https://placehold.co' }} 
               style={{ width: 56, height: 56 }} 
@@ -34,7 +47,7 @@ export const MyJobSeekerProfileList = ({ profiles, onEdit, onDelete }: MyJobSeek
             />
             <View className="ml-3 flex-1">
               <Text className="text-gray-950 font-black text-sm" numberOfLines={1}>
-                {item.professionalHeadline}
+                {item.professionalHeadline || 'No Headline Provided'}
               </Text>
               <Text className="text-gray-400 font-bold text-[11px] mt-0.5" numberOfLines={1}>
                 ⚡ {item.skills?.slice(0, 3).join(', ') || 'General Skills'}

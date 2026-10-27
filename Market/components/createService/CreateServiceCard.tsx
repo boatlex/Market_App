@@ -14,6 +14,7 @@ const CARD_WIDTH = (width - 40) / 2;
 
 export const CreateServiceCard = ({ item, onPress }: ServiceCardProps) => {
   const fallbackImage = "https://placehold.co";
+  console.log(item)
   const displayImage = item.portfolioImages && item.portfolioImages.length > 0 
     ? item.portfolioImages[0] 
     : fallbackImage;
@@ -38,12 +39,11 @@ export const CreateServiceCard = ({ item, onPress }: ServiceCardProps) => {
           transition={200}
           cachePolicy="disk"
         />
-        {/* ✅ FIXED: Replaced non-existent workMode flag with your true availabilityStatus configuration tracker enum */}
         <View className={`absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-md shadow-sm ${
           item.availabilityStatus === 'Available' ? 'bg-green-600/90' : 'bg-amber-500/90'
         }`}>
           <Text className="text-[8px] text-white font-black uppercase tracking-wider">
-            {item.availabilityStatus}
+            {item.availabilityStatus || 'Unavailable'}
           </Text>
         </View>
       </View>
@@ -51,13 +51,11 @@ export const CreateServiceCard = ({ item, onPress }: ServiceCardProps) => {
       {/* 2. Core Operational Metadata Parameters Panel */}
       <View className="flex-1 px-0.5 justify-between">
         <View>
-          {/* ✅ FIXED: Replaced item.title with item.businessName matching your schema profile model definition */}
           <Text className="text-gray-950 font-extrabold text-sm leading-snug mb-0.5" numberOfLines={1}>
-            {item.businessName}
+            {item.businessName || 'Unnamed Business'}
           </Text>
-          {/* ✅ FIXED: Replaced item.companyName with capitalization-normalized serviceType mapping details */}
           <Text className="text-gray-400 font-bold text-[11px] mb-2 capitalize" numberOfLines={1}>
-            {item.serviceType}
+            {item.serviceType || 'General Service'}
           </Text>
         </View>
 
@@ -65,9 +63,9 @@ export const CreateServiceCard = ({ item, onPress }: ServiceCardProps) => {
         <View className="pt-2 border-t border-gray-50 flex-col space-y-1">
           <Text className="text-blue-600 font-black text-xs" numberOfLines={1}>
             {displaySalary} 
-            {item.pricing?.rate ? (
+            {item.pricing?.basis ? (
               <Text className="text-[8px] text-gray-400 font-medium lowercase">
-                /{item.pricing.basis.replace('per ', '')}
+                /{item.pricing.basis.toString().replace('per ', '')}
               </Text>
             ) : null}
           </Text>
@@ -75,7 +73,7 @@ export const CreateServiceCard = ({ item, onPress }: ServiceCardProps) => {
           <View className="flex-row items-center mt-0.5">
             <Ionicons name="location-outline" size={11} color="#9CA3AF" />
             <Text className="text-[10px] text-gray-400 font-semibold ml-0.5 flex-1" numberOfLines={1}>
-              {item.location || item.district}
+              {item.location || item.district || 'Ghana'}
             </Text>
           </View>
         </View>

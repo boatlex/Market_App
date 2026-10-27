@@ -2,11 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { ServiceProvider } from "../types";
 
+
 interface GetMyProviderProfileResponse {
     success?: boolean;
     message?: string;
-    isNewProvider: boolean;
-    profile: ServiceProvider | null;
+    isNewProvider?: boolean;
+    data: ServiceProvider[]; 
 }
 
 export const useGetMyProviderProfile = () => {

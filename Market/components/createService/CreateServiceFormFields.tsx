@@ -4,26 +4,27 @@ import { Ionicons } from '@expo/vector-icons';
 import { FormInput } from '../FormInput';
 import { FormDropdown } from '../FormDropdown';
 import { Image } from "expo-image";
+import { ServiceProvider } from '../../types';
 
 interface CreateServiceFormFieldsProps {
-    formData: any;
+    formData: Partial<ServiceProvider>;
     handleInputChange: (field: string, value: any) => void;
     images: any[];
     pickImages: () => Promise<void>;
     takePhoto: () => Promise<void>;
     removeImage: (index: number) => void;
     openRegionPicker: () => void;
+    openBasisPicker: () => void;
     openDistrictPicker: () => void;
     openCategoryPicker: () => void;
     openWorkModePicker: () => void;
-    openJobTypePicker: () => void;
-    openDatePicker: () => void;
+      errors?: string[];
 }
 
 export const CreateServiceFormFields = ({
     formData,
     handleInputChange,
-    images,
+    images = [],
     pickImages,
     takePhoto,
     removeImage,
@@ -31,22 +32,27 @@ export const CreateServiceFormFields = ({
     openDistrictPicker,
     openCategoryPicker,
     openWorkModePicker,
-    openJobTypePicker,
-    openDatePicker
+    openBasisPicker,
+      errors = []
+    
 }: CreateServiceFormFieldsProps) => {
+
+    const totalImageCount = images.length;
+    const hasError = (field: string) => errors.includes(field)
 
     return (
         <View className="flex-1 bg-white pb-10">
             <View className="space-y-4">
 
                 {/* Media Picker Banner Section */}
-                <View className="mb-4">
+                <View className="mb-4 px-1">
                     <Text className="text-gray-700 text-sm font-bold mb-2">
-                        Company Banner / Job Image ({images.length}/1)
+                        Company Banner / Job Image {totalImageCount}
                     </Text>
 
-                    {/* ✅  image primitives loops */}
-                    <View className="flex-row">
+                    {/* 🔑 FIXED: Added 'flex-wrap w-full' container constraints to prevent layout squishing */}
+                    <View className="flex-row flex-wrap w-full items-center gap-y-3">
+
                         {/* 1. CAMERA BUTTON */}
                         {images.length < 1 && (
                             <TouchableOpacity
@@ -70,25 +76,29 @@ export const CreateServiceFormFields = ({
                         )}
 
                         {/* Banner Image Preview Container */}
-                        {images && images.length > 0 && images.map((img: any, index: number) => {
-                            // 🔒 SAFEGUARD: Extract a clean, resilient string URI regardless of local file structure variations
+                        {images && (Array.isArray(images) ? images : [images]).map((img: any, index: number) => {
                             const imageUri = typeof img === 'string' ? img : (img?.uri || img?.url);
 
                             if (!imageUri) return null;
+                            console.log("Preview url", imageUri);
 
                             return (
-                                <View key={index} className="w-24 h-24 mr-3 relative rounded-xl overflow-hidden border border-gray-100 bg-gray-50">
+                                <View
+                                    key={index}
+                                    style={{ width: 80, height: 80 }}
+                                    className="mr-3 relative rounded-xl overflow-hidden border border-gray-200 bg-gray-100 shadow-sm"
+                                >
                                     <Image
-                                        // ✅ FIXED: Points directly to the single computed string token variable parameter context
                                         source={{ uri: imageUri }}
-                                        className="w-full h-full"
+                                        style={{ width: '100%', height: '100%' }}
                                         contentFit="cover"
-                                        transition={200}      // ⚡ Elegant image fading transition
-                                        cachePolicy="disk"     // 💾 Keeps asset records saved in local device storage
+                                        transition={200}
+                                        cachePolicy="disk"
                                     />
                                     <TouchableOpacity
                                         onPress={() => removeImage(index)}
-                                        className="absolute top-1 right-1 bg-black/60 rounded-full w-5 h-5 items-center justify-center border border-white/10"
+                                        activeOpacity={0.7}
+                                        className="absolute top-1 right-1 bg-black/70 rounded-full w-5 h-5 items-center justify-center border border-white/20"
                                     >
                                         <Ionicons name="close" size={12} color="#FFF" />
                                     </TouchableOpacity>
@@ -99,134 +109,160 @@ export const CreateServiceFormFields = ({
                     </View>
                 </View>
 
-                {/* Company Information Inputs - Now rendering cleanly below the image row */}
-                <FormInput
-                    label="Company Name *"
-                    placeholder="e.g. MTN Ghana or Retail Shop"
-                    value={formData.companyName}
-                    onChangeText={(text) => handleInputChange("companyName", text)}
-                />
+               
+                {/* 1. Business Name Input */}
+                <View className="mb-2">
+                    <FormInput
+                        label="Business Name *"
+                        placeholder="e.g. Mensah Plumbing Hub"
+                        value={formData.businessName}
+                        onChangeText={(text) => handleInputChange("businessName", text)}
+                        // Pass an error condition modifier down to your custom component
+                        className={hasError('businessName') ? 'border-rose-500 bg-rose-50/20' : ''}
+                    />
+                    {hasError('businessName') && (
+                        <Text className="text-rose-600 text-[11px] font-bold mt-1 px-1">Business Name is required.</Text>
+                    )}
+                </View>
 
-                <FormInput
-                    label="Job Position Title *"
-                    placeholder="e.g. Junior Front-End Developer"
-                    value={formData.title}
-                    onChangeText={(text) => handleInputChange("title", text)}
-                />
+                {/* 2. Service Specialty Dropdown */}
+                <View className="mb-2">
+                    <FormDropdown
+                        label="Service Specialty / Category *"
+                        placeholder="Select Service Industry"
+                        value={formData.serviceType || ""}
+                        onPress={openCategoryPicker}
+                        className={hasError('serviceType') ? 'border-rose-500 bg-rose-50/20' : ''}
+                    />
+                    {hasError('serviceType') && (
+                        <Text className="text-rose-600 text-[11px] font-bold mt-1 px-1">Please select your trade category.</Text>
+                    )}
+                </View>
 
-                <FormInput
-                    label="Core Job Description *"
-                    placeholder="Outline day-to-day duties..."
-                    multiline
-                    numberOfLines={4}
-                    value={formData.description}
-                    onChangeText={(text) => handleInputChange("description", text)}
-                />
+                {/* 3. Description Input */}
+                <View className="mb-2">
+                    <FormInput
+                        label="Description *"
+                        placeholder="Describe your skills, tools, and experience..."
+                        multiline
+                        numberOfLines={4}
+                        value={formData.description}
+                        onChangeText={(text) => handleInputChange("description", text)}
+                        className={hasError('description') ? 'border-rose-500 bg-rose-50/20' : ''}
+                    />
+                    {hasError('description') && (
+                        <Text className="text-rose-600 text-[11px] font-bold mt-1 px-1">A description of your service is required.</Text>
+                    )}
+                </View>
 
-                <FormInput
-                    label="Contact Phone Number"
-                    placeholder="e.g. 0244000000"
-                    keyboardType="phone-pad"
-                    maxLength={10}
-                    value={formData.phoneNumber}
-                    onChangeText={(text) => handleInputChange("phoneNumber", text.replace(/[^0-9]/g, ""))}
-                />
+                {/* 4. Pricing Complex Row Container */}
+                <View className="flex-row gap-3 items-end mb-2">
+                    {formData.pricing?.basis !== 'contact for quote' ? (
+                        <View className="flex-1">
+                            <FormInput
+                                label="Pricing Rate (GHS) *"
+                                placeholder="e.g. 250"
+                                keyboardType="numeric"
+                                value={formData.pricing?.rate?.toString() || ""}
+                                onChangeText={(val) => handleInputChange("pricing", { 
+                                    ...formData.pricing, 
+                                    rate: val ? Number(val) : 0,
+                                    currency: formData.pricing?.currency || 'GHS'
+                                })}
+                                className={hasError('rate') ? 'border-rose-500 bg-rose-50/20' : ''}
+                            />
+                            {hasError('rate') && (
+                                <Text className="text-rose-600 text-[11px] font-bold mt-1 px-1">Provide a rate.</Text>
+                            )}
+                        </View>
+                    ) : null}
 
-                <FormInput
-                    label="Application Email Address"
-                    placeholder="e.g. careers@company.com"
-                    keyboardType="email-address"
-                    value={formData.emailForApplications}
-                    onChangeText={(text) => handleInputChange("emailForApplications", text)}
-                />
-
-                {/* Industry Dropdowns */}
-                <FormDropdown
-                    label="Job Category / Industry *"
-                    placeholder="Select Industry Classification"
-                    value={formData.category}
-                    onPress={openCategoryPicker}
-                />
-
-                <FormDropdown
-                    label="Employment Type *"
-                    placeholder="Select Job Type"
-                    value={formData.jobType}
-                    onPress={openJobTypePicker}
-                />
-
-                <FormDropdown
-                    label="Preferred Work Arrangement *"
-                    placeholder="Select Arrangement (On-site, Remote...)"
-                    value={formData.workMode}
-                    onPress={openWorkModePicker}
-                />
-
-                {/* Financial Estimations Group */}
-                <View className="mb-2 flex-row gap-3 items-end">
                     <View className="flex-1">
-                        <FormInput
-                            label="Min Salary"
-                            placeholder="e.g. 3000"
-                            keyboardType="numeric"
-                            value={formData.salaryMin}
-                            onChangeText={(val) => handleInputChange("salaryMin", val)}
-                        />
-                    </View>
-                    <View className="flex-1">
-                        <FormInput
-                            label="Max Salary"
-                            placeholder="e.g. 6000"
-                            keyboardType="numeric"
-                            value={formData.salaryMax}
-                            onChangeText={(val) => handleInputChange("salaryMax", val)}
+                        <FormDropdown
+                            label="Pricing Basis *"
+                            placeholder="Select Basis"
+                            value={formData.pricing?.basis || ""}
+                            onPress={openBasisPicker} 
                         />
                     </View>
                 </View>
 
-                {/* Geographic Placement Components */}
+                {/* 5. Region Dropdown */}
+                <View className="mb-2">
+                    <FormDropdown
+                        label="Region *"
+                        placeholder="Select Region"
+                        value={formData.region || ""}
+                        onPress={openRegionPicker}
+                        className={hasError('region') ? 'border-rose-500 bg-rose-50/20' : ''}
+                    />
+                    {hasError('region') && (
+                        <Text className="text-rose-600 text-[11px] font-bold mt-1 px-1">Please specify your active operational region.</Text>
+                    )}
+                </View>
+
+                {/* 6. District Dropdown */}
+                <View className="mb-2">
+                    <FormDropdown
+                        label="District / City *"
+                        placeholder="Select District"
+                        value={formData.district || ""}
+                        onPress={openDistrictPicker}
+                        className={hasError('district') ? 'border-rose-500 bg-rose-50/20' : ''}
+                    />
+                    {hasError('district') && (
+                        <Text className="text-rose-600 text-[11px] font-bold mt-1 px-1">Please specify your district location.</Text>
+                    )}
+                </View>
+
+                {/* 7. Detailed Location Input */}
+                <View className="mb-2">
+                    <FormInput
+                        label="Detailed Location / Landmark *"
+                        placeholder="e.g. Near East Legon Shell Signboard"
+                        value={formData.location}
+                        onChangeText={(text) => handleInputChange("location", text)}
+                        className={hasError('location') ? 'border-rose-500 bg-rose-50/20' : ''}
+                    />
+                    {hasError('location') && (
+                        <Text className="text-rose-600 text-[11px] font-bold mt-1 px-1">Please provide a landmark location detail.</Text>
+                    )}
+                </View>
+
+                {/* 8. Phone Number Input */}
+                <View className="mb-2">
+                    <FormInput
+                        label="Business Phone Number *"
+                        placeholder="e.g. 0244000000"
+                        keyboardType="phone-pad"
+                        maxLength={10}
+                        value={formData.phoneNumber}
+                        onChangeText={(text) => handleInputChange("phoneNumber", text.replace(/[^0-9]/g, ""))}
+                        className={hasError('phoneNumber') ? 'border-rose-500 bg-rose-50/20' : ''}
+                    />
+                    {hasError('phoneNumber') && (
+                        <Text className="text-rose-600 text-[11px] font-bold mt-1 px-1">A valid contact phone line is required.</Text>
+                    )}
+                </View>
+
+                {/* WhatsApp Number (Optional - No validation checking required) */}
+                <FormInput
+                    label="WhatsApp Number (Optional)"
+                    placeholder="e.g. 0244000000"
+                    keyboardType="phone-pad"
+                    maxLength={10}
+                    value={formData.whatsappNumber}
+                    onChangeText={(text) => handleInputChange("whatsappNumber", text.replace(/[^0-9]/g, ""))}
+                />
+
                 <FormDropdown
-                    label="Target Job Location Region *"
-                    placeholder="Select Region"
-                    value={formData.region}
-                    onPress={openRegionPicker}
+                    label="Availability Status *"
+                    placeholder="Select Status"
+                    value={formData.availabilityStatus || ""}
+                    onPress={openWorkModePicker}
                 />
 
-                <FormDropdown
-                    label="Municipal District *"
-                    placeholder="Select Localized District"
-                    value={formData.district}
-                    onPress={openDistrictPicker}
-                />
-
-                <FormInput
-                    label="Street Address / Office Landmark Location *"
-                    placeholder="e.g., Adjacent the Total Station, Airport Residential Area"
-                    value={formData.location}
-                    onChangeText={(text) => handleInputChange("location", text)}
-                />
-
-                {/* Split Multiline Block Text Segments */}
-                <FormInput
-                    label="Requirements & Qualifications (One per line)"
-                    placeholder="e.g., Bachelor's Degree in CS&#10;3+ Years React Native Experience"
-                    multiline
-                    numberOfLines={4}
-                    value={formData.requirements}
-                    onChangeText={(text) => handleInputChange("requirements", text)}
-                />
-
-                <FormInput
-                    label="Benefits & Perks (One per line)"
-                    placeholder="e.g., Free Health Insurance&#10;Transport Allowance"
-                    multiline
-                    numberOfLines={4}
-                    value={formData.benefits}
-                    onChangeText={(text) => handleInputChange("benefits", text)}
-                />
             </View>
         </View>
     );
 };
-
-export default CreateServiceFormFields;

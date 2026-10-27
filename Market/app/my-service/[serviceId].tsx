@@ -14,10 +14,10 @@ import { useAuth } from '../../contexts/authContext';
 const { width } = Dimensions.get("window");
 
 const ServiceDetailsScreen = () => {
-  const { id} = useLocalSearchParams<{ id: string }>();
+  const { serviceId} = useLocalSearchParams<{ serviceId: string }>();
   
   // ⚡ DISPATCH HOOK LAYERS
-  const { data: response, isError, isLoading } = useGetServiceProviderById(id || "");
+  const { data: response, isError, isLoading } = useGetServiceProviderById(serviceId || "");
   const deleteMutation = useDeleteServiceProvider();
   const { user } = useAuth();
 
@@ -27,11 +27,11 @@ const ServiceDetailsScreen = () => {
   // Un-box provider data frame object safely matching controller return structural formats
   const provider = response?.success ? response.data : null;
 
-  // Resolve ownership mapping indices securely
   const isOwner = useMemo(() => {
     if (!user || !provider) return false;
     const providerUser = typeof provider.user === 'object' ? provider.user?._id : provider.user;
-    return user.id === providerUser || user._id === providerUser;
+    const currentUserId = user._id || user.id;
+    return String(currentUserId) === String(providerUser);
   }, [user, provider]);
 
   const handleCallProvider = () => {
@@ -253,7 +253,7 @@ const ServiceDetailsScreen = () => {
 
       {/*  BOTTOM CONTACT TRADING PANEL BAR (Hidden if owned by viewer) */}
       {!isOwner && (
-        <View className="absolute bottom-0 right-0 left-0 bg-white border-t border-gray-100 px-6 pt-4 pb-8 flex-row gap-3 shadow-xl">
+        <View className="absolute bottom-0 right-0 left-0 bg-white border-t border-gray-100 px-6 pt-4 pb-20 flex-row gap-3 shadow-xl">
           <TouchableOpacity 
             onPress={handleWhatsAppProvider}
             className="flex-1 border border-emerald-500 bg-emerald-50 h-14 rounded-xl flex-row items-center justify-center gap-1.5 active:bg-emerald-100"
