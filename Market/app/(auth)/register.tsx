@@ -20,11 +20,11 @@ const Register = () => {
   const router = useRouter()
   const { registerMutation } = useAuth()
 
-  const firstNameInputRef = useRef<TextInput>(null)
-  const lastNameInputRef = useRef<TextInput>(null)
-  const emailInputRef = useRef<TextInput>(null)
-  const passwordInputRef = useRef<TextInput>(null)
-  const confirmPasswordInputRef = useRef<TextInput>(null)
+  const firstNameInputRef = useRef<TextInput |null>(null)
+  const lastNameInputRef = useRef<TextInput| null>(null)
+  const emailInputRef = useRef<TextInput |null>(null)
+  const passwordInputRef = useRef<TextInput |null>(null)
+  const confirmPasswordInputRef = useRef<TextInput |null>(null)
 
   const firstNameRef = useRef("")
   const lastNameRef = useRef("")

@@ -8,8 +8,8 @@ import { Ionicons } from '@expo/vector-icons'
 import {
     GHANA_DISTRICTS_BY_REGION,
     GHANA_REGIONS, 
-    JOB_CATEGORIES
-} from '../../constants/createJobs'
+    SERVICE_CATEGORIES
+} from '../../constants/createServices'
 import SafeScreen from '../SafeScreen'
 import { ServiceProvider, PricingBasis, AvailabilityStatus } from '../../types'
 
@@ -202,7 +202,7 @@ const handleSubmit = async () => {
         setShowModal(false);
         setEditingService(null);
         resetForm();
-        setValidationErrors([]); // Clear errors array
+        setValidationErrors([]); 
         router.replace('/my-activity' as any);
 
     } catch (error: any) {
@@ -312,9 +312,6 @@ const handleSubmit = async () => {
                 </KeyboardAvoidingView>
             </SafeScreen>
 
-            {/* ========================================================================= */}
-            {/* 🔑 FIXED MODEL-ALIGNED CUSTOM PICKER SHEETS CONTAINER LAYOUT ROW */}
-            {/* ========================================================================= */}
 
             {/* 1. Region Selector Sheet */}
             <FlatListPickerModal
@@ -338,10 +335,10 @@ const handleSubmit = async () => {
             <FlatListPickerModal
                 visible={showCategoryModal}
                 title="Select Service Category"
-                data={JOB_CATEGORIES}
+                data={SERVICE_CATEGORIES}
                 onSelect={(item) => {
                     handleInputChange("serviceType", item);
-                    handleInputChange("category", "Services"); // Automatically flags core structural category fallback context
+                    handleInputChange("category", "Services"); 
                 }}
                 onClose={() => setShowCategoryModal(false)}
             />
@@ -359,7 +356,7 @@ const handleSubmit = async () => {
             <FlatListPickerModal
                 visible={showBasisModal}
                 title="Select Pricing Basis"
-                data={['per hour', 'per day', 'fixed project', 'contact for quote']}
+                data={['per hour', 'per day','per week','per month','quarterly', 'fixed project', 'contact for quote']}
                 onSelect={(item) => handleInputChange("pricing", { ...formData.pricing, basis: item as PricingBasis })}
                 onClose={() => setShowBasisModal(false)}
             />

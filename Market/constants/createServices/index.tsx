@@ -147,10 +147,13 @@ export const SERVICE_CATEGORIES = [
     "Logistics, Supply Chain & Transport",
     "Hospitality, Catering & Tourism",
     "Legal & Compliance Services",
-    "Agriculture & Agribusiness"
+    "Agriculture & Agribusiness",
+    "Automotive & Mechanical Services",
+    "Beauty, Wellness & Personal Care"
 ] as const;
 
 export type JobCategory = typeof SERVICE_CATEGORIES[number];
+
 export const SUB_CATEGORIES_BY_CATEGORY: Record<JobCategory, string[]> = {
     "Technology & Software Engineering": ["Frontend Development", "Backend Development", "Fullstack Engineering", "Mobile App Development", "DevOps & Cloud", "Data Science & AI", "UI/UX Design", "Cybersecurity", "IT Support"],
     "Accounting, Banking & Finance": ["Corporate Accounting", "Auditing", "Financial Analysis", "Investment Banking", "Taxes & Compliance", "Risk Management", "Bookkeeping"],
@@ -163,5 +166,7 @@ export const SUB_CATEGORIES_BY_CATEGORY: Record<JobCategory, string[]> = {
     "Logistics, Supply Chain & Transport": ["Procurement & Sourcing", "Warehouse Operations", "Fleet Management", "Supply Chain Planning", "Distribution & Shipping"],
     "Hospitality, Catering & Tourism": ["Hotel Management", "Culinary Arts & Chef Services", "Food & Beverage Service", "Tour Guiding", "Event Planning"],
     "Legal & Compliance Services": ["Corporate Law", "Litigation", "Legal Drafting & Research", "Regulatory Compliance", "Intellectual Property"],
-    "Agriculture & Agribusiness": ["Farm Management", "Agronomy & Crop Science", "Animal Husbandry", "Agricultural Machinery", "Agro-chemical Sales"]
+    "Agriculture & Agribusiness": ["Farm Management", "Agronomy & Crop Science", "Animal Husbandry", "Agricultural Machinery", "Agro-chemical Sales"],
+    "Automotive & Mechanical Services": ["Auto Mechanics", "Auto Electrical Repair", "Bodywork & Respraying", "Air Conditioning Service", "Wheel Alignment & Tyres", "Motorcycle Repair"],
+    "Beauty, Wellness & Personal Care": ["Hairdressing & Styling", "Barbering Services", "Makeup Artistry", "Nail Technology & Manicure", "Skincare & Esthetics", "Massage Therapy & Spa"]
 };
