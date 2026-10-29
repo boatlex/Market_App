@@ -1,5 +1,6 @@
 import { ServiceProvider } from "../models/serviceprovider.model.js";
 import cloudinary from "cloudinary";
+import mongoose from "mongoose";
 
 
 
@@ -65,16 +66,28 @@ export const upsertServiceProviderProfile = async (req, res, next) => {
             }
         }
 
-        // 🔑 2. CONDITION CHECK SWITCHER: 
-        // If serviceId exists, query and update that specific document instance.
-        // If serviceId is empty, generate a completely fresh listing copy instead of overwriting!
-        const queryTarget = serviceId ? { _id: serviceId, user: userId } : { _id: new mongoose.Types.ObjectId() };
+        let providerProfile;
 
-        const providerProfile = await ServiceProvider.findOneAndUpdate(
-            queryTarget,
-            updatePayload,
-            { returnDocument: "after", upsert: true, runValidators: true }
-        ).populate("user", "firstName lastName profilePicture email");
+        if (serviceId) {
+            providerProfile = await ServiceProvider.findOneAndUpdate(
+                { _id: serviceId, user: userId },
+                updatePayload,
+                { returnDocument: "after", runValidators: true }
+            );
+
+            if (!providerProfile) {
+                return res.status(404).json({ success: false, message: "Target service entry not found." });
+            }
+        } else {
+            const finalCreationData = {
+                ...updateData,
+                portfolioImages: updatePayload.$push?.portfolioImages?.$each || []
+            };
+
+            providerProfile = await ServiceProvider.create(finalCreationData);
+        }
+
+        providerProfile = await providerProfile.populate("user", "firstName lastName profilePicture email");
 
         return res.status(200).json({
             success: true,
@@ -86,6 +99,7 @@ export const upsertServiceProviderProfile = async (req, res, next) => {
         next(error);
     }
 };
+
 
 
 export const searchServiceProviders = async (req, res, next) => {

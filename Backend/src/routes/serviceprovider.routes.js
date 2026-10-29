@@ -17,7 +17,7 @@ const router = express.Router();
 router.get("/search", searchServiceProviders);
 
 // 🔑  Points to a controller that retrieves all distinct listings for the logged-in user
-router.get("/my-services", protectRoute, getMyProviderProfile); 
+router.get("/my-profile", protectRoute, getMyProviderProfile); 
 router.delete("/portfolio-image", protectRoute, removePortfolioImage);
 
 // 🔑  Split PUT and POST paths to match the frontend Multi-Listing mutation hook engine

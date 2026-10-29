@@ -29,11 +29,11 @@ const serviceProviderSchema = new mongoose.Schema({
         trim: true
     },
     pricing: {
-        rate: { type: Number, required: true, min: 0 }, // The base price numerical value
+        rate: { type: Number, required: true, min: 0 }, 
         basis: {
             type: String,
             required: true,
-            enum: ["per hour", "per day", "fixed project", "contact for quote"]
+            enum: ["per hour", "per day"," per Week","per month","quarterly", "fixed project", "contact for quote"]
         },
         currency: { type: String, default: "GHS", trim: true }
     },
