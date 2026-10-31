@@ -1,3 +1,4 @@
+
 import { View, Text, Alert, TouchableOpacity, ScrollView, Dimensions, Linking, ActivityIndicator } from 'react-native'
 import React, { useState } from 'react'
 import { router, useLocalSearchParams } from 'expo-router'
@@ -23,8 +24,9 @@ const JobDetailsScreen = () => {
   const [isFavorite, setIsFavorite] = useState(false)
   const [isZoomVisible, setIsZoomVisible] = useState(false)
 
-  const owner = user?.id === (Array.isArray(employerId) ? employerId[0] : employerId);
- // const owner = user?.id === undefined
+   const userId = user?.id
+   const parsedEmployerId = (Array.isArray(employerId) ? employerId[0] : employerId);
+   const owner = userId === parsedEmployerId;
 
 
   const handleCallEmployer = () => {
@@ -156,6 +158,21 @@ const JobDetailsScreen = () => {
             </View>
           </View>
 
+          {/* Localized Post Registration Date Badge */}
+          {job.createdAt && (
+            <View className='bg-blue-50 px-3 py-1 rounded-full border border-blue-100 flex-row items-center gap-1'>
+              <Ionicons name="calendar-outline" size={12} color="#2563EB" />
+              <Text className='text-blue-600 text-xs font-medium'>
+                Posted {new Date(job.createdAt).toLocaleDateString(undefined, {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric'
+                })}
+              </Text>
+            </View>
+          )}
+
+
           {/* Job Nomenclature Headers */}
           <Text className='text-gray-900 text-2xl font-extrabold mb-1'>{job.title}</Text>
           <Text className='text-gray-500 text-base font-semibold mb-4'>{job.companyName}</Text>
@@ -207,16 +224,17 @@ const JobDetailsScreen = () => {
             <View className='mb-6'>
               <Text className='text-gray-900 text-base font-bold mb-2.5'>Perks & Compensation</Text>
               {job.benefits.map((benefit: string, idx: number) => (
-                <View key={idx} className='flex-row items-start mb-2 pl-1'>
-                  <Text className='text-emerald-500 text-base mr-2 mt-[-2px]'>✓</Text>
+                <View key={idx} className="flex-row items-center gap-2 mb-2 bg-emerald-50/50 border border-emerald-100/50 p-2.5 rounded-xl">
+                  <Ionicons name="checkmark-circle" size={16} color="#059669" />
                   <Text className='text-gray-600 text-sm flex-1 leading-normal'>{benefit}</Text>
                 </View>
               ))}
             </View>
           )}
 
+
           {/* Administrative Control Dashboard panel */}
-  
+
           {owner && (
             <View className="mb-6 p-4 bg-slate-50 border border-slate-200/70 rounded-3xl shadow-sm">
               <Text className="text-slate-900 font-extrabold text-sm mb-3">
@@ -238,7 +256,7 @@ const JobDetailsScreen = () => {
                 className="w-full bg-blue-600 h-12 rounded-xl flex-row items-center justify-center gap-2 mb-3 shadow-sm shadow-blue-500/10 active:bg-blue-700"
               >
                 <Ionicons name="people-outline" size={18} color="#FFFFFF" />
-              
+
 
                 <Text className="text-white font-extrabold text-sm uppercase tracking-wide">
                   {`Review Applications (${(job as any)?.applications?.length || 0})`}
@@ -252,8 +270,8 @@ const JobDetailsScreen = () => {
                 onPress={handleStatusUpdate}
                 activeOpacity={0.8}
                 className={`w-full h-12 rounded-xl flex-row items-center justify-center gap-2 border ${job.isOpen
-                    ? 'bg-amber-50 border-amber-200 active:bg-amber-100'
-                    : 'bg-emerald-50 border-emerald-200 active:bg-emerald-100'
+                  ? 'bg-amber-50 border-amber-200 active:bg-amber-100'
+                  : 'bg-emerald-50 border-emerald-200 active:bg-emerald-100'
                   }`}
               >
                 {toggleMutation.isPending ? (
@@ -274,7 +292,19 @@ const JobDetailsScreen = () => {
             </View>
           )}
 
-
+          {!owner && (
+            <View className='flex-1'>
+              <TouchableOpacity
+                onPress={() => router.push({ pathname: "/chat" as any, params: { userId: String(parsedEmployerId) } })}
+                activeOpacity={0.8}
+                className="flex-1 h-12 bg-blue-600 rounded-xl flex-row items-center justify-center gap-2"
+              >
+                <Ionicons name="chatbubble-ellipses-outline" size={18} color="#FFFFFF" />
+                <Text className="text-white font-bold text-sm">Chat</Text>
+              </TouchableOpacity>
+            </View>
+          )
+          }
         </View>
       </ScrollView>
 

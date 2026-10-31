@@ -14,7 +14,7 @@ const CARD_WIDTH = (width - 40) / 2;
 
 export const CreateServiceCard = ({ item, onPress }: ServiceCardProps) => {
   const fallbackImage = "https://placehold.co";
-  console.log(item)
+  
   const displayImage = item.portfolioImages && item.portfolioImages.length > 0 
     ? item.portfolioImages[0] 
     : fallbackImage;

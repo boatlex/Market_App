@@ -3,6 +3,8 @@ import { View, Text, FlatList, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { Job } from '../../types'
+import { useRouter } from 'expo-router';
+
 
 interface MyJobsListProps {
   jobs: Job[];
@@ -11,6 +13,7 @@ interface MyJobsListProps {
 }
 
 export const MyJobsList = ({ jobs, onEdit, onDelete }: MyJobsListProps) => {
+  const router = useRouter()
   return (
     <FlatList
       data={jobs}
@@ -24,7 +27,8 @@ export const MyJobsList = ({ jobs, onEdit, onDelete }: MyJobsListProps) => {
       )}
       renderItem={({ item }) => (
         <View className="bg-white border border-gray-100 p-3.5 rounded-2xl mb-3 flex-row items-center justify-between shadow-sm">
-          <View className="flex-row items-center flex-1 mr-3">
+          <TouchableOpacity onPress={()=>router.push('/my-jobs')} className='flex-1'>
+            <View className="flex-row items-center flex-1 mr-3">
             <Image source={{ uri: item.jobImage || 'https://placehold.co' }} style={{ width: 64, height: 64 }} className="rounded-xl bg-gray-50" contentFit="cover" />
             <View className="ml-3 flex-1">
               <Text className="text-gray-950 font-black text-sm" numberOfLines={1}>{item.title}</Text>
@@ -32,6 +36,8 @@ export const MyJobsList = ({ jobs, onEdit, onDelete }: MyJobsListProps) => {
               <Text className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider mt-1">👥 {item.applications?.length || 0} Applications</Text>
             </View>
           </View>
+          </TouchableOpacity>
+          
           <View className="flex-row gap-2">
             <TouchableOpacity onPress={() => onEdit(item)} className="p-2 bg-blue-50 border border-blue-100 rounded-xl active:bg-blue-100">
               <Ionicons name="create-outline" size={16} color="#2563EB" />

@@ -14,7 +14,7 @@ import { useAuth } from '../../contexts/authContext';
 const { width } = Dimensions.get("window");
 
 const ServiceDetailsScreen = () => {
-  const { serviceId} = useLocalSearchParams<{ serviceId: string }>();
+  const { serviceId } = useLocalSearchParams<{ serviceId: string }>();
   
   // ⚡ DISPATCH HOOK LAYERS
   const { data: response, isError, isLoading } = useGetServiceProviderById(serviceId || "");
@@ -26,13 +26,13 @@ const ServiceDetailsScreen = () => {
 
   // Un-box provider data frame object safely matching controller return structural formats
   const provider = response?.success ? response.data : null;
-
-  const isOwner = useMemo(() => {
-    if (!user || !provider) return false;
-    const providerUser = typeof provider.user === 'object' ? provider.user?._id : provider.user;
-    const currentUserId = user._id || user.id;
-    return String(currentUserId) === String(providerUser);
-  }, [user, provider]);
+const isOwner =undefined
+  // const isOwner = useMemo(() => {
+  //   if (!user || !provider) return false;
+  //   const providerUser = typeof provider.user === 'object' ? provider.user?._id : provider.user;
+  //   const currentUserId = user._id || user.id;
+  //   return String(currentUserId) === String(providerUser);
+  // }, [user, provider]);
 
   const handleCallProvider = () => {
     if (!user) {
@@ -197,76 +197,133 @@ const ServiceDetailsScreen = () => {
                 ● {provider.availabilityStatus}
               </Text>
             </View>
-          </View>
 
-          <Text className='text-gray-950 font-black text-2xl mb-1 leading-snug'>{provider.businessName}</Text>
-          
-          <View className="flex-row items-center gap-1 mb-4">
-            <Ionicons name="location" size={14} color="#2563EB" />
-            <Text className="text-gray-500 text-xs font-bold">{provider.location}, {provider.district}</Text>
-          </View>
-
-          <View className='flex-row items-baseline mb-6 border-b border-gray-50 pb-5'>
-            <Text className='text-blue-600 text-3xl font-black'>{displaySalary}</Text>
-            {provider.pricing?.rate ? (
-              <Text className='text-gray-400 font-bold text-xs ml-1 lowercase'>/{provider.pricing.basis}</Text>
-            ) : null}
-          </View>
-
-          <Text className="text-gray-900 font-black text-sm mb-2">Service Portfolio Bio</Text>
-          <Text className='text-gray-600 text-sm font-semibold leading-relaxed mb-8'>{provider.description}</Text>
-
-                   {/* 🛠️ OWNER CONTROLS ACTION SEGMENT */}
-          {isOwner && (
-            <View className="p-4 bg-rose-50/50 border border-rose-100 rounded-2xl mb-6">
-              <Text className="text-rose-950 font-black text-sm mb-1.5">Business Profile Management</Text>
-              <Text className="text-rose-400 text-[11px] font-semibold mb-4 leading-normal">
-                You registered this service profile business entry slot. You have active permissions to modify or clear the row directory entry entirely.
-              </Text>
-              <View className="flex-row gap-3">
-                <TouchableOpacity 
-                  onPress={() => router.push({ pathname: "/post-service", params: { serviceProviderData: JSON.stringify(provider) } })}
-                  className="flex-1 bg-white border border-gray-200 h-12 rounded-xl items-center justify-center flex-row gap-1 active:bg-gray-50"
-                >
-                  <Ionicons name="create-outline" size={16} color="#4B5563" />
-                  <Text className="text-gray-700 font-extrabold text-xs">Edit Listing</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  disabled={deleteMutation.isPending}
-                  onPress={handleProfilePurge}
-                  className="flex-1 bg-rose-600 h-12 rounded-xl items-center justify-center flex-row gap-1 active:bg-rose-700"
-                >
-                  {deleteMutation.isPending ? (
-                    <ActivityIndicator size="small" color="#FFF" />
-                  ) : (
-                    <>
-                      <Ionicons name="trash-outline" size={16} color="#FFF" />
-                      <Text className="text-white font-extrabold text-xs">Delete Profile</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
+           {/* Localized Post Registration Date Badge */}
+            {provider.createdAt && (
+              <View className='bg-purple-50 px-3 py-1 rounded-full border border-purple-100 flex-row items-center gap-1'>
+                <Ionicons name="calendar-outline" size={12} color="#7C3AED" />
+                <Text className='text-purple-600 text-xs font-medium'>
+                  Listed {new Date(provider.createdAt).toLocaleDateString(undefined, {
+                    year: 'numeric',
+                    month: 'short'
+                  })}
+                </Text>
               </View>
+            )}
+          </View>
+
+          {/* Business Core Titles Panel Row */}
+          <View className="mb-4">
+            <View className="flex-row items-center gap-1.5 mb-1">
+              <Text className='text-gray-900 text-2xl font-bold flex-1'>{provider.businessName}</Text>
+              {provider.isVerifiedProvider && (
+                <Ionicons name="checkmark-circle" size={22} color="#2563EB" />
+              )}
+            </View>
+            
+            {/* Rating Stars Summary Board Metrics */}
+            <View className="flex-row items-center gap-1">
+              <Ionicons name="star" size={14} color="#F59E0B" />
+              <Text className="text-gray-900 font-bold text-sm">
+                {Number(provider.averageRating || 0).toFixed(1)}
+              </Text>
+              <Text className="text-gray-400 text-xs">
+                ({provider.totalReviews || 0} reviews)
+              </Text>
+            </View>
+          </View>
+
+          {/* Rate Pricing Metrics Header Row */}
+          <View className='flex-row items-center mb-4 bg-gray-50 p-4 rounded-xl border border-gray-100'>
+            <View className="flex-1">
+              <Text className="text-gray-400 text-xs font-bold uppercase tracking-wider">Service Fee Basis</Text>
+              <Text className='text-green-600 text-2xl font-black mt-0.5'>
+                {displaySalary}
+                {provider.pricing?.basis && provider.pricing.basis !== 'contact for quote' && (
+                  <Text className="text-gray-500 text-sm font-semibold capitalize"> / {provider.pricing.basis}</Text>
+                )}
+              </Text>
+            </View>
+          </View>
+
+          {/* Location Area Info Coordinates Section */}
+          {(provider.region || provider.district || provider.location) && (
+            <View className="flex-row items-start gap-1.5 mb-6">
+              <Ionicons name="location" size={18} color="#EF4444" style={{ marginTop: 2 }} />
+              <View className="flex-1">
+                <Text className="text-gray-900 font-bold text-sm">Service Location Area</Text>
+                <Text className="text-gray-500 text-xs font-medium mt-0.5">
+                  {[provider.location, provider.district, provider.region].filter(Boolean).join(", ")}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Detailed Business Description Field */}
+          {provider.description && (
+            <View className="mb-6">
+              <Text className="text-gray-900 font-bold text-base mb-2">Service Description</Text>
+              <Text className="text-gray-600 text-sm leading-relaxed">{provider.description}</Text>
+            </View>
+          )}
+
+          {/* Owner Operational Purge Controls Dashboard Context Panel */}
+          {isOwner && (
+            <View className="mt-4 p-4 bg-rose-50 border border-rose-100 rounded-2xl">
+              <Text className="text-rose-950 font-bold text-sm mb-2">Danger Listing Management Panel</Text>
+              <TouchableOpacity
+                disabled={deleteMutation.isPending}
+                onPress={handleProfilePurge}
+                activeOpacity={0.8}
+                className="h-11 bg-rose-600 rounded-xl flex-row items-center justify-center gap-2 border border-rose-700"
+              >
+                {deleteMutation.isPending ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="trash-outline" size={18} color="#FFFFFF" />
+                    <Text className="text-white font-bold text-sm">Permanently Purge Listing</Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </View>
           )}
         </View>
       </ScrollView>
 
-      {/*  BOTTOM CONTACT TRADING PANEL BAR (Hidden if owned by viewer) */}
+      {/* Floating Action Operational Footer Panel Matrix */}
       {!isOwner && (
-        <View className="absolute bottom-0 right-0 left-0 bg-white border-t border-gray-100 px-6 pt-4 pb-20 flex-row gap-3 shadow-xl">
-          <TouchableOpacity 
-            onPress={handleWhatsAppProvider}
-            className="flex-1 border border-emerald-500 bg-emerald-50 h-14 rounded-xl flex-row items-center justify-center gap-1.5 active:bg-emerald-100"
+        <View className="absolute bottom-0 right-0 left-0 bg-white/95 border-t border-gray-100 p-6 pb-20 flex-row items-center gap-3">
+          {/* Action Trigger 1: Core Text Chat Gateway */}
+          <TouchableOpacity
+            onPress={() => {
+              const targetUserObjId = typeof provider.user === 'object' ? provider.user?._id : provider.user;
+              router.push({ pathname: "/chat" as any, params: { userId: String(targetUserObjId) } });
+            }}
+            activeOpacity={0.8}
+            className="flex-1 h-12 bg-blue-600 rounded-xl flex-row items-center justify-center gap-2"
           >
-            <Ionicons name="logo-whatsapp" size={20} color="#10B981" />
-            <Text className="text-emerald-700 font-black text-sm">WhatsApp</Text>
+            <Ionicons name="chatbubble-ellipses" size={18} color="#FFFFFF" />
+            <Text className="text-white font-bold text-sm">Chat</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={handleCallProvider}
-            className="flex-1 bg-blue-600 h-14 rounded-xl flex-row items-center justify-center gap-1.5 active:bg-blue-700 shadow-sm"
+
+          {/* Action Trigger 2: WhatsApp Deep Link API Connection */}
+          <TouchableOpacity
+            onPress={handleWhatsAppProvider}
+            activeOpacity={0.8}
+            className="flex-1 h-12 bg-emerald-600 rounded-xl flex-row items-center justify-center gap-2"
           >
-            <Ionicons name="call" size={18} color="#FFF" />
-            <Text className="text-white font-black text-sm">Call Business</Text>
+            <Ionicons name="logo-whatsapp" size={18} color="#FFFFFF" />
+            <Text className="text-white font-bold text-sm">WhatsApp</Text>
+          </TouchableOpacity>
+
+          {/* Action Trigger 3: Cellular Network Telephony Line Engine */}
+          <TouchableOpacity
+            onPress={handleCallProvider}
+            activeOpacity={0.7}
+            className="w-12 h-12 bg-gray-900 rounded-xl items-center justify-center"
+          >
+            <Ionicons name="call" size={18} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       )}

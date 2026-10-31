@@ -13,34 +13,31 @@ import { useAuth } from '../../contexts/authContext';
 const { width } = Dimensions.get("window")
 
 const SeekJobDetailsScreen = () => {
-  const { id, jobSeekerId} = useLocalSearchParams<{ id: string; jobSeekerId:string }>();
+  const { id, jobSeekerId } = useLocalSearchParams<{ id: string; jobSeekerId: string }>();
   const { user } = useAuth()
 
-   
   const { data: product, isError, isLoading } = useGetJobSeekerById(id)
 
   const [isFavorite, setIsFavorite] = useState(false)
   const [isZoomVisible, setIsZoomVisible] = useState(false);
-  
-  const userId = user?.id
-  const owner = userId === (Array.isArray(jobSeekerId) ? jobSeekerId[0] : jobSeekerId);
 
-  //const owner = undefined
+  const userId = user?.id
+  const parsedJobSeekerId = Array.isArray(jobSeekerId) ? jobSeekerId[0] : jobSeekerId;
+  const owner = userId === parsedJobSeekerId;
 
   const handleCallSeller = () => {
     if (!user) {
       Alert.alert(
-        "Authentication Required", 
+        "Authentication Required",
         "Please sign in to view candidate contact details.",
         [
           { text: "Cancel", style: "cancel" },
-          { text: "Sign In", onPress: () => router.push("/(auth)") } 
+          { text: "Sign In", onPress: () => router.push("/(auth)") }
         ]
       );
       return;
     }
 
-    // 2. Profile availability guards
     if (!product?.isSearchingForJob) {
       Alert.alert("Notice", "This candidate is no longer open to job offers.");
       return;
@@ -49,7 +46,7 @@ const SeekJobDetailsScreen = () => {
       Alert.alert("Error", "Candidate phone number is unavailable.");
       return;
     }
-    
+
     Linking.openURL(`tel:${product.phoneNumber}`);
   }
 
@@ -68,14 +65,23 @@ const SeekJobDetailsScreen = () => {
   if (isError || !product || Object.keys(product).length === 0) {
     return <ErrorUi />
   }
-   
-  const validImages = product.profilePicture && product.profilePicture.trim().length > 0 
-    ? [{ uri: product.profilePicture }] 
+
+  const validImages = product.profilePicture && product.profilePicture.trim().length > 0
+    ? [{ uri: product.profilePicture }]
     : [];
-  
+
   const displayName = product.user && typeof product.user === 'object'
     ? `${(product.user as any).firstName || ''} ${(product.user as any).lastName || ''}`.trim() || "Job Seeker"
     : "Job Seeker";
+
+  // Helper date formatter function
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short'
+    });
+  };
 
   return (
     <SafeScreen>
@@ -88,7 +94,7 @@ const SeekJobDetailsScreen = () => {
         >
           <Ionicons name='arrow-back' size={24} color={"#FFFFFF"} />
         </TouchableOpacity>
-        
+
         <TouchableOpacity
           className='bg-black/50 w-12 h-12 rounded-full items-center justify-center'
           onPress={handleToggleFavorite}
@@ -100,7 +106,7 @@ const SeekJobDetailsScreen = () => {
 
       <ScrollView
         className='flex-1 bg-white'
-        contentContainerStyle={{ paddingBottom: 140 }}
+        contentContainerStyle={{ paddingBottom: 160 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Image View */}
@@ -138,16 +144,30 @@ const SeekJobDetailsScreen = () => {
         {/* Info Layout Content Wrapper */}
         <View className='p-6'>
           {/* Status Badges */}
-          <View className='mb-3 flex-row items-center gap-2'>
+          <View className='mb-3 flex-row items-center flex-wrap gap-2'>
             <View className='bg-green-50 px-3 py-1 rounded-full border border-green-100'>
               <Text className='text-green-600 text-xs font-bold capitalize'>{product.workMode || "On-site"}</Text>
             </View>
-            
+
             <View className={`px-3 py-1 rounded-full ${product.isSearchingForJob ? 'bg-emerald-50 border border-emerald-100' : 'bg-rose-50 border border-rose-100'}`}>
               <Text className={`text-xs font-bold ${product.isSearchingForJob ? 'text-emerald-600' : 'text-rose-600'}`}>
                 {product.isSearchingForJob ? 'Actively Looking' : 'Hired / Inactive'}
               </Text>
             </View>
+
+            {/* Post/Profile Registration Timestamp Date Badge */}
+            {product.createdAt && (
+              <View className='bg-blue-50 px-3 py-1 rounded-full border border-blue-100 flex-row items-center gap-1'>
+                <Ionicons name="calendar-outline" size={12} color="#2563EB" />
+                <Text className='text-blue-600 text-xs font-medium'>
+                  Joined {new Date(product.createdAt).toLocaleDateString(undefined, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                  })}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Candidate Name & Title */}
@@ -193,24 +213,72 @@ const SeekJobDetailsScreen = () => {
               </View>
             </View>
           )}
+
+          {/* Experience Timeline Section */}
+          {product.experience && product.experience.length > 0 && (
+            <View className="mb-6">
+              <Text className="text-gray-900 font-bold text-base mb-3">Work Experience</Text>
+              {product.experience.map((exp: any, idx: number) => (
+                <View key={idx} className="mb-4 pl-4 border-l-2 border-gray-200 relative">
+                  <View className="absolute left-[-5px] top-[6px] w-[8px] h-[8px] rounded-full bg-green-500" />
+                  <Text className="text-gray-900 font-bold text-sm">{exp.jobTitle}</Text>
+                  <Text className="text-gray-700 text-xs font-medium">{exp.companyName} {exp.location ? `• ${exp.location}` : ''}</Text>
+                  <Text className="text-gray-400 text-xs mt-0.5">
+                    {formatDate(exp.startDate)} - {exp.isCurrentJob ? "Present" : formatDate(exp.endDate)}
+                  </Text>
+                  {exp.description && <Text className="text-gray-500 text-xs mt-1 leading-5">{exp.description}</Text>}
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Education Timeline Section */}
+          {product.education && product.education.length > 0 && (
+            <View className="mb-6">
+              <Text className="text-gray-900 font-bold text-base mb-3">Education</Text>
+              {product.education.map((edu: any, idx: number) => (
+                <View key={idx} className="mb-4 pl-4 border-l-2 border-gray-200 relative">
+                  <View className="absolute left-[-5px] top-[6px] w-[8px] h-[8px] rounded-full bg-blue-500" />
+                  <Text className="text-gray-900 font-bold text-sm">
+                    {edu.degree}{edu.fieldOfStudy ? ` in ${edu.fieldOfStudy}` : ''}
+                  </Text>
+                  <Text className="text-gray-700 text-xs font-medium">{edu.schoolName}</Text>
+                  <Text className="text-gray-400 text-xs mt-0.5">
+                    {formatDate(edu.startDate)} - {edu.isCurrentEducation ? "Present" : formatDate(edu.endDate)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
       </ScrollView>
 
-      {/* Floating Action Call Button Footer */}
+      {/* Action Footer for External Clients */}
       {!owner && (
-        <View className="absolute bottom-6 left-6 right-6 pb-10">
+        <View className="absolute bottom-0 right-0 left-0 bg-white/95 border-t border-gray-100 p-6 pb-20 flex-row items-center gap-3">
+          {/* Chat with Candidate Button */}
           <TouchableOpacity
-            className="bg-green-600 h-14 rounded-2xl flex-row items-center justify-center gap-2 shadow-lg"
+            onPress={() => router.push({ pathname: "/chat" as any, params: { userId: parsedJobSeekerId } })}
             activeOpacity={0.8}
-            onPress={handleCallSeller}
+            className="flex-1 h-12 bg-blue-600 rounded-xl flex-row items-center justify-center gap-2"
           >
-            <Ionicons name="call" size={20} color="#FFFFFF" />
-            <Text className="text-white font-bold text-base">Contact Candidate</Text>
+            <Ionicons name="chatbubble-ellipses-outline" size={18} color="#FFFFFF" />
+            <Text className="text-white font-bold text-sm">Chat</Text>
+          </TouchableOpacity>
+
+          {/* Dial candidate over cell network */}
+          <TouchableOpacity
+            onPress={handleCallSeller}
+            activeOpacity={0.8}
+            className="flex-1 h-12 bg-green-600 rounded-xl flex-row items-center justify-center gap-2"
+          >
+            <Ionicons name="call" size={18} color="#FFFFFF" />
+            <Text className="text-white font-bold text-sm">Call Candidate</Text>
           </TouchableOpacity>
         </View>
       )}
     </SafeScreen>
-  );
-};
+  )
+}
 
 export default SeekJobDetailsScreen;

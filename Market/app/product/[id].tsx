@@ -10,13 +10,14 @@ import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import ImageView from 'react-native-image-viewing';
 import { useAuth } from '../../contexts/authContext';
-
+import { getSocket } from '../../sockets/sockets'
 
 const { width } = Dimensions.get("window")
 
 const ProductDetailsScreen = () => {
   const { id, sellerID } = useLocalSearchParams<{ id: string; sellerID: string }>();
- 
+  const socket = getSocket()
+
   const { data: product, isError, isLoading } = useProduct(id)
   const { user } = useAuth()
   const toggleMutation = useToggleAvailability()
@@ -26,7 +27,9 @@ const ProductDetailsScreen = () => {
   const [isZoomVisible, setIsZoomVisible] = useState(false);
 
 
-const owner = user?.id === (Array.isArray(sellerID) ? sellerID[0] : sellerID);
+  const parsedSellerId = Array.isArray(sellerID) ? sellerID[0] : sellerID;
+  const owner = user?.id === parsedSellerId;
+
 
   const handleCallSeller = () => {
     if (!product?.isAvailable) {
@@ -48,7 +51,6 @@ const owner = user?.id === (Array.isArray(sellerID) ? sellerID[0] : sellerID);
     )
   }
 
-  // NEW: Fire mutation requests straight to your Express backend
   const handleStatusUpdate = () => {
     if (!id) return;
 
@@ -61,6 +63,56 @@ const owner = user?.id === (Array.isArray(sellerID) ? sellerID[0] : sellerID);
         Alert.alert("Action Denied", errorMsg);
       }
     });
+  }
+
+  // 📞 Live Trigger: Call Me Back Request
+  const handleCallMeBackEmit = () => {
+    if (!socket || !socket.connected) {
+      Alert.alert("Connection Error", "You are currently offline. Check your socket status.");
+      return;
+    }
+
+    socket.emit("requestCallMeBack", {
+      //sellerId: parsedSellerId,
+      itemDetails: `Requested callback regarding product: "${product?.name}"`
+    });
+
+    Alert.alert("Request Sent", "The seller has been instantly notified to contact you back.");
+  }
+
+  // 💰 Live Trigger: Send Negotiation Offer Prompt
+  const handleOfferPrompt = () => {
+    if (!socket || !socket.connected) {
+      Alert.alert("Connection Error", "You are currently offline.");
+      return;
+    }
+
+    Alert.prompt(
+      "Make an Offer",
+      "Enter your negotiation offer amount in GHS:",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Submit",
+          onPress: (amount) => {
+            if (!amount || isNaN(Number(amount))) {
+              Alert.alert("Error", "Please enter a valid numeric value.");
+              return;
+            }
+
+            socket.emit("sendOffer", {
+              //sellerId: parsedSellerId,
+              itemDetails: `Offered deal on product: "${product?.name}"`,
+              offerPrice: amount
+            });
+
+            Alert.alert("Offer Sent", `Your offer of GHS ${amount} was transmitted successfully!`);
+          }
+        }
+      ],
+      "plain-text",
+      ""
+    );
   }
 
   if (isLoading) {
@@ -91,8 +143,6 @@ const owner = user?.id === (Array.isArray(sellerID) ? sellerID[0] : sellerID);
         contentContainerStyle={{ paddingBottom: 140 }}
         showsVerticalScrollIndicator={false}
       >
-
-
         {/* Image Gallery */}
         <View className='relative bg-gray-100 m-2' >
           {validImages.length > 0 ? (
@@ -126,7 +176,6 @@ const owner = user?.id === (Array.isArray(sellerID) ? sellerID[0] : sellerID);
                 ))}
               </ScrollView>
 
-              {/* ====== PINCH TO ZOOM LIGHTBOX OVERLAY ====== */}
               <ImageView
                 images={validImages.map((img: string) => ({ uri: img }))}
                 imageIndex={selectedImageIndex}
@@ -142,7 +191,6 @@ const owner = user?.id === (Array.isArray(sellerID) ? sellerID[0] : sellerID);
             </View>
           )}
 
-          {/* Image Indicators */}
           {validImages.length > 1 && (
             <View className='absolute bottom-4 left-0 right-0 flex-row justify-center gap-2'>
               {validImages.map((_: any, index: number) => (
@@ -155,15 +203,14 @@ const owner = user?.id === (Array.isArray(sellerID) ? sellerID[0] : sellerID);
           )}
         </View>
 
-
         {/* Product Info Content Wrapper */}
         <View className='p-6'>
-
-          {/* Badges: Category, Condition & Status */}
-          <View className='mb-3 flex-row items-center gap-2'>
+          {/* Badges: Category, Condition, Status & Post Date */}
+          <View className='mb-3 flex-row items-center flex-wrap gap-2'>
             <View className='bg-green-50 px-3 py-1 rounded-full border border-green-100'>
               <Text className='text-green-600 text-xs font-bold capitalize'>{product.category}</Text>
             </View>
+
             {product.condition && (
               <View className='bg-gray-100 px-3 py-1 rounded-full'>
                 <Text className='text-gray-600 text-xs font-semibold'>{product.condition}</Text>
@@ -175,6 +222,28 @@ const owner = user?.id === (Array.isArray(sellerID) ? sellerID[0] : sellerID);
                 {product.isAvailable ? 'Available' : 'Sold Out'}
               </Text>
             </View>
+
+            {/* Localized Post Date Badge */}
+            {product.createdAt && (
+              <View className='bg-blue-50 px-3 py-1 rounded-full border border-blue-100 flex-row items-center gap-1'>
+                <Ionicons name="calendar-outline" size={12} color="#2563EB" />
+                <Text className='text-blue-600 text-xs font-medium'>
+                  {new Date(product.createdAt).toLocaleDateString(undefined, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                  })}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Geography Context Layout */}
+          <View className='flex-row items-center gap-2 bg-gray-50 p-3.5 rounded-xl mb-6 border border-gray-100/50'>
+            <Ionicons name="location-outline" size={20} color="#4B5563" />
+            <Text className='text-gray-600 text-sm font-medium flex-1' numberOfLines={2}>
+              {product.location}, {product.district} - {product.region}
+            </Text>
           </View>
 
           {/* Product Name */}
@@ -187,86 +256,99 @@ const owner = user?.id === (Array.isArray(sellerID) ? sellerID[0] : sellerID);
             </Text>
           </View>
 
-          {/* NEW: Management Control Box (Call this only if user owns the listing) */}
-          <View className="mb-6 p-4 bg-gray-50 border border-gray-100 rounded-2xl">
-            <Text className="text-gray-950 font-bold text-sm mb-2">Listing Dashboard Controls</Text>
-            {owner && (
-  <TouchableOpacity
-    disabled={toggleMutation.isPending}
-    onPress={handleStatusUpdate}
-    activeOpacity={0.8}
-    className={`h-11 rounded-xl flex-row items-center justify-center gap-2 border ${
-      product.isAvailable
-        ? 'bg-amber-50 border-amber-200'
-        : 'bg-emerald-50 border-emerald-200'
-    }`}
-  >
-    {toggleMutation.isPending ? (
-      <ActivityIndicator size="small" color={product.isAvailable ? "#B45309" : "#047857"} />
-    ) : (
-      <>
-        <Ionicons
-          name={product.isAvailable ? "ban-outline" : "checkmark-circle-outline"}
-          size={18}
-          color={product.isAvailable ? "#B45309" : "#047857"}
-        />
-        <Text className={`font-semibold text-sm ${product.isAvailable ? 'text-amber-700' : 'text-emerald-700'}`}>
-          {product.isAvailable ? "Mark Listing as Sold" : "Mark Listing as Available"}
-        </Text>
-      </>
-    )}
-  </TouchableOpacity>
-)} 
+          {/* Management Control Box (Renders conditionally for the item owner) */}
+          {owner ? (
+            <View className="mb-6 p-4 bg-gray-50 border border-gray-100 rounded-2xl">
+              <Text className="text-gray-950 font-bold text-sm mb-2">Listing Dashboard Controls</Text>
+              <TouchableOpacity
+                disabled={toggleMutation.isPending}
+                onPress={handleStatusUpdate}
+                activeOpacity={0.8}
+                className={`h-11 rounded-xl flex-row items-center justify-center gap-2 border ${product.isAvailable
+                  ? 'bg-amber-50 border-amber-200'
+                  : 'bg-emerald-50 border-emerald-200'
+                  }`}
+              >
+                {toggleMutation.isPending ? (
+                  <ActivityIndicator size="small" color={product.isAvailable ? "#B45309" : "#047857"} />
+                ) : (
+                  <>
+                    <Ionicons
+                      name={product.isAvailable ? "ban-outline" : "checkmark-circle-outline"}
+                      size={18}
+                      color={product.isAvailable ? "#B45309" : "#047857"}
+                    />
+                    <Text style={{ color: product.isAvailable ? "#B45309" : "#047857" }} className="font-bold text-sm">
+                      {product.isAvailable ? "Mark as Sold Out" : "Re-activate Listing"}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          ) : (
+            /* Buyer Interactive Buttons Panel */
+            <View className="gap-3 mb-6">
+              {/* Primary Action: Direct App Chat */}
+              <TouchableOpacity
+                onPress={() => router.push({ pathname: "/chat" as any, params: { userId: parsedSellerId } })}
+                activeOpacity={0.8}
+                className="h-12 bg-blue-600 rounded-xl flex-row items-center justify-center gap-2"
+              >
+                <Ionicons name="chatbubble-ellipses-outline" size={18} color="#FFFFFF" />
+                <Text className="text-white font-bold text-sm">Chat with Seller</Text>
+              </TouchableOpacity>
 
-          </View>
+              {/* Secondary Actions: Quick Triggers */}
+              <View className="flex-row items-center gap-3">
+                <TouchableOpacity
+                  onPress={handleCallMeBackEmit}
+                  activeOpacity={0.8}
+                  className="flex-1 h-12 bg-amber-500 rounded-xl flex-row items-center justify-center gap-2"
+                >
+                  <Ionicons name="phone-portrait-outline" size={18} color="#FFFFFF" />
+                  <Text className="text-white font-bold text-sm">Call Me Back</Text>
+                </TouchableOpacity>
 
-          {/* Localized Marketplace Locations */}
-          <View className='flex-row items-center gap-2 bg-gray-50 p-3 rounded-xl mb-6'>
-            <Ionicons name="location-outline" size={20} color="#6B7280" />
-            <Text className='text-gray-600 font-medium text-sm flex-1' numberOfLines={1}>
-              {product.location || product.district}, {product.region} Region
-            </Text>
-          </View>
+                <TouchableOpacity
+                  onPress={handleOfferPrompt}
+                  activeOpacity={0.8}
+                  className="flex-1 h-12 bg-green-600 rounded-xl flex-row items-center justify-center gap-2"
+                >
+                  <Ionicons name="cash-outline" size={18} color="#FFFFFF" />
+                  <Text className="text-white font-bold text-sm">Make an Offer</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
 
-          {/* Description Block */}
-          <View className='mb-8'>
-            <Text className='text-gray-900 text-lg font-bold mb-2'>Description</Text>
-            <Text className='text-gray-600 text-base leading-6'>{product.description}</Text>
-          </View>
+
+          {/* Description Section */}
+          <Text className="text-gray-900 font-bold text-base mb-2">Description</Text>
+          <Text className="text-gray-600 text-sm leading-relaxed mb-6">{product.description}</Text>
         </View>
       </ScrollView>
 
+      {/* Floating Action Button Footer for External Actions */}
+      {!owner && (
+        <View className="absolute bottom-0 right-0 left-0 bg-white/95 border-t border-gray-100 p-6 pb-20 flex-row items-center gap-4">
+          <TouchableOpacity
+            onPress={handleToggleFavorite}
+            activeOpacity={0.7}
+            className="w-12 h-12 bg-gray-100 rounded-xl items-center justify-center"
+          >
+            <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={22} color={isFavorite ? "#E11D48" : "#4B5563"} />
+          </TouchableOpacity>
 
-      {/* Floating Bottom Contact & Favorite Action Bar */}
-      <View className='absolute bottom-0 left-0 right-0 bg-white p-4 pb-8 border-t border-gray-100 flex-row gap-3 shadow-lg mb-10'>
-        {/* Favorite Heart Icon Button */}
-        <TouchableOpacity
-          className={`w-14 h-14 rounded-xl items-center justify-center border ${isFavorite ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'
-            }`}
-          onPress={handleToggleFavorite}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name={isFavorite ? "heart" : "heart-outline"}
-            size={26}
-            color={isFavorite ? "#EF4444" : "#4B5563"}
-          />
-        </TouchableOpacity>
-
-        {/* Call Action Button */}
-        <TouchableOpacity
-          disabled={!product.isAvailable}
-          className={`flex-1 h-14 rounded-xl flex-row items-center justify-center gap-2 ${product.isAvailable ? 'bg-green-600' : 'bg-gray-300'
-            }`}
-          onPress={handleCallSeller}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="call" size={20} color={product.isAvailable ? "#FFF" : "#9CA3AF"} />
-          <Text className={`text-base font-bold ${product.isAvailable ? 'text-white' : 'text-gray-400'}`}>
-            {product.isAvailable ? 'Call Seller' : 'Item Sold'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            onPress={handleCallSeller}
+            activeOpacity={0.8}
+            className="flex-1 h-12 bg-green-600 rounded-xl flex-row items-center justify-center gap-2"
+          >
+            <Ionicons name="call" size={18} color="#FFFFFF" />
+            <Text className="text-white font-bold text-base">Contact via Phone</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeScreen>
   )
 }
