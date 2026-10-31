@@ -76,7 +76,7 @@ export const updateReportStatus = async (req, res, next) => {
     const updatedReport = await Report.findByIdAndUpdate(
       id,
       { status },
-      { new: true, runValidators: true }
+      { returnDocument:'after', runValidators: true }
     );
 
     if (!updatedReport) {
