@@ -1,4 +1,3 @@
-
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import { ENV } from "../config/env.js";
@@ -34,7 +33,7 @@ export const initializeSocket = (httpServer) => {
 
   io.on("connection", (socket) => {
     const userId = socket.userId;
-    
+  
     if (userId) {
       // Initialize the tracking Set if this is the user's first connection window
       if (!userSocketMap[userId]) {

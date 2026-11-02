@@ -7,7 +7,7 @@ export const sendMessage = async (req, res, next) => {
     const { content, attachment } = req.body;
     const { id: receiverId } = req.params;
     const senderId = req.user._id;
-
+      
     let conversation = await Conversation.findOne({
       participants: { $all: [senderId, receiverId], $size: 2 }
     });
@@ -78,5 +78,55 @@ export const getMessages = async (req, res, next) => {
   } catch (error) {
     console.error("Error in getMessages controller:", error.message);
     next(error); 
+  }
+};
+export const getConversations = async (req, res, next) => {
+  try {
+    const currentUserId = req.user._id;
+
+    
+    const conversations = await Conversation.find({
+      participants: currentUserId
+    })
+    .populate({
+      path: "participants",
+      select: "name avatarUrl" 
+    })
+    .populate({
+      path: "lastMessage",
+      select: "content attachment senderId createdAt"
+    })
+    .sort({ updatedAt: -1 }); 
+
+    
+    const formattedConversations = conversations.map((conversation) => {
+      const otherUser = conversation.participants.find(
+        (participant) => participant._id.toString() !== currentUserId.toString()
+      );
+
+      return {
+        _id: conversation._id,
+        user: {
+          _id: otherUser?._id,
+          name: otherUser?.name || "Unknown User",
+          avatarUrl: otherUser?.avatarUrl || null
+        },
+        lastMessage: conversation.lastMessage ? {
+          content: conversation.lastMessage.content,
+          createdAt: conversation.lastMessage.createdAt,
+          senderId: conversation.lastMessage.senderId
+        } : null,
+        unreadCount: 0 
+      };
+    });
+
+    return res.status(200).json({ 
+      success: true, 
+      conversations: formattedConversations 
+    });
+
+  } catch (error) {
+    console.error("Error in getConversations controller:", error.message);
+    next(error);
   }
 };
