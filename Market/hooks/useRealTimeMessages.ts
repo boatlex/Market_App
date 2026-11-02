@@ -6,12 +6,12 @@ import { Message } from '../types';
 export const useRealTimeMessages = (activeChatUserId: string) => {
   const queryClient = useQueryClient();
   const { socket } = getSocket();
-  const [isPeerTyping, setIsPeerTyping] = useState(false); // 🚀 Tracks if the other user is typing
+  const [isPeerTyping, setIsPeerTyping] = useState(false);
 
   useEffect(() => {
     if (!socket) return;
 
-    // 1. Listen for new incoming messages
+    
     socket.on('newMessage', (newMessage: Message) => {
       const isFromActiveChat = newMessage.senderId === activeChatUserId;
 
@@ -22,11 +22,11 @@ export const useRealTimeMessages = (activeChatUserId: string) => {
           if (messageExists) return oldMessages;
           return [...oldMessages, newMessage];
         });
-        setIsPeerTyping(false); // Force turn off typing status when a message drops in
+        setIsPeerTyping(false);
       }
     });
 
-    // 2. Listen for typing events from this specific peer
+    
     socket.on('displayTyping', (data: { senderId: string }) => {
       if (String(data.senderId) === String(activeChatUserId)) {
         setIsPeerTyping(true);
