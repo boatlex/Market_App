@@ -26,13 +26,13 @@ const ServiceDetailsScreen = () => {
 
   // Un-box provider data frame object safely matching controller return structural formats
   const provider = response?.success ? response.data : null;
-const isOwner =undefined
-  // const isOwner = useMemo(() => {
-  //   if (!user || !provider) return false;
-  //   const providerUser = typeof provider.user === 'object' ? provider.user?._id : provider.user;
-  //   const currentUserId = user._id || user.id;
-  //   return String(currentUserId) === String(providerUser);
-  // }, [user, provider]);
+
+  const isOwner = useMemo(() => {
+    if (!user || !provider) return false;
+    const providerUser = typeof provider.user === 'object' ? provider.user?._id : provider.user;
+    const currentUserId = user._id || user.id;
+    return String(currentUserId) === String(providerUser);
+  }, [user, provider]);
 
   const handleCallProvider = () => {
     if (!user) {

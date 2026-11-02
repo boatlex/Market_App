@@ -1,17 +1,20 @@
-import io from 'socket.io-client'
+import io from 'socket.io-client';
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { API_URL } from "../lib/api"
+import { API_URL } from "../lib/api";
 
 let socket = null;
 
-export const connectSocket = async () => {
-    const token = await AsyncStorage.getItem('token')
-     
+export const connectSocket = async (explicitToken = null) => {
+    const token = explicitToken || await AsyncStorage.getItem("manual_token");
+    
+    
     if (!token) {
-        throw new Error('User not logged in: Please login first')
+        console.warn('Socket connection aborted: No token available.');
+        return null; 
     }
   
     if (socket && socket.connected) {
+        socket.auth = { token };
         return socket;
     }
 
@@ -20,13 +23,12 @@ export const connectSocket = async () => {
         socket.connect();
         return socket;
     }
+    socket = io("http://10.56.237.151:3000", { 
+    auth: { token },
+    transports: ['websocket', 'polling'], 
+    autoConnect: false,        
+});
 
-    // Create a new socket instance
-    socket = io(API_URL, {
-        auth: { token },
-        transports: ['websocket'], 
-        autoConnect: false,        
-    });
 
     socket.on('connect', () => {
         console.log('Socket Connected Successfully ID:', socket.id);
@@ -34,7 +36,6 @@ export const connectSocket = async () => {
 
     socket.on('disconnect', (reason) => {
         console.log('User disconnected from Socket. Reason:', reason);
-        // If server disconnected us forcefully, try reconnecting manually if needed
         if (reason === "io server disconnect") {
             socket.connect();
         }
@@ -45,19 +46,16 @@ export const connectSocket = async () => {
     });
 
     socket.connect();
-
     return socket;
-}
+};
 
-export const getSocket = () => {
-    return socket
-}
+export const getSocket = () => socket;
 
 export const disconnectSocket = () => {
     if (socket) {
-        socket.removeAllListeners(); // 🚀 Prevent memory leaks by wiping event listeners
+        socket.removeAllListeners(); 
         socket.disconnect();
         socket = null;
         console.log('Socket completely cleared and nulled.');
     }
-}
+};

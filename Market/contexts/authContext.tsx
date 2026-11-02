@@ -14,7 +14,7 @@ interface AuthContextType {
   forgotPasswordMutation: UseMutationResult<any, any, string, any>;
   verifyOTPMutation: UseMutationResult<any, any, { email: string; otp: string }, any>; 
   logout: () => Promise<void>;
-  setOAuthUser: (user: User | null, token: string | null) => void;
+  setOAuthUser: (user: User | null, token: string | null) => Promise<void>; // Updated signature to be async
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -50,7 +50,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // TanStack Query Mutation for Registration
   const registerMutation = useMutation({
-
     mutationFn: async (userData: any) => {
       const response = await api.post('/auths/register', userData);
       return response.data;
@@ -117,9 +116,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   });
 
-  const setOAuthUser = (oauthUser: User | null, oauthToken: string | null) => {
-    setUser(oauthUser);
-    setAuthToken(oauthToken);
+  // Handles syncing both dynamic Clerk token and OAuth user to state and disk storage
+  const setOAuthUser = async (oauthUser: User | null, oauthToken: string | null) => {
+    try {
+      if (oauthUser && oauthToken) {
+        await AsyncStorage.setItem('manual_token', oauthToken);
+        await AsyncStorage.setItem('user_session', JSON.stringify(oauthUser));
+        setAuthToken(oauthToken);
+        setUser(oauthUser);
+      } else {
+        await AsyncStorage.removeItem('manual_token');
+        await AsyncStorage.removeItem('user_session');
+        setAuthToken(null);
+        setUser(null);
+      }
+    } catch (error) {
+      console.error("Failed to sync OAuth token to AsyncStorage:", error);
+    }
   };
 
   // Logout Action clearing all instances

@@ -6,7 +6,8 @@ import { tokenCache } from '@clerk/expo/token-cache';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "../contexts/authContext"; 
 import RootApp from "../lib/utils"; 
-
+// 🚀 IMPORT YOUR SOCKET INITIALIZER HERE
+import { connectSocket, disconnectSocket } from "../sockets/sockets"; 
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
@@ -16,17 +17,17 @@ if (!publishableKey) {
 
 const queryClient = new QueryClient();
 
-
 function NavigationGuard() {
-  const { user, isInitializing } = useAuth(); 
+
+  const { user, authToken, isInitializing } = useAuth(); 
   const segments = useSegments();
   const router = useRouter();
 
+  
   useEffect(() => {
     if (isInitializing) return;
 
-    // Check if the user is currently navigating inside the authentication group folders
-    const inAuthGroup = segments[0] === "(auth)";
+     const inAuthGroup = segments[0] === "(auth)";
 
     if (!user && !inAuthGroup) {
       router.replace("/(auth)");
@@ -35,11 +36,23 @@ function NavigationGuard() {
     }
   }, [user, isInitializing, segments]);
 
+  
+  useEffect(() => {
+    if (!isInitializing) {
+      if (authToken) {
+        console.log('🔌 Global NavigationGuard: Syncing token to socket connection structure...');
+        connectSocket(authToken as any);
+      } else {
+        console.log('🔌 Global NavigationGuard: No active session token found, destroying socket connection.');
+        disconnectSocket();
+      }
+    }
+  }, [authToken, isInitializing]);
+
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(auth)" />
-      {/* Add your core dashboard root stack file pointer here as well */}
-       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="(tabs)" />
     </Stack>
   );
 }
@@ -61,3 +74,5 @@ export default function RootLayout() {
     </ClerkProvider>
   );
 }
+
+
