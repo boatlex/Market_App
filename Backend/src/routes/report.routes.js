@@ -5,9 +5,10 @@ import { adminOnly } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
-// Any logged-in user can report abuse
 router.get("/", protectRoute, adminOnly, getAllReports);
 router.post("/", protectRoute, createReport);
-router.post("/:id", protectRoute, adminOnly, updateReportStatus);
+
+router.patch("/:id/status", protectRoute, adminOnly, updateReportStatus);
+
 
 export default router;

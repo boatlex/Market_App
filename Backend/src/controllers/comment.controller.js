@@ -1,14 +1,13 @@
 import Comment from "../models/comment.model.js"
 import { Product } from "../models/product.model.js"
 
-
 export const replyToComment = async (req, res, next) => {
     try {
         const { commentId } = req.params; 
         const { content } = req.body;
         const userId = req.user._id;
 
-        if (!content) {
+        if (!content || content.trim() === "") {
             return res.status(400).json({ message: "Reply content cannot be empty." });
         }
 
@@ -26,7 +25,8 @@ export const replyToComment = async (req, res, next) => {
 
         const savedReply = await reply.save();
         
-        await savedReply.populate("user", "name profilePicture");
+        // FIXED: Swapped "name" for your real schema fields: "firstName lastName"
+        await savedReply.populate("user", "firstName lastName profilePicture");
 
         return res.status(201).json({
             message: "Reply added successfully!",
@@ -72,10 +72,8 @@ export const toggleLikeComment = async (req, res, next) => {
 export const getProductComments = async (req, res, next) => {
     try {
         const { productId } = req.params;
-
-        
         const allComments = await Comment.find({ product: productId })
-            .populate("user", "name profilePicture")
+            .populate("user", "firstName lastName profilePicture")
             .sort({ createdAt: -1 }); 
 
         const mainComments = allComments.filter(c => c.parentId === null);
@@ -84,10 +82,11 @@ export const getProductComments = async (req, res, next) => {
         // Group the replies inside their matching main comment objects for the frontend
         const commentTree = mainComments.map(main => {
             return {
-                ...main._doc,
+                // FIXED: Using .toObject() instead of direct ._doc access for safety
+                ...main.toObject(),
                 // Find all replies belonging to this specific main comment ID
                 replies: replies.filter(r => r.parentId.toString() === main._id.toString())
-                                .sort((a, b) => a.createdAt - b.createdAt) // Oldest reply first
+                                .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) // Type safe chronological sort
             };
         });
 
@@ -107,7 +106,7 @@ export const createComment = async (req, res, next) => {
         const { content } = req.body;
         const userId = req.user._id; 
 
-        if (!content) {
+        if (!content || content.trim() === "") {
             return res.status(400).json({ message: "Comment content cannot be empty." });
         }
 
@@ -116,7 +115,7 @@ export const createComment = async (req, res, next) => {
             return res.status(404).json({ message: "Product not found." });
         }
 
-         if (product.seller.equals(userId)) {
+        if (product.seller.equals(userId)) {
             return res.status(403).json({ message: "Cannot comment on your own product." });
         }
         
@@ -131,7 +130,8 @@ export const createComment = async (req, res, next) => {
         product.comments.push(savedComment._id);
         await product.save();
 
-        await savedComment.populate("user", "name profilePicture");
+        // FIXED: Swapped "name" for "firstName lastName"
+        await savedComment.populate("user", "firstName lastName profilePicture");
 
         return res.status(201).json({
             message: "Comment posted successfully!",
@@ -158,6 +158,7 @@ export const deleteComment = async (req, res, next) => {
         }
 
         if (comment.parentId === null) {
+            // Delete all replies associated with this main comment thread
             await Comment.deleteMany({ parentId: commentId });
             
             await Product.findByIdAndUpdate(comment.product, {
@@ -175,6 +176,3 @@ export const deleteComment = async (req, res, next) => {
         next(error);
     }
 };
-
-
-

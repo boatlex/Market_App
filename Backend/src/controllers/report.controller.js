@@ -29,42 +29,46 @@ export const createReport = async (req, res, next) => {
 
 // 2. ADMIN ONLY: Fetch all reports for the dashboard
 export const getAllReports = async (req, res, next) => {
-try {
-const page = parseInt(req.query.page) || 1;
-const limit = parseInt(req.query.limit) || 10;
-const { status } = req.query;
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const { status } = req.query;
 
-const skip = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
-const filter = {};
-if (status) {
-filter.status = status;
-}
+    const filter = {};
+    if (status) {
+      filter.status = status;
+    }
 
-// 4. Run both queries at the same time to save time
-const [reports, totalReports] = await Promise.all([
-Report.find(filter)
-.populate("reporterId", "firstName lastName email")
-.sort({ createdAt: -1 })
-.skip(skip)
-.limit(limit),
-Report.countDocuments(filter)
-]);
+    // Run both queries at the same time to save time
+    const [reports, totalReports] = await Promise.all([
+      Report.find(filter)
+        .populate("reporterId", "firstName lastName email")
+        // FIXED: This safely deep-populates targetId based on targetType's current value
+        .populate({
+          path: "targetId"
+        })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Report.countDocuments(filter)
+    ]);
 
-return res.status(200).json({
-success: true,
-reports,
-pagination: {
-totalReports,
-currentPage: page,
-totalPages: Math.ceil(totalReports / limit),
-hasNextPage: skip + reports.length < totalReports
-}
-});
+    return res.status(200).json({
+      success: true,
+      reports,
+      pagination: {
+        totalReports,
+        currentPage: page,
+        totalPages: Math.ceil(totalReports / limit),
+        hasNextPage: skip + reports.length < totalReports
+      }
+    });
 
-} catch (error) {
-next(error);
-}
+  } catch (error) {
+    next(error);
+  }
 };
 
 // 3. ADMIN ONLY: Change status (e.g., mark as "resolved")
@@ -76,7 +80,7 @@ export const updateReportStatus = async (req, res, next) => {
     const updatedReport = await Report.findByIdAndUpdate(
       id,
       { status },
-      { returnDocument:'after', runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
 
     if (!updatedReport) {

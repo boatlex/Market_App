@@ -8,16 +8,15 @@ const reportSchema = new mongoose.Schema(
       required: true,
       index: true 
     },
-    
     targetType: { 
       type: String, 
-      enum: ["product", "user", "comment"], 
+      enum: ["Product", "User", "Comment","Service", "Job","JobSeeker"], 
       required: true 
     },
     targetId: { 
       type: mongoose.Schema.Types.ObjectId, 
       required: true,
-      refPath: "targetType" // Mongoose trick: dynamically links to the right collection!
+      refPath: "targetType" 
     },
     reason: { 
       type: String, 

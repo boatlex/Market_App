@@ -90,7 +90,7 @@ export const getConversations = async (req, res, next) => {
     })
     .populate({
       path: "participants",
-      select: "name avatarUrl" 
+      select: "firstName lastName profilePicture" 
     })
     .populate({
       path: "lastMessage",
@@ -108,8 +108,9 @@ export const getConversations = async (req, res, next) => {
         _id: conversation._id,
         user: {
           _id: otherUser?._id,
-          name: otherUser?.name || "Unknown User",
-          avatarUrl: otherUser?.avatarUrl || null
+          firstName: otherUser?.firstName || "Unknown User",
+          lastName: otherUser?.lastName || "Unknown User",
+          profilePicture: otherUser?.profilePicture || null
         },
         lastMessage: conversation.lastMessage ? {
           content: conversation.lastMessage.content,

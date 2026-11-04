@@ -4,12 +4,16 @@ import { deleteComment, createComment, getProductComments, replyToComment, toggl
 
 const router = express.Router()
 
-router.get("/:productId", getProductComments )
 
-router.post("/create/:productId", protectRoute, createComment )
-router.post("/:commentId/reply", protectRoute, replyToComment)
-router.patch("/:commentId/like", protectRoute, toggleLikeComment);
-router.delete("/delete/:commentId", protectRoute, deleteComment )
+router.get("/product/:productId", getProductComments);
+
+router.post("/:productId", protectRoute, createComment);
+
+router.post("/reply/:commentId", protectRoute, replyToComment);
+
+router.patch("/like/:commentId", protectRoute, toggleLikeComment);
+
+router.delete("/:commentId", protectRoute, deleteComment);
 
 
 
