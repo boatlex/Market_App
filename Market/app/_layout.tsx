@@ -6,8 +6,9 @@ import { tokenCache } from '@clerk/expo/token-cache';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "../contexts/authContext"; 
 import RootApp from "../lib/utils"; 
-// 🚀 IMPORT YOUR SOCKET INITIALIZER HERE
 import { connectSocket, disconnectSocket } from "../sockets/sockets"; 
+// FIXED: Imported your GlobalReportModal component
+import GlobalReportModal from "../components/reports/GlobalReportsModal"; 
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
@@ -18,16 +19,14 @@ if (!publishableKey) {
 const queryClient = new QueryClient();
 
 function NavigationGuard() {
-
   const { user, authToken, isInitializing } = useAuth(); 
   const segments = useSegments();
   const router = useRouter();
 
-  
   useEffect(() => {
     if (isInitializing) return;
 
-     const inAuthGroup = segments[0] === "(auth)";
+    const inAuthGroup = segments[0] === "(auth)";
 
     if (!user && !inAuthGroup) {
       router.replace("/(auth)");
@@ -36,7 +35,6 @@ function NavigationGuard() {
     }
   }, [user, isInitializing, segments]);
 
-  
   useEffect(() => {
     if (!isInitializing) {
       if (authToken) {
@@ -69,10 +67,11 @@ export default function RootLayout() {
           {/* Mount the Navigation Guard component down inside the AuthProvider context */}
           <NavigationGuard />
           
+          {/* FIXED: Mounted the overlay modal here so it is available globally */}
+          <GlobalReportModal />
+          
         </AuthProvider>
       </QueryClientProvider>
     </ClerkProvider>
   );
 }
-
-

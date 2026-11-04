@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import ImageView from 'react-native-image-viewing';
 import { useAuth } from '../../contexts/authContext';
+import { useReportModalStore } from '../../stores/useReportModalStore'
 
 const { width } = Dimensions.get("window")
 
@@ -17,7 +18,7 @@ const SeekJobDetailsScreen = () => {
   const { user } = useAuth()
 
   const { data: product, isError, isLoading } = useGetJobSeekerById(id)
-
+  const openReportModal = useReportModalStore((state) => state.openReportModal);
   const [isFavorite, setIsFavorite] = useState(false)
   const [isZoomVisible, setIsZoomVisible] = useState(false);
 
@@ -250,6 +251,30 @@ const SeekJobDetailsScreen = () => {
               ))}
             </View>
           )}
+
+
+          {/* FIXED: Added clean Trust & Safety report block directly below the content wrapper */}
+          {!owner && (
+            <View className="px-6 mt-2">
+              <TouchableOpacity
+                onPress={() => openReportModal('JobSeeker', product._id)}
+                activeOpacity={0.7}
+                className="flex-row items-center justify-between p-4 bg-red-50/60 border border-red-100 rounded-2xl"
+              >
+                <View className="flex-row items-center flex-1 mr-3">
+                  <View className="w-9 h-9 rounded-full bg-red-100 items-center justify-center mr-3">
+                    <Ionicons name="alert-circle-outline" size={18} color="#EF4444" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm font-semibold text-gray-900">Report this listing</Text>
+                    <Text className="text-xs text-gray-500 mt-0.5">Flag this item if you suspect fraud, scams,</Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+          )}
+
         </View>
       </ScrollView>
 

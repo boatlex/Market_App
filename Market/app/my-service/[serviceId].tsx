@@ -10,16 +10,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import ImageView from 'react-native-image-viewing';
 import { useAuth } from '../../contexts/authContext';
+import { useReportModalStore } from '../../stores/useReportModalStore'
 
 const { width } = Dimensions.get("window");
 
 const ServiceDetailsScreen = () => {
   const { serviceId } = useLocalSearchParams<{ serviceId: string }>();
-  
+
   // ⚡ DISPATCH HOOK LAYERS
   const { data: response, isError, isLoading } = useGetServiceProviderById(serviceId || "");
   const deleteMutation = useDeleteServiceProvider();
   const { user } = useAuth();
+  const openReportModal = useReportModalStore((state) => state.openReportModal);
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isZoomVisible, setIsZoomVisible] = useState(false);
@@ -37,11 +39,11 @@ const ServiceDetailsScreen = () => {
   const handleCallProvider = () => {
     if (!user) {
       Alert.alert(
-        "Authentication Required", 
+        "Authentication Required",
         "Please sign in to view business contact details.",
         [
           { text: "Cancel", style: "cancel" },
-          { text: "Sign In", onPress: () => router.push("/(auth)") } 
+          { text: "Sign In", onPress: () => router.push("/(auth)") }
         ]
       );
       return;
@@ -62,7 +64,7 @@ const ServiceDetailsScreen = () => {
       Alert.alert("Authentication Required", "Please sign in to message this provider.");
       return;
     }
-    
+
     const targetNumber = provider?.whatsappNumber || provider?.phoneNumber;
     if (!targetNumber) {
       Alert.alert("Error", "No valid contact number found for WhatsApp.");
@@ -70,8 +72,8 @@ const ServiceDetailsScreen = () => {
     }
 
     // Standard country format validation injection for local Ghana dials
-    const formattedNumber = targetNumber.startsWith('0') 
-      ? `233${targetNumber.substring(1)}` 
+    const formattedNumber = targetNumber.startsWith('0')
+      ? `233${targetNumber.substring(1)}`
       : targetNumber;
 
     const message = `Hello ${provider?.businessName}, I found your service listing on the Ghana Marketplace App and would like to inquire about your services.`;
@@ -84,9 +86,9 @@ const ServiceDetailsScreen = () => {
       "Are you sure you want to permanently delete your trade business listing from the public directory?",
       [
         { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete permanently", 
-          style: "destructive", 
+        {
+          text: "Delete permanently",
+          style: "destructive",
           onPress: async () => {
             try {
               await deleteMutation.mutateAsync();
@@ -95,7 +97,7 @@ const ServiceDetailsScreen = () => {
             } catch (err) {
               Alert.alert("Error", "Could not remove listing profile.");
             }
-          } 
+          }
         }
       ]
     );
@@ -104,8 +106,8 @@ const ServiceDetailsScreen = () => {
   if (isLoading) return <LoadingUi />;
   if (isError || !provider) return <ErrorUi />;
 
-  const validImages = provider.portfolioImages && provider.portfolioImages.length > 0 
-    ? provider.portfolioImages 
+  const validImages = provider.portfolioImages && provider.portfolioImages.length > 0
+    ? provider.portfolioImages
     : [];
 
   const displaySalary = provider.pricing?.rate
@@ -126,7 +128,7 @@ const ServiceDetailsScreen = () => {
       </View>
 
       <ScrollView className='flex-1 bg-white' contentContainerStyle={{ paddingBottom: 140 }} showsVerticalScrollIndicator={false}>
-        
+
         {/* Work Sample Photos Portfolio Carousel Slider Box */}
         <View className='relative bg-gray-100' style={{ height: 350 }}>
           {validImages.length > 0 ? (
@@ -190,15 +192,14 @@ const ServiceDetailsScreen = () => {
             <View className='bg-gray-50 px-3 py-1 rounded-full border border-gray-100'>
               <Text className='text-gray-600 text-xs font-bold capitalize'>{provider.serviceType}</Text>
             </View>
-            <View className={`px-3 py-1 rounded-full border ${
-              provider.availabilityStatus === 'Available' ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100'
-            }`}>
+            <View className={`px-3 py-1 rounded-full border ${provider.availabilityStatus === 'Available' ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100'
+              }`}>
               <Text className={`text-xs font-black ${provider.availabilityStatus === 'Available' ? 'text-emerald-600' : 'text-amber-600'}`}>
                 ● {provider.availabilityStatus}
               </Text>
             </View>
 
-           {/* Localized Post Registration Date Badge */}
+            {/* Localized Post Registration Date Badge */}
             {provider.createdAt && (
               <View className='bg-purple-50 px-3 py-1 rounded-full border border-purple-100 flex-row items-center gap-1'>
                 <Ionicons name="calendar-outline" size={12} color="#7C3AED" />
@@ -220,7 +221,7 @@ const ServiceDetailsScreen = () => {
                 <Ionicons name="checkmark-circle" size={22} color="#2563EB" />
               )}
             </View>
-            
+
             {/* Rating Stars Summary Board Metrics */}
             <View className="flex-row items-center gap-1">
               <Ionicons name="star" size={14} color="#F59E0B" />
@@ -285,6 +286,28 @@ const ServiceDetailsScreen = () => {
                     <Text className="text-white font-bold text-sm">Permanently Purge Listing</Text>
                   </>
                 )}
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* FIXED: Added clean Trust & Safety report block directly below the content wrapper */}
+          {!isOwner && (
+            <View className="px-6 mt-2">
+              <TouchableOpacity
+                onPress={() => openReportModal('Service', provider._id)}
+                activeOpacity={0.7}
+                className="flex-row items-center justify-between p-4 bg-red-50/60 border border-red-100 rounded-2xl"
+              >
+                <View className="flex-row items-center flex-1 mr-3">
+                  <View className="w-9 h-9 rounded-full bg-red-100 items-center justify-center mr-3">
+                    <Ionicons name="alert-circle-outline" size={18} color="#EF4444" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm font-semibold text-gray-900">Report this listing</Text>
+                    <Text className="text-xs text-gray-500 mt-0.5">Flag this item if you suspect fraud, scams,</Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
               </TouchableOpacity>
             </View>
           )}

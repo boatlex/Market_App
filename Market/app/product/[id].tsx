@@ -1,4 +1,4 @@
-import { View, Text, Alert, TouchableOpacity, ScrollView, Dimensions, Linking, ActivityIndicator } from 'react-native'
+import { View, Text, Alert, TouchableOpacity, KeyboardAvoidingView, ScrollView, Platform, Dimensions, Linking, ActivityIndicator } from 'react-native'
 import React, { useState } from 'react'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useProduct } from '../../hooks/useProduct'
@@ -11,6 +11,9 @@ import { Image } from 'expo-image'
 import ImageView from 'react-native-image-viewing';
 import { useAuth } from '../../contexts/authContext';
 import { getSocket } from '../../sockets/sockets'
+import { useReportModalStore } from '../../stores/useReportModalStore'
+import ProductComments from '../../components/comments/ProductComments'
+
 
 const { width } = Dimensions.get("window")
 
@@ -21,6 +24,7 @@ const ProductDetailsScreen = () => {
   const { data: product, isError, isLoading } = useProduct(id)
   const { user } = useAuth()
   const toggleMutation = useToggleAvailability()
+  const openReportModal = useReportModalStore((state) => state.openReportModal);
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [isFavorite, setIsFavorite] = useState(false)
@@ -127,6 +131,11 @@ const ProductDetailsScreen = () => {
 
   return (
     <SafeScreen>
+        <KeyboardAvoidingView
+       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        className="flex-1 bg-white"
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 0} 
+      >
       {/* Absolute Header Overlay */}
       <View className='absolute top-12 right-0 left-0 z-10 px-6 pb-4 flex-row items-center justify-between'>
         <TouchableOpacity
@@ -256,6 +265,7 @@ const ProductDetailsScreen = () => {
             </Text>
           </View>
 
+
           {/* Management Control Box (Renders conditionally for the item owner) */}
           {owner ? (
             <View className="mb-6 p-4 bg-gray-50 border border-gray-100 rounded-2xl">
@@ -325,6 +335,35 @@ const ProductDetailsScreen = () => {
           {/* Description Section */}
           <Text className="text-gray-900 font-bold text-base mb-2">Description</Text>
           <Text className="text-gray-600 text-sm leading-relaxed mb-6">{product.description}</Text>
+           
+          
+          {/* Comments Section Divider Layer */}
+           <View className='border-t border-gray-100 mt-6 pt-4'>
+            <ProductComments productId={id as string} />
+          </View>
+
+
+          {/* FIXED: Added clean Trust & Safety report block directly below the content wrapper */}
+          {!owner && (
+            <View className="px-6 mt-2">
+              <TouchableOpacity
+                onPress={() => openReportModal('Product', product._id)}
+                activeOpacity={0.7}
+                className="flex-row items-center justify-between p-4 bg-red-50/60 border border-red-100 rounded-2xl"
+              >
+                <View className="flex-row items-center flex-1 mr-3">
+                  <View className="w-9 h-9 rounded-full bg-red-100 items-center justify-center mr-3">
+                    <Ionicons name="alert-circle-outline" size={18} color="#EF4444" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm font-semibold text-gray-900">Report this listing</Text>
+                    <Text className="text-xs text-gray-500 mt-0.5">Flag this item if you suspect fraud, scams,</Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -349,6 +388,7 @@ const ProductDetailsScreen = () => {
           </TouchableOpacity>
         </View>
       )}
+      </KeyboardAvoidingView>
     </SafeScreen>
   )
 }

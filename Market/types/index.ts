@@ -1,7 +1,7 @@
 export type ApplicationStatus = 'Pending' | 'Reviewed' | 'Interviewing' | 'Hired'|'Shortlisted'|'Accepted';
 export type WorkMode = 'On-site' | 'Remote' | 'Hybrid';
 export type NotificationType = 'call_me_back' | 'make_an_offer';
-export type ReportTargetType = 'product' | 'user' | 'comment';
+export type ReportTargetType = 'Product' | 'User' | 'Comment'|'Service'|'Job'|'JobSeeker';
 export type ReportReason = 'scam' | 'inappropriate_content' | 'fake_item' | 'harassment' | 'other';
 export type ReportStatus = 'pending' | 'under_review' | 'resolved' | 'dismissed';
 export type ReviewRating = 1 | 2 | 3 | 4 | 5;

@@ -11,6 +11,7 @@ import ImageView from 'react-native-image-viewing'
 import { useAuth } from '../../contexts/authContext'
 import { useGetJob } from '../../hooks/usegetJob'
 import { useToggleJobStatus } from '../../hooks/useToggleJobStatus'
+import { useReportModalStore } from '../../stores/useReportModalStore'
 
 const { width } = Dimensions.get("window")
 
@@ -20,13 +21,13 @@ const JobDetailsScreen = () => {
   const { data: job, isError, isLoading } = useGetJob(id)
   const { user } = useAuth()
   const toggleMutation = useToggleJobStatus()
-
+  const openReportModal = useReportModalStore((state) => state.openReportModal);
   const [isFavorite, setIsFavorite] = useState(false)
   const [isZoomVisible, setIsZoomVisible] = useState(false)
 
-   const userId = user?.id
-   const parsedEmployerId = (Array.isArray(employerId) ? employerId[0] : employerId);
-   const owner = userId === parsedEmployerId;
+  const userId = user?.id
+  const parsedEmployerId = (Array.isArray(employerId) ? employerId[0] : employerId);
+  const owner = userId === parsedEmployerId;
 
 
   const handleCallEmployer = () => {
@@ -305,6 +306,30 @@ const JobDetailsScreen = () => {
             </View>
           )
           }
+
+          
+          {/* FIXED: Added clean Trust & Safety report block directly below the content wrapper */}
+          {!owner && (
+            <View className="px-6 mt-2">
+              <TouchableOpacity
+                onPress={() => openReportModal('Job', job._id)}
+                activeOpacity={0.7}
+                className="flex-row items-center justify-between p-4 bg-red-50/60 border border-red-100 rounded-2xl"
+              >
+                <View className="flex-row items-center flex-1 mr-3">
+                  <View className="w-9 h-9 rounded-full bg-red-100 items-center justify-center mr-3">
+                    <Ionicons name="alert-circle-outline" size={18} color="#EF4444" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm font-semibold text-gray-900">Report this listing</Text>
+                    <Text className="text-xs text-gray-500 mt-0.5">Flag this item if you suspect fraud, scams,</Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+          )}
+
         </View>
       </ScrollView>
 

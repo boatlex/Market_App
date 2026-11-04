@@ -31,7 +31,7 @@ const useWishList = () => {
     },
   })
 
-
+  // 3. Remove from Wishlist Mutation
   const removeFromWishListMutation = useMutation({
     mutationFn: async (productId: string) => {
       const { data } = await api.delete<WishListResponse>(`/users/wishList/${productId}`)
@@ -67,10 +67,10 @@ const useWishList = () => {
     removeFromWishList: removeFromWishListMutation.mutate,
     isInWishList,
     wishListCount: wishList?.length || 0,
-    // True/False flags are easier to parse in UI components than returning variables
     isAddingToWishList: addToWishListMutation.isPending, 
-    isRemovingFromWishList: removeFromWishListMutation.isPending?
-    removeFromWishListMutation.variables:null
+    isRemovingFromWishList: removeFromWishListMutation.isPending 
+      ? removeFromWishListMutation.variables 
+      : null
   }
 }
 
