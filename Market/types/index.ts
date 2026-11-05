@@ -76,6 +76,8 @@ export interface Job {
     applications: string[];
     applicationDeadline?: string; 
     isOpen: boolean;
+    averageRating: number; 
+    totalReviews: number; 
     createdAt: string;
     updatedAt: string;
 }
@@ -125,6 +127,8 @@ export interface JobSeekerProfile {
     preferredJobTypes: string[];
     expectedSalary: ExpectedSalary;
     isSearchingForJob: boolean;
+    averageRating: number; 
+    totalReviews: number; 
     createdAt: string;
     updatedAt: string;
 }
@@ -175,6 +179,8 @@ export interface Product {
     condition?: ProductCondition;
     comments: Comment[];
     isAvailable: boolean;
+    averageRating: number; 
+    totalReviews: number; 
     createdAt: string;
     updatedAt: string;
 }
@@ -191,15 +197,27 @@ export interface Report {
     updatedAt: string;
 }
 
-export interface Review {
+export interface ServiceProviderReview {
     _id: string;
-    reviewer: string;
-    provider: string;
+    reviewer: string | User;
+    provider: string | ServiceProvider;
     rating: ReviewRating;
     comment?: string;
     createdAt: string;
     updatedAt: string;
 }
+
+export interface ItemReview {
+    _id: string;
+    reviewer: string | User;
+    targetType: ReportTargetType; 
+    targetId: string; 
+    rating: ReviewRating;
+    comment?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
 
 export interface ServiceProviderPricing {
     rate: number;

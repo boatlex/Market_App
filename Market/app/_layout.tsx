@@ -7,8 +7,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "../contexts/authContext"; 
 import RootApp from "../lib/utils"; 
 import { connectSocket, disconnectSocket } from "../sockets/sockets"; 
-// FIXED: Imported your GlobalReportModal component
 import GlobalReportModal from "../components/reports/GlobalReportsModal"; 
+
+// IMPORT: Added GestureHandlerRootView to establish native responder context
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
@@ -60,16 +62,16 @@ export default function RootLayout() {
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
+          <GestureHandlerRootView style={{ flex: 1 }}>
           
-          {/* Mount RootApp here so it intercepts Clerk token streams before views render */}
-          <RootApp />
+            <RootApp />
 
-          {/* Mount the Navigation Guard component down inside the AuthProvider context */}
-          <NavigationGuard />
-          
-          {/* FIXED: Mounted the overlay modal here so it is available globally */}
-          <GlobalReportModal />
-          
+            <NavigationGuard />
+            
+            
+            <GlobalReportModal />
+            
+          </GestureHandlerRootView>
         </AuthProvider>
       </QueryClientProvider>
     </ClerkProvider>
