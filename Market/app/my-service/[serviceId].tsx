@@ -1,4 +1,4 @@
-import { View, Text, Alert, TouchableOpacity, Dimensions, Linking, ActivityIndicator, TextInput, Modal } from 'react-native';
+import { View, Text, Alert, TouchableOpacity, Dimensions, Linking, ActivityIndicator, TextInput, Modal, Pressable } from 'react-native';
 import React, { useMemo, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useGetServiceProviderById } from '../../hooks/useGetServiceProviderById';
@@ -210,11 +210,39 @@ const ServiceDetailsScreen = () => {
         </View>
       )}
 
-      <Modal visible={isReviewModalVisible} animationType="slide" transparent={true}>
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white rounded-t-3xl p-6 pb-10">
-            <Text className="text-xl font-black text-gray-900">Review Experience</Text>
-                      <StarRating rating={formRating} onRatingChange={setFormRating} size={36} className="my-4" />
+            <Modal 
+        visible={isReviewModalVisible} 
+        animationType="slide" 
+        transparent={true} 
+        onRequestClose={() => setIsReviewModalVisible(false)}
+      >
+        {/* Backdrop overlay layer closing the sheet on tapping dark outside zones */}
+        <Pressable 
+          className="flex-1 bg-black/50 justify-end"
+          onPress={() => setIsReviewModalVisible(false)}
+        >
+          {/* Main content modal dialog box. e.stopPropagation stops clicks inside the sheet from closing it */}
+          <Pressable 
+            className="bg-white rounded-t-3xl p-6 pb-10"
+            onPress={(e) => e.stopPropagation()}
+          >
+            {/* Header Layout Row with Title and Close Trigger Button */}
+            <View className="flex-row justify-between items-center mb-4">
+              <View>
+                <Text className="text-xl font-black text-gray-900">Review Experience</Text>
+                <Text className="text-xs text-gray-400 mt-0.5">Share your workplace feedback</Text>
+              </View>
+              
+              <TouchableOpacity 
+                onPress={() => setIsReviewModalVisible(false)}
+                className="bg-gray-100 p-2 rounded-full active:bg-gray-200"
+              >
+                <Ionicons name="close" size={20} color="#4B5563" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Interactive Rating Component Input block */}
+            <StarRating rating={formRating} onRatingChange={setFormRating} size={36} className="my-4" />
 
             <Text className="text-sm font-bold text-gray-700 mb-2">Write an optional comment:</Text>
             <TextInput
@@ -229,6 +257,7 @@ const ServiceDetailsScreen = () => {
               className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 h-28 text-gray-800 mb-6 text-base align-top"
             />
 
+            {/* Form Submission Button */}
             <TouchableOpacity
               onPress={handleSubmitReview}
               disabled={isAddingReview || formRating === 0}
@@ -243,9 +272,10 @@ const ServiceDetailsScreen = () => {
               )}
             </TouchableOpacity>
 
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
+
 
       {/* Profile delete action option placement mapping outside lists */}
       {isOwner && (
