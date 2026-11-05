@@ -1,8 +1,9 @@
-import { Review } from "../models/review.model.js";
-import { ServiceProvider } from "../models/serviceprovider.model.js";
+import { ServiceProviderReview } from "../models/serviceProviderReview.model.js"; 
+import { ServiceProvider } from "../models/serviceprovider.model.js"; 
 
 const updateProviderStats = async (providerId) => {
-    const stats = await Review.aggregate([
+
+    const stats = await ServiceProviderReview.aggregate([
         { $match: { provider: providerId } },
         { 
             $group: { 
@@ -15,12 +16,10 @@ const updateProviderStats = async (providerId) => {
 
     if (stats.length > 0) {
         await ServiceProvider.findByIdAndUpdate(providerId, {
-            // Corrected: Safely reading properties from the first element of the array
             averageRating: Math.round(stats[0].avgRating * 10) / 10, 
             totalReviews: stats[0].totalReviews
         });
     } else {
-        // Fallback resetting parameters if zero ratings remain active
         await ServiceProvider.findByIdAndUpdate(providerId, {
             averageRating: 0,
             totalReviews: 0
@@ -28,7 +27,7 @@ const updateProviderStats = async (providerId) => {
     }
 };
 
-export const createReview = async (req, res, next) => {
+export const createProviderReview = async (req, res, next) => {
     try {
         const { rating, comment, providerId } = req.body;
         const reviewerId = req.user._id;
@@ -37,7 +36,6 @@ export const createReview = async (req, res, next) => {
             return res.status(400).json({ message: "Please provide a valid rating between 1 and 5 stars." });
         }
 
-        // Verify the service profile card exists
         const providerProfile = await ServiceProvider.findById(providerId);
         if (!providerProfile) {
             return res.status(404).json({ message: "Service provider profile not found." });
@@ -47,13 +45,14 @@ export const createReview = async (req, res, next) => {
             return res.status(400).json({ message: "You cannot review your own service profile!" });
         }
 
-        // Check if user already left a review to avoid crashes from duplicate indices
-        const alreadyReviewed = await Review.findOne({ provider: providerId, reviewer: reviewerId });
+        // FIXED: Using ServiceProviderReview to query existing documents
+        const alreadyReviewed = await ServiceProviderReview.findOne({ provider: providerId, reviewer: reviewerId });
         if (alreadyReviewed) {
             return res.status(400).json({ message: "You have already left a review for this provider." });
         }
 
-        const newReview = new Review({
+        // FIXED: Instantiating correct model reference
+        const newReview = new ServiceProviderReview({
             reviewer: reviewerId,
             provider: providerId,
             rating,
@@ -62,11 +61,10 @@ export const createReview = async (req, res, next) => {
 
         const savedReview = await newReview.save();
 
-        // Trigger background recalculations
         await updateProviderStats(providerId);
 
         return res.status(201).json({
-            message: "Review posted successfully!",
+            message: "Provider review posted successfully!",
             review: savedReview
         });
 
@@ -75,26 +73,26 @@ export const createReview = async (req, res, next) => {
     }
 };
 
-export const deleteReview = async (req, res, next) => {
+export const deleteProviderReview = async (req, res, next) => {
     try {
         const { reviewId } = req.params;
         const currentUserId = req.user._id;
 
-        const review = await Review.findById(reviewId);
+        // FIXED: Reference changed to ServiceProviderReview
+        const review = await ServiceProviderReview.findById(reviewId);
         if (!review) {
             return res.status(404).json({ message: "Review not found." });
         }
 
-        // FIXED: Throws 403 ONLY if the current user is NOT the person who wrote the review
         if (!review.reviewer.equals(currentUserId)) {
             return res.status(403).json({ message: "Not authorized to delete this review." });
         }
 
         const providerId = review.provider;
 
-        await Review.findByIdAndDelete(reviewId);
+        // FIXED: Reference changed to ServiceProviderReview
+        await ServiceProviderReview.findByIdAndDelete(reviewId);
 
-        // Recalculate score changes after removing data entries
         await updateProviderStats(providerId);
 
         return res.status(200).json({
@@ -114,13 +112,15 @@ export const getProviderReviews = async (req, res, next) => {
         const limit = parseInt(req.query.limit) || 10; 
         const skip = (page - 1) * limit;
 
-        const reviews = await Review.find({ provider: providerId })
-            .populate("reviewer", "name profilePicture") 
+        // FIXED: Reference changed to ServiceProviderReview
+        const reviews = await ServiceProviderReview.find({ provider: providerId })
+            .populate("reviewer", "firstName lastName profilePicture") // Adjusted fields to match your User type attributes
             .sort({ createdAt: -1 }) 
             .skip(skip)
             .limit(limit);
 
-        const totalReviews = await Review.countDocuments({ provider: providerId });
+        // FIXED: Reference changed to ServiceProviderReview
+        const totalReviews = await ServiceProviderReview.countDocuments({ provider: providerId });
         const totalPages = Math.ceil(totalReviews / limit);
 
         return res.status(200).json({
@@ -135,3 +135,5 @@ export const getProviderReviews = async (req, res, next) => {
         next(error);
     }
 };
+
+

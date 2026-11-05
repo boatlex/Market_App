@@ -9,11 +9,7 @@ const workExperienceSchema = new mongoose.Schema({
         type: Date,
         validate: {
             validator: function (value) {
-                // 👈 FIX: Core context safety mapping block
-                // Handles parent object vs nested array upsert pipelines safely
                 const subdoc = this.ownerDocument ? this : this.parent();
-                
-                // Safely convert values to timestamps to prevent string vs date comparison logic failures
                 const startTS = subdoc.startDate ? new Date(subdoc.startDate).getTime() : null;
                 const endTS = value ? new Date(value).getTime() : null;
 
@@ -38,7 +34,6 @@ const educationSchema = new mongoose.Schema({
         type: Date,
         validate: {
             validator: function (value) {
-                // 👈 FIX: Core context safety mapping block
                 const subdoc = this.ownerDocument ? this : this.parent();
                 
                 const startTS = subdoc.startDate ? new Date(subdoc.startDate).getTime() : null;
@@ -55,7 +50,7 @@ const educationSchema = new mongoose.Schema({
     isCurrentEducation: { type: Boolean, default: false }
 });
 
-// Keep your parent jobSeekerProfileSchema exactly as it is below...
+
 const jobSeekerProfileSchema = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
@@ -107,7 +102,17 @@ const jobSeekerProfileSchema = new mongoose.Schema({
         type: Boolean,
         default: true,
         index: true
-    }
+    },
+     averageRating: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 5
+    },
+    totalReviews: {
+        type: Number,
+        default: 0
+    },
 }, { timestamps: true });
 
 jobSeekerProfileSchema.index(

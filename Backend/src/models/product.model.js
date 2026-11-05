@@ -110,6 +110,16 @@ const productSchema = new mongoose.Schema({
         default: true,
         index: true
     },
+     averageRating: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 5
+    },
+    totalReviews: {
+        type: Number,
+        default: 0
+    },
 }, { timestamps: true });
 // 1. Existing text index remains for keyword inputs
 productSchema.index({ name: "text", description: "text" }, { weights: { name: 10, description: 5 } });

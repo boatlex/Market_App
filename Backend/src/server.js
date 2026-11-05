@@ -19,7 +19,7 @@ import applicationRoutes from "./routes/application.routes.js";
 import jobseekerprofileRoutes from "./routes/jobseekerprofile.routes.js";
 import resumeRoutes from "./routes/resume.routes.js";
 import serviceproviderRoutes from "./routes/serviceprovider.routes.js";
-import serviceproviderReviewRoutes from "./routes/serviceproviderReview.route.js";
+import reviewsRoutes from "./routes/serviceproviderReview.route.js";
 
 const app = express();
 const PORT = ENV.PORT || 3000;
@@ -65,7 +65,7 @@ app.use("/api/applications", applicationRoutes);
 app.use("/api/jobseekerprofiles", jobseekerprofileRoutes);
 app.use("/api/resumes", resumeRoutes);
 app.use("/api/serviceproviders", serviceproviderRoutes);
-app.use("/api/reviews", serviceproviderReviewRoutes);
+app.use("/api/reviews" ,reviewsRoutes);
 
 // 7. Error Handling
 app.use((err, req, res, next) => {
