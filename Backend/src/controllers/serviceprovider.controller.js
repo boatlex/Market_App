@@ -1,6 +1,7 @@
 import { ServiceProvider } from "../models/serviceprovider.model.js";
 import cloudinary from "cloudinary";
 import mongoose from "mongoose";
+import { ServiceProviderReview } from "../models/serviceProviderReview.model.js";
 
 
 
@@ -100,8 +101,6 @@ export const upsertServiceProviderProfile = async (req, res, next) => {
     }
 };
 
-
-
 export const searchServiceProviders = async (req, res, next) => {
     try {
         const {
@@ -190,11 +189,34 @@ export const getServiceProviderById = async (req, res, next) => {
     try {
         const { providerId } = req.params;
 
-        const provider = await ServiceProvider.findById(providerId)
-            .populate("user", "firstName lastName profilePicture email");
+        if (!mongoose.Types.ObjectId.isValid(providerId)) {
+            return res.status(400).json({ success: false, error: "Invalid format payload ID." });
+        }
+
+        const [provider, ratingStats] = await Promise.all([
+            ServiceProvider.findById(providerId).populate("user", "firstName lastName profilePicture email").lean(),
+            ServiceProviderReview.aggregate([
+                { $match: { provider: new mongoose.Types.ObjectId(providerId) } },
+                {
+                    $group: {
+                        _id: "$provider",
+                        totalReviews: { $sum: 1 },
+                        averageRating: { $avg: "$rating" }
+                    }
+                }
+            ])
+        ]);
 
         if (!provider) {
             return res.status(404).json({ success: false, error: "Service provider profile not found." });
+        }
+
+        if (ratingStats.length > 0) {
+            provider.averageRating = Math.round(ratingStats[0].averageRating * 10) / 10;
+            provider.totalReviews = ratingStats[0].totalReviews;
+        } else {
+            provider.averageRating = 0;
+            provider.totalReviews = 0;
         }
 
         return res.status(200).json({ success: true, data: provider });

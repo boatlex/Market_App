@@ -1,4 +1,4 @@
-import mongoose from "mongoose"
+import mongoose from "mongoose";
 
 const messageSchema = new mongoose.Schema({
   conversationId: {
@@ -11,8 +11,28 @@ const messageSchema = new mongoose.Schema({
     ref: "User",
     required: true
   },
-  content: String,
-  attachment: String
+  
+  content: {
+    type: String,
+    trim: true
+  },
+  
+  attachment: {
+    type: String,
+    trim: true
+  },
+  
+  messageType: {
+    type: String,
+    enum: ["text", "image", "voice"],
+    default: "text",
+    required: true
+  },
+  
+  voiceDuration: {
+    type: Number,
+    default: 0
+  }
 }, { timestamps: true });
 
 const Message = mongoose.model("Message", messageSchema);

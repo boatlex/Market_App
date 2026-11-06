@@ -1,14 +1,14 @@
-import express from "express"
-import { protectRoute } from "../controllers/auth.controller.js"
+import express from "express";
+import multer from "multer"; // 🌟 Import multer middleware
+import { protectRoute } from "../controllers/auth.controller.js";
 import { sendMessage, getMessages, getConversations } from "../controllers/message.controller.js";
-
-const router = express.Router()
+import upload from "../middleware/message.middleware.js";
+const router = express.Router();
 
 
 router.get("/conversations", protectRoute, getConversations);
-
-
 router.get("/:id", protectRoute, getMessages);
-router.post("/send/:id", protectRoute, sendMessage);
 
-export default router
+router.post("/send/:id", protectRoute, upload.single("attachment"), sendMessage);
+
+export default router;

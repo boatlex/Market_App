@@ -45,13 +45,13 @@ export const createProviderReview = async (req, res, next) => {
             return res.status(400).json({ message: "You cannot review your own service profile!" });
         }
 
-        // FIXED: Using ServiceProviderReview to query existing documents
+        
         const alreadyReviewed = await ServiceProviderReview.findOne({ provider: providerId, reviewer: reviewerId });
         if (alreadyReviewed) {
             return res.status(400).json({ message: "You have already left a review for this provider." });
         }
 
-        // FIXED: Instantiating correct model reference
+        
         const newReview = new ServiceProviderReview({
             reviewer: reviewerId,
             provider: providerId,
@@ -112,23 +112,28 @@ export const getProviderReviews = async (req, res, next) => {
         const limit = parseInt(req.query.limit) || 10; 
         const skip = (page - 1) * limit;
 
-        // FIXED: Reference changed to ServiceProviderReview
+        
         const reviews = await ServiceProviderReview.find({ provider: providerId })
-            .populate("reviewer", "firstName lastName profilePicture") // Adjusted fields to match your User type attributes
+            .populate("reviewer", "firstName lastName profilePicture") 
             .sort({ createdAt: -1 }) 
             .skip(skip)
-            .limit(limit);
+            .limit(limit)
+            .lean();
 
-        // FIXED: Reference changed to ServiceProviderReview
+        
         const totalReviews = await ServiceProviderReview.countDocuments({ provider: providerId });
         const totalPages = Math.ceil(totalReviews / limit);
 
-        return res.status(200).json({
-            currentPage: page,
-            totalPages,
-            totalReviews,
-            reviewsPerPage: reviews.length,
-            reviews
+       return res.status(200).json({
+            success: true,
+            message: "Provider reviews fetched successfully.",
+            data: {
+                currentPage: page,
+                totalPages,
+                totalReviews,
+                reviewsPerPage: reviews.length,
+                reviews
+            }
         });
 
     } catch (error) {
