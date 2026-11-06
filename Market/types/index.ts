@@ -139,9 +139,12 @@ export interface Message {
     senderId: string;
     content?: string;
     attachment?: string;
+    messageType: 'text' | 'image' | 'voice';
+    voiceDuration?: number; 
     createdAt: string;
     updatedAt: string;
 }
+
 
 export interface Notification {
     _id: string;

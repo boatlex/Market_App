@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Alert } from 'react-native'; // 🌟 Import Alert from react-native
 import { api } from '../lib/api'; 
 import { ServiceProviderReview } from '../types';
 
-interface GetProviderReviewsResponse {
+interface PaginatedReviewsPayload {
   currentPage: number;
   totalPages: number;
   totalReviews: number;
@@ -10,56 +11,74 @@ interface GetProviderReviewsResponse {
   reviews: ServiceProviderReview[];
 }
 
+interface GetProviderReviewsResponse {
+  success: boolean;
+  message?: string;
+  data: PaginatedReviewsPayload;
+}
+
 export const useServiceProviderReviews = (providerId: string, page = 1, limit = 10) => {
   const queryClient = useQueryClient();
   const queryKey = ['providerReviews', providerId, page, limit];
 
-  // 1. Fetch Paginated Provider Reviews
   const { data, isLoading, isError, refetch } = useQuery<GetProviderReviewsResponse>({
     queryKey,
     queryFn: async () => {
-      const { data } = await api.get<GetProviderReviewsResponse>(
+      const response = await api.get<GetProviderReviewsResponse>(
         `/reviews/provider/${providerId}?page=${page}&limit=${limit}`
       );
-      return data;
+      return response.data;
     },
     enabled: !!providerId,
   });
 
-  // 2. Post a New Provider Review
+  
   const createReviewMutation = useMutation({
     mutationFn: async ({ rating, comment }: { rating: number; comment?: string }) => {
-      const { data } = await api.post<{ review: ServiceProviderReview }>('/reviews/provider', {
+      const response = await api.post<{ success: boolean; data: ServiceProviderReview }>('/reviews/provider', {
         providerId,
         rating,
         comment,
       });
-      return data.review;
+      return response.data.data;
     },
     onSuccess: () => {
-      // Invalidates reviews and triggers updates on provider stats immediately
-      queryClient.invalidateQueries({ queryKey: ['providerReviews', providerId] });
-      queryClient.invalidateQueries({ queryKey: ['serviceProvider', providerId] });
+      
+      Alert.alert("Success", "Your review has been posted successfully!");
+
+      queryClient.invalidateQueries({ queryKey: ['providerReviews', providerId], exact: false });
+      queryClient.invalidateQueries({ queryKey: ['serviceProvider', providerId], exact: false });
     },
+    onError: (error: any) => {
+      
+      const errorMessage = error?.response?.data?.message || "Could not submit your review. Please try again.";
+      Alert.alert("Submission Failed", errorMessage);
+    }
   });
 
-  // 3. Delete a Provider Review
   const deleteReviewMutation = useMutation({
     mutationFn: async (reviewId: string) => {
       await api.delete(`/reviews/provider/${reviewId}`);
       return reviewId;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['providerReviews', providerId] });
-      queryClient.invalidateQueries({ queryKey: ['serviceProvider', providerId] });
+      Alert.alert("Review Removed", "Your review was successfully deleted.");
+
+      queryClient.invalidateQueries({ queryKey: ['providerReviews', providerId], exact: false });
+      queryClient.invalidateQueries({ queryKey: ['serviceProvider', providerId], exact: false });
     },
+    onError: (error: any) => {
+      // 🌟 Error Alert
+      const errorMessage = error?.response?.data?.message || "Could not delete this review.";
+      Alert.alert("Error", errorMessage);
+    }
   });
 
   return {
-    reviews: data?.reviews || [],
-    totalReviews: data?.totalReviews || 0,
-    totalPages: data?.totalPages || 1,
-    currentPage: data?.currentPage || 1,
+    reviews: data?.data?.reviews || [],
+    totalReviews: data?.data?.totalReviews || 0,
+    totalPages: data?.data?.totalPages || 1,
+    currentPage: data?.data?.currentPage || 1,
     isLoading,
     isError,
     refetch,
