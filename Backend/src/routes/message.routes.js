@@ -1,10 +1,10 @@
 import express from "express";
-import multer from "multer"; // 🌟 Import multer middleware
 import { protectRoute } from "../controllers/auth.controller.js";
 import { sendMessage, getMessages, getConversations } from "../controllers/message.controller.js";
 import upload from "../middleware/message.middleware.js";
-const router = express.Router();
 
+
+const router = express.Router();
 
 router.get("/conversations", protectRoute, getConversations);
 router.get("/:id", protectRoute, getMessages);
