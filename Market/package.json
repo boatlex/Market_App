@@ -2,6 +2,13 @@
   "name": "market",
   "main": "expo-router/entry",
   "version": "1.0.0",
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": ["expo-av"]
+      }
+    }
+  },
   "dependencies": {
     "@clerk/expo": "^4.15.1",
     "@expo/ui": "~58.0.27",
