@@ -23,7 +23,7 @@ export const connectSocket = async (explicitToken = null) => {
         socket.connect();
         return socket;
     }
-    socket = io("http://10.56.237.151:3000", { 
+    socket = io("http://10.177.48.151:3000", { 
     auth: { token },
     transports: ['websocket', 'polling'], 
     autoConnect: false,        

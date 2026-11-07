@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
+import { useAudioPlayer } from 'expo-audio'; // Updated for SDK 58
 
 interface ChatAudioMessageProps {
   fileUrl: string;
@@ -10,56 +10,34 @@ interface ChatAudioMessageProps {
 }
 
 export const ChatAudioMessage: React.FC<ChatAudioMessageProps> = ({ fileUrl, duration, isPeer }) => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoadingSound, setIsLoadingSound] = useState(false);
-  const soundRef = useRef<Audio.Sound | null>(null);
+  // Use the reactive state layout straight from the expo-audio player object
+  const player = useAudioPlayer(fileUrl);
+  const [isPlaying, setIsPlaying] = useState(player.playing);
+  const [isLoaded, setIsLoaded] = useState(player.isLoaded);
 
   useEffect(() => {
+    // Monitor playing status changes dynamically via hook listener using correct types
+    const statusSubscription = player.addListener('playbackStatusUpdate', (status) => {
+      setIsLoaded(status.isLoaded);
+      setIsPlaying(status.playing); // Correct layout property name 'playing'
+
+      if (status.isLoaded && status.playing === false && status.currentTime >= duration) {
+        player.seekTo(0);
+      }
+    });
+
     return () => {
-      if (soundRef.current) {
-        soundRef.current.unloadAsync();
-      }
+      statusSubscription.remove();
     };
-  }, []);
+  }, [player, duration]);
 
-  const handlePlayPause = async () => {
-    try {
-      if (soundRef.current) {
-        const status = await soundRef.current.getStatusAsync();
-        if (status.isLoaded) {
-          if (status.isPlaying) {
-            await soundRef.current.pauseAsync();
-            setIsPlaying(false);
-          } else {
-            await soundRef.current.playAsync();
-            setIsPlaying(true);
-          }
-          return;
-        }
-      }
+  const handlePlayPause = () => {
+    if (!isLoaded) return;
 
-      // Initial load sequence configuration
-      setIsLoadingSound(true);
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: fileUrl },
-        { shouldPlay: true },
-        onPlaybackStatusUpdate
-      );
-      soundRef.current = sound;
-      setIsPlaying(true);
-      setIsLoadingSound(false);
-    } catch (error) {
-      setIsLoadingSound(false);
-      setIsPlaying(false);
-    }
-  };
-
-  const onPlaybackStatusUpdate = (status: any) => {
-    if (status.isLoaded) {
-      if (status.didJustFinish) {
-        setIsPlaying(false);
-        soundRef.current?.setPositionAsync(0);
-      }
+    if (player.playing) {
+      player.pause();
+    } else {
+      player.play();
     }
   };
 
@@ -73,10 +51,10 @@ export const ChatAudioMessage: React.FC<ChatAudioMessageProps> = ({ fileUrl, dur
     <View className="flex-row items-center gap-3 px-1 py-1 w-[180px]">
       <TouchableOpacity 
         onPress={handlePlayPause} 
-        disabled={isLoadingSound}
+        disabled={!isLoaded}
         className={`w-8 h-8 rounded-full items-center justify-center ${isPeer ? 'bg-gray-200' : 'bg-blue-700'}`}
       >
-        {isLoadingSound ? (
+        {!isLoaded ? (
           <ActivityIndicator size="small" color={isPeer ? "#4B5563" : "#FFF"} />
         ) : (
           <Ionicons name={isPlaying ? "pause" : "play"} size={16} color={isPeer ? "#4B5563" : "#FFF"} />
