@@ -2,13 +2,6 @@
   "name": "market",
   "main": "expo-router/entry",
   "version": "1.0.0",
-  "expo": {
-    "doctor": {
-      "reactNativeDirectoryCheck": {
-        "exclude": ["expo-av"]
-      }
-    }
-  },
   "dependencies": {
     "@clerk/expo": "^4.15.1",
     "@expo/ui": "~58.0.27",
@@ -21,8 +14,8 @@
     "axios": "^1.20.0",
     "babel-preset-expo": "~58.0.0",
     "expo": "~58.0.23",
+    "expo-audio": "~58.0.11",
     "expo-auth-session": "~58.0.17",
-    "expo-av": "^16.0.8",
     "expo-blur": "~58.0.5",
     "expo-constants": "~58.0.14",
     "expo-crypto": "~58.0.7",
@@ -41,6 +34,7 @@
     "expo-status-bar": "~58.0.4",
     "expo-symbols": "~58.0.4",
     "expo-system-ui": "~58.0.7",
+    "expo-video": "~58.0.13",
     "expo-web-browser": "~58.0.7",
     "nativewind": "^4.2.6",
     "prettier-plugin-tailwindcss": "^0.5.14",
