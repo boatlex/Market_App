@@ -5,6 +5,7 @@ import { Image } from "expo-image";
 import SafeScreen from '../../components/SafeScreen';
 import { useAuth } from '../../contexts/authContext';
 import { Href, useRouter } from 'expo-router';
+import useNotifications from '../../hooks/useNotifications'; // 💡 Imported your notification hook
 
 interface MenuItem {
   id: number;
@@ -30,6 +31,7 @@ const SplashImage = 'https://unsplash.com';
 export default function ProfileScreen() {
   const { user } = useAuth();
   const router = useRouter();
+  const { unreadCount } = useNotifications(); // 🚀 Fetch active counts directly in real time
 
   return (
     <SafeScreen>
@@ -47,7 +49,6 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-
       <ScrollView
         className="flex-1 bg-gray-50"
         showsVerticalScrollIndicator={false}
@@ -63,7 +64,7 @@ export default function ProfileScreen() {
                 height: 80,
                 borderRadius: 40,
                 borderWidth: 4,
-                borderColor: '#10B981' // emerald-500 hex code
+                borderColor: '#10B981'
               }}
               contentFit="cover"
               transition={200}
@@ -73,8 +74,9 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-
-          <Text className="text-2xl font-bold text-black mt-3">Alex Morgan</Text>
+          <Text className="text-2xl font-bold text-black mt-3">
+            {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : "Alex Morgan"}
+          </Text>
           <Text className="text-gray-400 font-medium text-sm">Joined October 2026</Text>
 
           {/* Reputation Stars */}
@@ -93,7 +95,6 @@ export default function ProfileScreen() {
               onPress={() => router.push('/my-activity' as any)}
               activeOpacity={0.7}
             >
-
               <Ionicons name="shirt" size={28} color="#1DB954" />
               <Text className="font-semibold text-black mt-1">My Listings</Text>
               <Text className="text-gray-400 text-xs">(12 Active)</Text>
@@ -109,23 +110,37 @@ export default function ProfileScreen() {
 
         {/* Grid Layout Elements */}
         <View className='flex-row flex-wrap justify-between px-6 mb-3'>
-          {Menu_Items.map((item) => (
-            <TouchableOpacity
-              className='bg-surface rounded-2xl p-6 items-center justify-center mb-4'
-              key={item.id}
-              style={{ width: '48%' }}
-              activeOpacity={0.7}
-              onPress={() => router.push(item.action)}
-            >
-              <View
-                className='rounded-full h-16 w-16 mb-4 items-center justify-center'
-                style={{ backgroundColor: item.color + "20" }}
+          {Menu_Items.map((item) => {
+            // Check if this menu square is the "Notifications" entry
+            const isNotificationItem = item.id === 1;
+
+            return (
+              <TouchableOpacity
+                className='bg-surface rounded-2xl p-6 items-center justify-center mb-4 relative'
+                key={item.id}
+                style={{ width: '48%' }}
+                activeOpacity={0.7}
+                onPress={() => router.push(item.action)}
               >
-                <Ionicons name={item.icon} size={28} color={item.color} />
-              </View>
-              <Text className='text-text-primary font-bold text-base text-center'>{item.title}</Text>
-            </TouchableOpacity>
-          ))}
+                {/* 🔴 Live Trigger Floating Badge Array Pill */}
+                {isNotificationItem && unreadCount > 0 && (
+                  <View className="absolute top-4 right-4 bg-red-500 min-w-[22px] h-[22px] rounded-full items-center justify-center px-1 z-10 shadow-sm">
+                    <Text className="text-white text-[11px] font-bold text-center">
+                      {unreadCount}
+                    </Text>
+                  </View>
+                )}
+
+                <View
+                  className='rounded-full h-16 w-16 mb-4 items-center justify-center'
+                  style={{ backgroundColor: item.color + "20" }}
+                >
+                  <Ionicons name={item.icon} size={28} color={item.color} />
+                </View>
+                <Text className='text-text-primary font-bold text-base text-center'>{item.title}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </ScrollView>
     </SafeScreen>

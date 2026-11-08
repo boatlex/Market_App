@@ -5,7 +5,12 @@ import {
   TouchableOpacity, 
   TextInput, 
   ActivityIndicator, 
-  Alert 
+  Alert,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -14,7 +19,6 @@ import { useAuth } from '../../contexts/authContext';
 import { capitalizeFirstLetter } from '../../lib/utils';
 import { Comment, User } from '../../types';
 import { useRouter } from 'expo-router';
-
 
 interface ProductCommentsProps {
   productId: string;
@@ -35,48 +39,61 @@ export default function ProductComments({ productId }: ProductCommentsProps) {
   } = useComments(productId);
 
   const [commentText, setCommentText] = useState('');
+  const [isCommentModalVisible, setIsCommentModalVisible] = useState(false);
   const [replyToContext, setReplyToContext] = useState<Comment | null>(null);
-  const [replyText, setReplyText] = useState('');
- const router = useRouter()
+  const router = useRouter();
 
-  const handlePostComment = () => {
-    if (!commentText.trim()) return;
-    if(!user){
-        router.push("/(auth)")
+  const handleOpenCommentModal = () => {
+    if (!user) {
+      router.push("/(auth)");
+      return;
     }
-    addComment(commentText.trim(), {
-      onSuccess: () => setCommentText(''),
-    });
+    setReplyToContext(null);
+    setIsCommentModalVisible(true);
   };
 
-  const handlePostReply = () => {
-    if (!replyText.trim() || !replyToContext) return;
-    addReply(
-      { commentId: replyToContext._id, content: replyText.trim() },
-      {
-        onSuccess: () => {
-          setReplyText('');
-          setReplyToContext(null);
-        },
-      }
-    );
+  const handleOpenReplyModal = (item: Comment) => {
+    if (!user) {
+      router.push("/(auth)");
+      return;
+    }
+    setReplyToContext(item);
+    setIsCommentModalVisible(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsCommentModalVisible(false);
+    setCommentText('');
+    setReplyToContext(null);
+  };
+
+  const handlePostSubmit = () => {
+    if (!commentText.trim()) return;
+
+    if (replyToContext) {
+      addReply(
+        { commentId: replyToContext._id, content: commentText.trim() },
+        {
+          onSuccess: () => handleCloseModal(),
+        }
+      );
+    } else {
+      addComment(commentText.trim(), {
+        onSuccess: () => handleCloseModal(),
+      });
+    }
   };
 
   // Recursive Comment Node Component to cleanly indent replies
   const CommentNode = ({ item, isReply = false }: { item: Comment; isReply?: boolean }) => {
     const commentUser = item.user as User;
-
     const fallbackInitial = commentUser?.firstName ? commentUser.firstName.charAt(0) : 'U';
     const isLikedByMe = item.likes.includes(user?.id || '');
     const isMyComment = user?.id === commentUser?._id;
-    
-    
-    const isReplyingToThis = replyToContext?._id === item._id;
 
     return (
       <View className={`mt-4 ${isReply ? 'pl-5 border-l-2 border-gray-100 ml-2' : ''}`}>
         <View className="flex-row items-start justify-between">
-          {/* Left Layer: User details */}
           <View className="flex-row items-start flex-1 mr-2">
             <View className="w-8 h-8 rounded-full overflow-hidden bg-blue-100 items-center justify-center mr-3">
               {commentUser?.profilePicture ? (
@@ -92,7 +109,6 @@ export default function ProductComments({ productId }: ProductCommentsProps) {
               </Text>
               <Text className="text-sm text-gray-700 mt-1">{item.content}</Text>
               
-              {/* Context Actions Block */}
               <View className="flex-row items-center gap-4 mt-2">
                 <TouchableOpacity onPress={() => toggleLike(item._id)} className="flex-row items-center gap-1">
                   <Ionicons name={isLikedByMe ? "heart" : "heart-outline"} size={14} color={isLikedByMe ? "#EF4444" : "#6B7280"} />
@@ -103,10 +119,7 @@ export default function ProductComments({ productId }: ProductCommentsProps) {
 
                 {!isReply && (
                   <TouchableOpacity 
-                    onPress={() => {
-                      setReplyText(''); // Clear any stale text before opening a new reply box
-                      setReplyToContext(item);
-                    }} 
+                    onPress={() => handleOpenReplyModal(item)} 
                     className="flex-row items-center gap-1"
                   >
                     <Ionicons name="chatbubble-outline" size={13} color="#6B7280" />
@@ -131,34 +144,6 @@ export default function ProductComments({ productId }: ProductCommentsProps) {
           </View>
         </View>
 
-        {/* Inline Reply Form Layer */}
-        {isReplyingToThis && (
-          <View className="mt-3 ml-2 flex-row items-center bg-gray-50 rounded-lg p-2 border border-gray-200">
-            <TextInput
-              placeholder={`Reply to ${commentUser?.firstName || 'user'}...`}
-              value={replyText}
-              onChangeText={setReplyText}
-              className="flex-1 text-sm text-gray-800 p-1"
-              autoFocus
-            />
-            <TouchableOpacity onPress={() => setReplyToContext(null)} className="mx-2">
-              <Text className="text-xs text-gray-400">Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={handlePostReply}
-              disabled={isAddingReply || !replyText.trim()}
-              className="bg-blue-600 px-3 py-1.5 rounded-md disabled:bg-blue-300"
-            >
-              {isAddingReply ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text className="text-xs font-bold text-white">Post</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Recursive rendering layer for nested replies */}
         {(item as any).replies && (item as any).replies.length > 0 && (
           <View>
             {(item as any).replies.map((reply: any) => (
@@ -178,16 +163,18 @@ export default function ProductComments({ productId }: ProductCommentsProps) {
     );
   }
 
+  const isSubmitting = isAddingComment || isAddingReply;
+  const targetUser = replyToContext?.user as User;
+  const targetName = targetUser?.firstName || 'user';
+
   return (
     <View className="bg-white">
-      {/* Thread Title Details */}
       <View className="py-3 border-b border-gray-100 flex-row justify-between items-center">
         <Text className="text-sm font-semibold text-gray-800">
           Comments ({totalMainComments || 0})
         </Text>
       </View>
 
-      {/* Main Thread Content Container - Uses mapping to fit perfectly inside the parent ScrollView */}
       <View className="pb-4">
         {comments && comments.length > 0 ? (
           comments.map((comment) => (
@@ -200,30 +187,82 @@ export default function ProductComments({ productId }: ProductCommentsProps) {
         )}
       </View>
 
-      {/* Persistent Input Layout for new main comments */}
-      {!replyToContext && (
-        <View className="mt-2 pt-3 border-t border-gray-100 flex-row items-center bg-white">
-          <TextInput
-            placeholder="Write a comment..."
-            value={commentText}
-            onChangeText={setCommentText}
-            multiline
-            maxLength={500}
-            className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-800 mr-3 max-h-20"
-          />
-          <TouchableOpacity 
-            onPress={handlePostComment}
-            disabled={isAddingComment || !commentText.trim()}
-            className="w-10 h-10 rounded-full bg-blue-600 justify-center items-center disabled:bg-blue-300"
-          >
-            {isAddingComment ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Ionicons name="send" size={16} color="#fff" />
+      {/* Trigger Button Interface (Launches Modal) */}
+      <TouchableOpacity 
+        onPress={handleOpenCommentModal}
+        className="mt-2 flex-row items-center bg-gray-50 border border-gray-200 rounded-xl px-4 py-3"
+        activeOpacity={0.7}
+      >
+        <Text className="text-sm text-gray-400 flex-1">Write a comment...</Text>
+        <Ionicons name="send" size={16} color="#3B82F6" />
+      </TouchableOpacity>
+
+      {/* 🚀 Main Comment / Reply Input Modal Layer */}
+      <Modal
+        visible={isCommentModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={handleCloseModal}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View className="absolute inset-0 bg-black/40" />
+        </TouchableWithoutFeedback>
+
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1, justifyContent: 'flex-end' }}
+        >
+          <View className="bg-white rounded-t-3xl p-5 w-full">
+            {/* Top Modal Nav Bar Header */}
+            <View className="flex-row justify-between items-center pb-3 border-b border-gray-100">
+              <TouchableOpacity onPress={handleCloseModal}>
+                <Text className="text-gray-500 font-medium">Cancel</Text>
+              </TouchableOpacity>
+              <Text className="text-base font-bold text-gray-800">
+                {replyToContext ? 'New Reply' : 'New Comment'}
+              </Text>
+              <TouchableOpacity 
+                onPress={handlePostSubmit}
+                disabled={isSubmitting || !commentText.trim()}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator size="small" color="#2563EB" />
+                ) : (
+                  <Text className={`font-bold ${commentText.trim() ? 'text-blue-600' : 'text-blue-300'}`}>Post</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Contextual Quote Header for Replies */}
+            {replyToContext && (
+              <View className="mt-3 bg-gray-50 border-l-4 border-blue-500 p-2.5 rounded-r-xl">
+                <Text className="text-xs font-bold text-blue-600 mb-0.5">
+                  Replying to @{targetName}
+                </Text>
+                <Text className="text-xs text-gray-500" numberOfLines={2}>
+                  {replyToContext.content}
+                </Text>
+              </View>
             )}
-          </TouchableOpacity>
-        </View>
-      )}
+
+            {/* Text Input Container Frame */}
+            <View className="py-4">
+              <TextInput
+                placeholder={replyToContext ? `Write your reply...` : "Share your thoughts about this item..."}
+                value={commentText}
+                onChangeText={setCommentText}
+                multiline
+                numberOfLines={4}
+                maxLength={500}
+                autoFocus={true}
+                className="text-base text-gray-800 text-start min-h-[120px] max-h-[200px] bg-gray-50 p-3 rounded-xl border border-gray-100"
+                style={{ textAlignVertical: 'top' }}
+              />
+              <Text className="text-right text-xs text-gray-400 mt-1">{commentText.length}/500</Text>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }

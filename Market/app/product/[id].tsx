@@ -13,7 +13,7 @@ import { useAuth } from '../../contexts/authContext';
 import { getSocket } from '../../sockets/sockets'
 import { useReportModalStore } from '../../stores/useReportModalStore'
 import ProductComments from '../../components/comments/ProductComments'
-
+import OfferDialog from '../../components/dialogues/OfferDialogue'
 
 const { width } = Dimensions.get("window")
 
@@ -30,6 +30,8 @@ const ProductDetailsScreen = () => {
   const [isFavorite, setIsFavorite] = useState(false)
   const [isZoomVisible, setIsZoomVisible] = useState(false);
 
+ // 💡 Controlled State for our custom Dialogue component
+  const [promptVisible, setPromptVisible] = useState<boolean>(false);
 
   const parsedSellerId = Array.isArray(sellerID) ? sellerID[0] : sellerID;
   const owner = user?.id === parsedSellerId;
@@ -69,55 +71,48 @@ const ProductDetailsScreen = () => {
     });
   }
 
-  // 📞 Live Trigger: Call Me Back Request
+
   const handleCallMeBackEmit = () => {
-    if (!socket || !socket.connected) {
-      Alert.alert("Connection Error", "You are currently offline. Check your socket status.");
-      return;
-    }
-
-    socket.emit("requestCallMeBack", {
-      //sellerId: parsedSellerId,
-      itemDetails: `Requested callback regarding product: "${product?.name}"`
-    });
-
-    Alert.alert("Request Sent", "The seller has been instantly notified to contact you back.");
-  }
-
-  // 💰 Live Trigger: Send Negotiation Offer Prompt
-  const handleOfferPrompt = () => {
     if (!socket || !socket.connected) {
       Alert.alert("Connection Error", "You are currently offline.");
       return;
     }
 
-    Alert.prompt(
-      "Make an Offer",
-      "Enter your negotiation offer amount in GHS:",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Submit",
-          onPress: (amount) => {
-            if (!amount || isNaN(Number(amount))) {
-              Alert.alert("Error", "Please enter a valid numeric value.");
-              return;
-            }
+    socket.emit("requestCallMeBack", {
+      sellerId: parsedSellerId,
+      productId: id, 
+      itemDetails: `Requested callback regarding product: "${product?.name}"`
+    });
 
-            socket.emit("sendOffer", {
-              //sellerId: parsedSellerId,
-              itemDetails: `Offered deal on product: "${product?.name}"`,
-              offerPrice: amount
-            });
+    Alert.alert("Request Sent", "The seller has been instantly notified to contact you back.");
+  };
 
-            Alert.alert("Offer Sent", `Your offer of GHS ${amount} was transmitted successfully!`);
-          }
-        }
-      ],
-      "plain-text",
-      ""
-    );
-  }
+
+
+ const handleOfferPrompt = () => {
+    if (!socket || !socket.connected) {
+      Alert.alert("Connection Error", "You are currently offline.");
+      return;
+    }
+    setPromptVisible(true);
+  };
+
+  
+   const handleOfferSubmit = (amount: number) => {
+    socket.emit("sendOffer", {
+      sellerId: parsedSellerId,
+      productId: id, 
+      itemDetails: `Offered deal on product: "${product?.name}"`,
+      offerPrice: amount
+    });
+    setPromptVisible(false);
+
+    setTimeout(() => {
+      Alert.alert("Offer Sent", `Your offer of GHS ${amount} was transmitted successfully!`);
+    }, 400);
+  };
+
+
 
   if (isLoading) {
     return <LoadingUi />
@@ -389,6 +384,13 @@ const ProductDetailsScreen = () => {
         </View>
       )}
       </KeyboardAvoidingView>
+
+       {/* 🛠️ Isolated Component Layer */}
+      <OfferDialog 
+        visible={promptVisible} 
+        onClose={() => setPromptVisible(false)} 
+        onSubmit={handleOfferSubmit}
+      />
     </SafeScreen>
   )
 }

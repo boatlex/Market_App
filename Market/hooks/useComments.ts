@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../lib/api'; // Adjust path to your custom axios instance
+import { api } from '../lib/api'; 
 import { Comment } from '../types';
 
 interface GetCommentsResponse {
@@ -11,7 +11,6 @@ export const useComments = (productId: string) => {
   const queryClient = useQueryClient();
   const queryKey = ['comments', productId];
 
-  // 1. Fetch Threaded Comments List
   const { data, isLoading, isError, refetch } = useQuery<GetCommentsResponse>({
     queryKey,
     queryFn: async () => {
