@@ -1,21 +1,25 @@
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import { ENV } from "../config/env.js";
-import { Notification } from "../models/notification.model.js"
+import { Notification } from "../models/notification.model.js";
 
-// 🚀 REFACTOR: Store a Set of multiple active sockets per User ID
-// Example structural form: { "user_123": Set(["socket_abc", "socket_xyz"]) }
 const userSocketMap = {}; 
+let io = null; 
 
 export const getReceiverSocketIds = (receiverId) => {
-  // Returns an array of active sockets or an empty array if offline
   return userSocketMap[receiverId] ? Array.from(userSocketMap[receiverId]) : [];
 };
 
+
+export const getIO = () => {
+  return io;
+};
+
 export const initializeSocket = (httpServer) => {
-  const io = new Server(httpServer, {
+  // Assign the instance to our file-scoped variable here
+  io = new Server(httpServer, {
     cors: { origin: true, credentials: true },
-    transports: ['websocket'] // 🚀 CRITICAL: Forces connection handshake stability matching your mobile React Native code
+    transports: ['websocket'] 
   });
 
   io.use((socket, next) => {
@@ -35,14 +39,12 @@ export const initializeSocket = (httpServer) => {
     const userId = socket.userId;
   
     if (userId) {
-      // Initialize the tracking Set if this is the user's first connection window
       if (!userSocketMap[userId]) {
         userSocketMap[userId] = new Set();
       }
       userSocketMap[userId].add(socket.id);
     }
 
-    // Broadcast list of distinct online user keys to everyone
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
     // --- Typing Events ---
@@ -61,19 +63,27 @@ export const initializeSocket = (httpServer) => {
     });
 
     // --- Call Me Back Event ---
-    socket.on("requestCallMeBack", async ({ sellerId, itemDetails }) => {
+      // --- Call Me Back Event ---
+    socket.on("requestCallMeBack", async ({ sellerId, productId, itemDetails }) => { 
       try {
         const newNotification = await Notification.create({
           recipientId: sellerId,
           senderId: userId,
           type: "call_me_back",
+          productId: productId,
           itemDetails: itemDetails
         });
 
-        // 🚀 Loop across all active devices the seller has open
+        // Populate user data before broadcasting
+        const populatedNotification = await newNotification.populate(
+          "senderId",
+          "firstName lastName profilePicture"
+        );
+
+      
         const targetSockets = getReceiverSocketIds(sellerId);
         targetSockets.forEach(socketId => {
-          io.to(socketId).emit("receiveCallMeBackNotification", newNotification);
+          io.to(socketId).emit("newNotification", populatedNotification);
         });
       } catch (error) {
         console.error("Error saving notification:", error);
@@ -81,31 +91,34 @@ export const initializeSocket = (httpServer) => {
     });
 
     // --- Buyer Offer Notification Event ---
-    socket.on("sendOffer", async ({ sellerId, itemDetails, offerPrice }) => {
+    socket.on("sendOffer", async ({ sellerId, productId, itemDetails, offerPrice }) => { // 💡 Added productId parameter
       try {
         const newNotification = await Notification.create({
           recipientId: sellerId,
           senderId: userId,
           type: "make_an_offer",
+          productId: productId, 
           itemDetails: `${itemDetails} for $${offerPrice}`
         });
 
-        // 🚀 Loop across all active devices the seller has open
+        // Populate user data before broadcasting
+        const populatedNotification = await newNotification.populate(
+          "senderId",
+          "firstName lastName profilePicture"
+        );
+
         const targetSockets = getReceiverSocketIds(sellerId);
         targetSockets.forEach(socketId => {
-          io.to(socketId).emit("receiveOfferNotification", newNotification);
+          io.to(socketId).emit("newNotification", populatedNotification);
         });
       } catch (error) {
         console.error("Error saving offer notification:", error);
       }
     });
 
-    // --- Fixed Safe Disconnect Logic ---
     socket.on("disconnect", () => {
       if (userId && userSocketMap[userId]) {
-        // Remove only the single socket that disconnected
         userSocketMap[userId].delete(socket.id);
-        
         if (userSocketMap[userId].size === 0) {
           delete userSocketMap[userId];
         }
@@ -115,4 +128,4 @@ export const initializeSocket = (httpServer) => {
   });
 
   return io;
-}
+};

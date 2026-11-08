@@ -1,5 +1,8 @@
-import Comment from "../models/comment.model.js"
-import { Product } from "../models/product.model.js"
+import Comment from "../models/comment.model.js";
+import { Product } from "../models/product.model.js";
+import { Notification } from "../models/notification.model.js"
+import { getIO, getReceiverSocketIds } from "../socket/socket.js"; 
+
 
 export const replyToComment = async (req, res, next) => {
     try {
@@ -25,8 +28,40 @@ export const replyToComment = async (req, res, next) => {
 
         const savedReply = await reply.save();
         
-        // FIXED: Swapped "name" for your real schema fields: "firstName lastName"
         await savedReply.populate("user", "firstName lastName profilePicture");
+
+        // ====================================================================
+        // 🔔 FIXED: CREATE TIMELINE NOTIFICATION LOG FOR REPLY
+        // ====================================================================
+        try {
+            // Only alert if replying to someone else
+            if (!parentComment.user.equals(userId)) {
+                const replyNotification = await Notification.create({
+                    recipientId: parentComment.user, // Author of main comment gets alerted
+                    senderId: userId,               // Person replying
+                    type: "reply",
+                    productId: parentComment.product, // Links to main product container page
+                    itemDetails: `replied to your comment: "${content.substring(0, 40)}${content.length > 40 ? '...' : ''}"`
+                });
+
+                const populatedNotification = await replyNotification.populate(
+                    "senderId", 
+                    "firstName lastName profilePicture"
+                );
+
+                const io = getIO();
+                const targetSockets = getReceiverSocketIds(parentComment.user.toString());
+                
+                if (io && targetSockets.length > 0) {
+                    targetSockets.forEach(socketId => {
+                        io.to(socketId).emit('newNotification', populatedNotification);
+                    });
+                }
+            }
+        } catch (notifError) {
+            console.error("Background reply timeline logging failed:", notifError);
+        }
+        // ====================================================================
 
         return res.status(201).json({
             message: "Reply added successfully!",
@@ -49,14 +84,56 @@ export const toggleLikeComment = async (req, res, next) => {
         }
 
         const isLiked = comment.likes.includes(userId);
+        const itemDetailsString = `liked your comment: "${comment.content.substring(0, 40)}${comment.content.length > 40 ? '...' : ''}"`;
 
         if (isLiked) {
             comment.likes.pull(userId);
+            
+            try {
+                await Notification.findOneAndDelete({
+                    recipientId: comment.user,
+                    senderId: userId,
+                    itemDetails: itemDetailsString
+                });
+            } catch (delError) {
+                console.error("Failed to clear unlike log:", delError);
+            }
+
         } else {
             comment.likes.push(userId);
         }
 
         await comment.save();
+
+        // ====================================================================
+        // 🔔 LIVE TRIGGER: NOTIFY AUTHOR REGARDING THE NEW LIKE
+        // ====================================================================
+        if (!isLiked && !comment.user.equals(userId)) {
+            try {
+                const likeNotification = await Notification.create({
+                    recipientId: comment.user,   
+                    senderId: userId,            
+                    itemDetails: itemDetailsString
+                });
+
+                const populatedNotification = await likeNotification.populate(
+                    "senderId", 
+                    "firstName lastName profilePicture"
+                );
+
+                const io = getIO();
+                const targetSockets = getReceiverSocketIds(comment.user.toString());
+                
+                if (io && targetSockets.length > 0) {
+                    targetSockets.forEach(socketId => {
+                        io.to(socketId).emit('newNotification', populatedNotification);
+                    });
+                }
+            } catch (notifError) {
+                console.error("Background like notification failed:", notifError);
+            }
+        }
+        // ====================================================================
 
         return res.status(200).json({
             message: isLiked ? "Comment unliked." : "Comment liked successfully!",
@@ -79,14 +156,11 @@ export const getProductComments = async (req, res, next) => {
         const mainComments = allComments.filter(c => c.parentId === null);
         const replies = allComments.filter(c => c.parentId !== null);
 
-        // Group the replies inside their matching main comment objects for the frontend
         const commentTree = mainComments.map(main => {
             return {
-                // FIXED: Using .toObject() instead of direct ._doc access for safety
                 ...main.toObject(),
-                // Find all replies belonging to this specific main comment ID
                 replies: replies.filter(r => r.parentId.toString() === main._id.toString())
-                                .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) // Type safe chronological sort
+                                .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) 
             };
         });
 
@@ -130,8 +204,37 @@ export const createComment = async (req, res, next) => {
         product.comments.push(savedComment._id);
         await product.save();
 
-        // FIXED: Swapped "name" for "firstName lastName"
         await savedComment.populate("user", "firstName lastName profilePicture");
+
+        // ====================================================================
+        // 🔔 FIXED: CREATE TIMELINE NOTIFICATION LOG FOR MAIN COMMENT
+        // ====================================================================
+        try {
+            const commentNotification = await Notification.create({
+                recipientId: product.seller, 
+                senderId: userId,            
+                type: "comment",            
+                productId: productId,        
+                itemDetails: `commented on your product "${product.name}": "${content.substring(0, 40)}${content.length > 40 ? '...' : ''}"`
+            });
+
+            const populatedNotification = await commentNotification.populate(
+                "senderId", 
+                "firstName lastName profilePicture"
+            );
+
+            const io = getIO(); 
+            const targetSockets = getReceiverSocketIds(product.seller.toString());
+
+            if (io && targetSockets.length > 0) {
+                targetSockets.forEach(socketId => {
+                    io.to(socketId).emit('newNotification', populatedNotification);
+                });
+            }
+        } catch (notifError) {
+            console.error("Background comment timeline logging failed:", notifError);
+        }
+        // ====================================================================
 
         return res.status(201).json({
             message: "Comment posted successfully!",
@@ -158,7 +261,6 @@ export const deleteComment = async (req, res, next) => {
         }
 
         if (comment.parentId === null) {
-            // Delete all replies associated with this main comment thread
             await Comment.deleteMany({ parentId: commentId });
             
             await Product.findByIdAndUpdate(comment.product, {

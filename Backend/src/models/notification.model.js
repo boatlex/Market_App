@@ -13,10 +13,16 @@ const notificationSchema = new mongoose.Schema(
       ref: "User", 
       required: true 
     },
+    
     type: { 
       type: String, 
-      enum: ["call_me_back", "make_an_offer"], 
+      enum: ["call_me_back", "make_an_offer", "comment", "reply", "like"], 
       default: "call_me_back" 
+    },
+    productId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Product",
+      required: false
     },
     itemDetails: { 
       type: String, 
