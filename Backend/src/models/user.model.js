@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema({
             "Please provide a valid email address!"
         ]
     },
-     password: {
+    password: {
         type: String,
         required: function () {
             return !this.clerkId;
@@ -29,10 +29,10 @@ const userSchema = new mongoose.Schema({
         validate: {
             validator: function (value) {
                 if (this.clerkId && !value) return true;
-                
-               return /^(?=.*[A-Za-z])(?=.*\d)(?=.*[\W_]).{8,}$/.test(value);
+
+                return /^(?=.*[A-Za-z])(?=.*\d)(?=.*[\W_]).{8,}$/.test(value);
             },
-           message: "Password must be at least 8 characters long and contain letters, numbers, and a special character!"
+            message: "Password must be at least 8 characters long and contain letters, numbers, and a special character!"
         }
     },
     clerkId: {
@@ -40,11 +40,16 @@ const userSchema = new mongoose.Schema({
         required: function () {
             return !this.password;
         },
-        sparse: true 
+        sparse: true
     },
     resetPasswordToken: { type: String, required: false },
     resetPasswordExpires: { type: Date, required: false },
-    verified: { type: Boolean, default: false },
+    verified: {
+        type: Boolean,
+        default: function () {
+            return Boolean(this.clerkId);
+        }
+    },
     otp: { type: String },
     otp_expiry_time: { type: Date },
     profilePicture: { type: String, default: "" },
@@ -64,7 +69,7 @@ const userSchema = new mongoose.Schema({
 
 
 userSchema.pre('save', async function () {
-    
+
     if (!this.isModified('password') || !this.password) {
         return;
     }
@@ -73,7 +78,7 @@ userSchema.pre('save', async function () {
         const salt = await bcrypt.genSalt(10);
         this.password = await bcrypt.hash(this.password, salt);
     }
-    
+
 });
 
 export const User = mongoose.model("User", userSchema);

@@ -1,22 +1,22 @@
 import { ServiceProviderReview } from "../models/serviceProviderReview.model.js"; 
 import { ServiceProvider } from "../models/serviceprovider.model.js"; 
+import mongoose from "mongoose";
 
 const updateProviderStats = async (providerId) => {
-
     const stats = await ServiceProviderReview.aggregate([
-        { $match: { provider: providerId } },
-        { 
-            $group: { 
-                _id: "$provider", 
-                totalReviews: { $sum: 1 }, 
-                avgRating: { $avg: "$rating" } 
-            } 
+        { $match: { provider: new mongoose.Types.ObjectId(providerId) } },
+        {
+            $group: {
+                _id: "$provider",
+                totalReviews: { $sum: 1 },
+                avgRating: { $avg: "$rating" }
+            }
         }
     ]);
 
     if (stats.length > 0) {
         await ServiceProvider.findByIdAndUpdate(providerId, {
-            averageRating: Math.round(stats[0].avgRating * 10) / 10, 
+            averageRating: Math.round(stats[0].avgRating * 10) / 10,
             totalReviews: stats[0].totalReviews
         });
     } else {
@@ -26,6 +26,7 @@ const updateProviderStats = async (providerId) => {
         });
     }
 };
+
 
 export const createProviderReview = async (req, res, next) => {
     try {
@@ -140,5 +141,9 @@ export const getProviderReviews = async (req, res, next) => {
         next(error);
     }
 };
+
+
+
+
 
 
