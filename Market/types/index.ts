@@ -1,11 +1,11 @@
-export type ApplicationStatus = 'Pending' | 'Reviewed' | 'Interviewing' | 'Hired'|'Shortlisted'|'Accepted';
+export type ApplicationStatus = 'Pending' | 'Reviewed' | 'Interviewing' | 'Hired' | 'Shortlisted' | 'Accepted';
 export type WorkMode = 'On-site' | 'Remote' | 'Hybrid';
 export type NotificationType = 'call_me_back' | 'make_an_offer' | 'comment' | 'reply' | 'like';
-export type ReportTargetType = 'Product' | 'User' | 'Comment'|'Service'|'Job'|'JobSeeker';
+export type ReportTargetType = 'Product' | 'User' | 'Comment' | 'Service' | 'Job' | 'JobSeeker';
 export type ReportReason = 'scam' | 'inappropriate_content' | 'fake_item' | 'harassment' | 'other';
 export type ReportStatus = 'pending' | 'under_review' | 'resolved' | 'dismissed';
 export type ReviewRating = 1 | 2 | 3 | 4 | 5;
-export type PricingBasis = 'per hour' | 'per day' |'per week'|'per month'| 'quarterly'|'fixed project' | 'contact for quote';
+export type PricingBasis = 'per hour' | 'per day' | 'per week' | 'per month' | 'quarterly' | 'fixed project' | 'contact for quote';
 export type AvailabilityStatus = 'Available' | 'Busy' | 'Away';
 export type UserRole = 'user' | 'admin';
 export type ProductCondition =
@@ -15,7 +15,13 @@ export type ProductCondition =
     | 'Used - Like New'
     | 'Used - Good'
     | 'Used - Fair';
-
+ export type PopulatedReportTarget =
+    | Product
+    | User
+    | Comment
+    | ServiceProvider
+    | Job
+    | JobSeekerProfile;
 export interface Application {
     _id: string;
     job: string;
@@ -74,10 +80,10 @@ export interface Job {
     requirements: string[];
     benefits: string[];
     applications: string[];
-    applicationDeadline?: string; 
+    applicationDeadline?: string;
     isOpen: boolean;
-    averageRating: number; 
-    totalReviews: number; 
+    averageRating: number;
+    totalReviews: number;
     createdAt: string;
     updatedAt: string;
 }
@@ -87,8 +93,8 @@ export interface WorkExperience {
     companyName: string;
     jobTitle: string;
     location?: string;
-    startDate: string; 
-    endDate?: string;  
+    startDate: string;
+    endDate?: string;
     isCurrentJob: boolean;
     description?: string;
 }
@@ -98,9 +104,9 @@ export interface Education {
     schoolName: string;
     degree: string;
     fieldOfStudy?: string;
-    startDate: string; 
-    endDate?: string;  
-    isCurrentEducation: boolean; 
+    startDate: string;
+    endDate?: string;
+    isCurrentEducation: boolean;
 }
 
 export interface ExpectedSalary {
@@ -122,13 +128,13 @@ export interface JobSeekerProfile {
     region: string;
     district: string;
     location?: string;
-    phoneNumber:string, 
-    workMode: WorkMode; 
+    phoneNumber: string,
+    workMode: WorkMode;
     preferredJobTypes: string[];
     expectedSalary: ExpectedSalary;
     isSearchingForJob: boolean;
-    averageRating: number; 
-    totalReviews: number; 
+    averageRating: number;
+    totalReviews: number;
     createdAt: string;
     updatedAt: string;
 }
@@ -140,7 +146,7 @@ export interface Message {
     content?: string;
     attachment?: string;
     messageType: 'text' | 'image' | 'voice';
-    voiceDuration?: number; 
+    voiceDuration?: number;
     createdAt: string;
     updatedAt: string;
 }
@@ -152,7 +158,7 @@ export interface Notification {
     senderId: string | User;
     type: NotificationType;
     itemDetails: string;
-    productId?: string; 
+    productId?: string;
     isRead: boolean;
     createdAt: string;
     updatedAt: string;
@@ -174,7 +180,7 @@ export interface Product {
     productType: string;
     region: string;
     district: string;
-    location: string; 
+    location: string;
     images: string[];
     delivery?: DeliveryTimeline;
     warranty?: string;
@@ -183,17 +189,18 @@ export interface Product {
     condition?: ProductCondition;
     comments: Comment[];
     isAvailable: boolean;
-    averageRating: number; 
-    totalReviews: number; 
+    averageRating: number;
+    totalReviews: number;
     createdAt: string;
     updatedAt: string;
 }
 
+
 export interface Report {
     _id: string;
-    reporterId: string;
+    reporterId: string | Pick<User, '_id' | 'firstName' | 'lastName' | 'email' | 'profilePicture'>;
     targetType: ReportTargetType;
-    targetId: string; 
+    targetId: string | PopulatedReportTarget;
     reason: ReportReason;
     description?: string;
     status: ReportStatus;
@@ -214,8 +221,8 @@ export interface ServiceProviderReview {
 export interface ItemReview {
     _id: string;
     reviewer: string | User;
-    targetType: ReportTargetType; 
-    targetId: string; 
+    targetType: ReportTargetType;
+    targetId: string;
     rating: ReviewRating;
     comment?: string;
     createdAt: string;
@@ -231,10 +238,10 @@ export interface ServiceProviderPricing {
 
 export interface ServiceProvider {
     _id: string;
-    user: string | User; 
+    user: string | User;
     businessName: string;
-    category:string;
-    serviceType: string; 
+    category: string;
+    serviceType: string;
     description: string;
     pricing: ServiceProviderPricing;
     phoneNumber: string;
@@ -242,12 +249,12 @@ export interface ServiceProvider {
     region: string;
     district: string;
     location: string;
-    portfolioImages: string[]; 
+    portfolioImages: string[];
     availabilityStatus: AvailabilityStatus;
     averageRating: number;
     totalReviews: number;
-    isVerifiedProvider: boolean; 
-    createdAt: string; 
+    isVerifiedProvider: boolean;
+    createdAt: string;
     updatedAt: string
 }
 
@@ -258,15 +265,36 @@ export interface User {
     lastName: string;
     email: string;
     clerkId?: string;
-    password?: string; 
+    password?: string;
     verified: boolean;
     resetPasswordToken?: string;
     resetPasswordExpires?: string;
     otp?: string;
-    otp_expiry_time?: string;     
+    otp_expiry_time?: string;
     profilePicture: string;
     role: UserRole;
     wishList: string[];
     createdAt: string;
     updatedAt: string;
 }
+export interface PaginationMeta {
+    totalItems: number;
+    currentPage: number;
+    totalPages: number;
+    limit: number;
+    hasNextPage?: boolean;
+}
+
+export interface DashboardStatsResponse {
+    success: boolean;
+    stats: {
+        totalUsers: number;
+        totalProducts: number;
+        totalProviders: number;
+        totalJobs: number;
+        totalJobSeekers: number;
+        totalReports: number;
+        reportBreakdown: Record<ReportStatus, number>;
+    };
+}
+

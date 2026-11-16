@@ -5,7 +5,7 @@ import { Image } from "expo-image";
 import SafeScreen from '../../components/SafeScreen';
 import { useAuth } from '../../contexts/authContext';
 import { Href, useRouter } from 'expo-router';
-import useNotifications from '../../hooks/useNotifications'; // 💡 Imported your notification hook
+import useNotifications from '../../hooks/useNotifications';
 
 interface MenuItem {
   id: number;
@@ -24,14 +24,33 @@ const Menu_Items: MenuItem[] = [
   { id: 6, icon: "help-circle-outline", title: "FAQ", color: "#3B82F6", action: "/(profile)/faq" as Href },
   { id: 7, icon: "game-controller-outline", title: "Play Game", color: "#3B82F6", action: "/(profile)/game-center" as Href },
   { id: 8, icon: "document-text-outline", title: "My Applications", color: "#3B82F6", action: "/(profile)/my-job-applications" as Href },
-]
+  { id: 9, icon: "flag-outline", title: "My Reports", color: "#EF4444", action: "/(profile)/my-reports" as Href },
+];
+
 
 const SplashImage = 'https://unsplash.com';
 
 export default function ProfileScreen() {
   const { user } = useAuth();
   const router = useRouter();
-  const { unreadCount } = useNotifications(); // 🚀 Fetch active counts directly in real time
+  const { unreadCount } = useNotifications();
+
+  const isAdmin = user?.role === 'admin';
+ 
+
+  // Include Admin tile in the grid only if the user is an admin
+  const visibleMenuItems: MenuItem[] = isAdmin
+    ? [
+        ...Menu_Items,
+        {
+          id: 10,
+          icon: "shield-checkmark-outline",
+          title: "Admin Panel",
+          color: "#DC2626",
+          action: "/admin" as Href,
+        },
+      ]
+    : Menu_Items;
 
   return (
     <SafeScreen>
@@ -87,11 +106,36 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Admin Quick-Access Card (Visible only to Admins) */}
+        {isAdmin && (
+          <View className="px-4 pt-5">
+            <TouchableOpacity
+              onPress={() => router.push('/admin' as Href)}
+              activeOpacity={0.8}
+              className="bg-gray-900 p-4 rounded-2xl flex-row items-center justify-between shadow-sm"
+            >
+              <View className="flex-row items-center gap-3">
+                <View className="w-11 h-11 rounded-xl bg-red-500/20 items-center justify-center">
+                  <Ionicons name="shield-checkmark" size={24} color="#F87171" />
+                </View>
+                <View>
+                  <Text className="text-white font-bold text-base">Admin Console</Text>
+                  <Text className="text-gray-400 text-xs mt-0.5">
+                    Manage reports, listings & users
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={22} color="#9CA3AF" />
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Dashboard Grid Options */}
         <View className="px-4 py-6">
           <Text className="text-lg font-bold text-gray-800 mb-3">My Marketplace</Text>
           <View className="flex-row gap-3">
-            <TouchableOpacity className="flex-1 bg-white p-4 rounded-2xl shadow-sm items-center"
+            <TouchableOpacity
+              className="flex-1 bg-white p-4 rounded-2xl shadow-sm items-center"
               onPress={() => router.push('/my-activity' as any)}
               activeOpacity={0.7}
             >
@@ -110,8 +154,7 @@ export default function ProfileScreen() {
 
         {/* Grid Layout Elements */}
         <View className='flex-row flex-wrap justify-between px-6 mb-3'>
-          {Menu_Items.map((item) => {
-            // Check if this menu square is the "Notifications" entry
+          {visibleMenuItems.map((item) => {
             const isNotificationItem = item.id === 1;
 
             return (
@@ -122,7 +165,6 @@ export default function ProfileScreen() {
                 activeOpacity={0.7}
                 onPress={() => router.push(item.action)}
               >
-                {/* 🔴 Live Trigger Floating Badge Array Pill */}
                 {isNotificationItem && unreadCount > 0 && (
                   <View className="absolute top-4 right-4 bg-red-500 min-w-[22px] h-[22px] rounded-full items-center justify-center px-1 z-10 shadow-sm">
                     <Text className="text-white text-[11px] font-bold text-center">
@@ -137,7 +179,9 @@ export default function ProfileScreen() {
                 >
                   <Ionicons name={item.icon} size={28} color={item.color} />
                 </View>
-                <Text className='text-text-primary font-bold text-base text-center'>{item.title}</Text>
+                <Text className='text-text-primary font-bold text-base text-center'>
+                  {item.title}
+                </Text>
               </TouchableOpacity>
             );
           })}
@@ -146,3 +190,8 @@ export default function ProfileScreen() {
     </SafeScreen>
   );
 }
+
+
+
+
+
