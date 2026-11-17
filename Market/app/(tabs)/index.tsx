@@ -251,17 +251,17 @@ const HomeScreen = () => {
               }
               if (results && results.length > 0 && !hasNextPage) {
                 return (
-                  <Text className="text-gray-400 text-center text-xs py-6 font-medium">
-                    You've caught up with all active listings! 🎉
+                  <Text className="text-red-400 text-center text-xs py-6 font-bold mb-40">
+                    You've caught up with all active Products listings! 🎉
                   </Text>
                 );
               }
               return null;
             }}
             ListEmptyComponent={
-              <View className="items-center justify-center pt-20">
+              <View className="items-center justify-center pt-20 mb-40">
                 <Ionicons name="search-outline" size={48} color="#ccc" />
-                <Text className="text-gray-400 text-center mt-4 text-base font-medium">
+                <Text className="text-red-400 text-center mt-4 text-base font-bold">
                   No items match your active filters.
                 </Text>
               </View>

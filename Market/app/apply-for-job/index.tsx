@@ -7,7 +7,7 @@ import SafeScreen from '../../components/SafeScreen';
 import Header from '../../components/Header';
 import SeekJobForm from '../../components/lookForJob/SeekJobForm';
 
-// Define explicit state interface matching your hook variables
+//  interface matching  hook variables
 export interface SelectedFileMeta {
     uri: string;
     type: string;
@@ -20,7 +20,7 @@ const SeekJobAdScreen = () => {
     const [showModal, setShowModal] = useState(true); 
     const [editingSeekJob, setEditingSeekJob] = useState<any | null>(null);
     const [images, setImages] = useState<SelectedFileMeta[]>([]);
-    const [resumeFile, setResumeFile] = useState<SelectedFileMeta | null>(null); // 👈 ADDED: Resume management state hook
+    const [resumeFile, setResumeFile] = useState<SelectedFileMeta | null>(null); 
 
     useEffect(() => {
         if (params?.seekJobData) {
@@ -29,7 +29,6 @@ const SeekJobAdScreen = () => {
                 setEditingSeekJob(parsedJob);
                 setShowModal(true); 
                 
-                // If profile already contains a remote Cloudinary resume, initialize it
                 if (parsedJob.resumeUrl) {
                     setResumeFile({
                         uri: parsedJob.resumeUrl,
