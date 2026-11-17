@@ -165,11 +165,11 @@ export const FilterModal = ({
                     </ScrollView>
 
                     {/* Footer Action Buttons */}
-                    <View className="flex-row space-x-3 pt-4 border-t border-gray-100">
+                    <View className="flex-row space-x-3 pt-4 border-t border-gray-100 mb-10">
                         <TouchableOpacity
                             onPress={onResetFilters}
                             activeOpacity={0.7}
-                            className="flex-1 h-12 rounded-2xl items-center justify-center bg-gray-100 border border-gray-200"
+                            className="flex-1 h-12 mr-2 rounded-2xl items-center justify-center bg-gray-100 border border-gray-200"
                         >
                             <Text className="text-gray-700 font-bold text-base">Reset</Text>
                         </TouchableOpacity>
