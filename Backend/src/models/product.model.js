@@ -134,5 +134,6 @@ productSchema.index({ isAvailable: 1, category: 1, productType: 1, createdAt: -1
 // 4. PRICE RANGE SPECIFIC QUERY SCANNING
 productSchema.index({ isAvailable: 1, price: 1, createdAt: -1 });
 
+productSchema.index({ region: 1, district: 1 });
 
 export const Product = mongoose.model("Product", productSchema);

@@ -16,6 +16,7 @@ import {
     getAllJobs,
     getAllJobSeekers,
     getDashboardStats,
+    getRegionalStats,
     toggleProviderVerification,
     toggleUserVerification,
 } from "../controllers/admin.controller.js";
@@ -35,6 +36,7 @@ router.use(protectRoute, adminOnly);
 
 // 1. Dashboard & Users
 router.get("/stats", getDashboardStats);
+router.get("/regional-stats", getRegionalStats);
 router.get("/users", getAllUsers);
 router.delete("/users/:id", validateObjectId, adminDeleteUser);
 

@@ -1,13 +1,13 @@
 import { User } from "../models/user.model.js";
 import { Product } from "../models/product.model.js";
 import { Report } from "../models/report.model.js";
-import Comment  from "../models/comment.model.js";
+import Comment from "../models/comment.model.js";
 import cloudinary from "../config/cloudinary.js";
 import { ServiceProvider } from "../models/serviceprovider.model.js";
 import mongoose from "mongoose";
 import { ServiceProviderReview } from "../models/serviceProviderReview.model.js";
 import { Job } from "../models/job.model.js";
-import { JobSeekerProfile } from "../models/jobseekersprofile.model.js"; 
+import { JobSeekerProfile } from "../models/jobseekersprofile.model.js";
 
 
 
@@ -340,6 +340,146 @@ export const getDashboardStats = async (req, res, next) => {
         next(error);
     }
 };
+
+export const getRegionalStats = async (req, res, next) => {
+    try {
+        const buildLocationPipeline = (activeExpr = null) => [
+            {
+                $project: {
+                    region: { $trim: { input: { $ifNull: ["$region", ""] } } },
+                    district: { $trim: { input: { $ifNull: ["$district", ""] } } },
+                    ...(activeExpr ? { isActive: activeExpr } : {})
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        region: { $cond: [{ $eq: ["$region", ""] }, "Unspecified", "$region"] },
+                        district: { $cond: [{ $eq: ["$district", ""] }, "Unspecified", "$district"] }
+                    },
+                    count: { $sum: 1 },
+                    ...(activeExpr
+                        ? { activeCount: { $sum: { $cond: ["$isActive", 1, 0] } } }
+                        : {})
+                }
+            }
+        ];
+
+        const [
+            productCounts,
+            serviceCounts,
+            jobCounts,
+            seekerCounts
+        ] = await Promise.all([
+            Product.aggregate(buildLocationPipeline({ $eq: ["$isAvailable", true] })),
+            ServiceProvider.aggregate(buildLocationPipeline({ $eq: ["$availabilityStatus", "Available"] })),
+            Job.aggregate(buildLocationPipeline({ $eq: ["$isOpen", true] })),
+            JobSeekerProfile.aggregate(buildLocationPipeline({ $eq: ["$isSearchingForJob", true] }))
+        ]);
+
+        const regionsMap = new Map();
+
+        const mergeMetric = (rows, totalKey, activeKey) => {
+            rows.forEach(({ _id, count, activeCount = 0 }) => {
+                const regionName = _id.region || "Unspecified";
+                const districtName = _id.district || "Unspecified";
+
+                if (!regionsMap.has(regionName)) {
+                    regionsMap.set(regionName, {
+                        region: regionName,
+                        products: 0,
+                        availableProducts: 0,
+                        services: 0,
+                        availableServices: 0,
+                        jobs: 0,
+                        openJobs: 0,
+                        jobSeekers: 0,
+                        activeJobSeekers: 0,
+                        total: 0,
+                        districtsMap: new Map()
+                    });
+                }
+
+                const regionEntry = regionsMap.get(regionName);
+                regionEntry[totalKey] += count;
+                regionEntry[activeKey] += activeCount;
+                regionEntry.total += count;
+
+                if (!regionEntry.districtsMap.has(districtName)) {
+                    regionEntry.districtsMap.set(districtName, {
+                        district: districtName,
+                        products: 0,
+                        availableProducts: 0,
+                        services: 0,
+                        availableServices: 0,
+                        jobs: 0,
+                        openJobs: 0,
+                        jobSeekers: 0,
+                        activeJobSeekers: 0,
+                        total: 0
+                    });
+                }
+
+                const districtEntry = regionEntry.districtsMap.get(districtName);
+                districtEntry[totalKey] += count;
+                districtEntry[activeKey] += activeCount;
+                districtEntry.total += count;
+            });
+        };
+
+        mergeMetric(productCounts, "products", "availableProducts");
+        mergeMetric(serviceCounts, "services", "availableServices");
+        mergeMetric(jobCounts, "jobs", "openJobs");
+        mergeMetric(seekerCounts, "jobSeekers", "activeJobSeekers");
+
+        const summary = {
+            totalRegions: 0,
+            totalDistricts: 0,
+            products: 0,
+            availableProducts: 0,
+            services: 0,
+            availableServices: 0,
+            jobs: 0,
+            openJobs: 0,
+            jobSeekers: 0,
+            activeJobSeekers: 0
+        };
+
+        const regions = Array.from(regionsMap.values())
+            .map(({ districtsMap, ...regionData }) => {
+                const districts = Array.from(districtsMap.values()).sort(
+                    (a, b) => b.total - a.total
+                );
+
+                summary.totalRegions += 1;
+                summary.totalDistricts += districts.length;
+                summary.products += regionData.products;
+                summary.availableProducts += regionData.availableProducts;
+                summary.services += regionData.services;
+                summary.availableServices += regionData.availableServices;
+                summary.jobs += regionData.jobs;
+                summary.openJobs += regionData.openJobs;
+                summary.jobSeekers += regionData.jobSeekers;
+                summary.activeJobSeekers += regionData.activeJobSeekers;
+
+                return {
+                    ...regionData,
+                    districts
+                };
+            })
+            .sort((a, b) => b.total - a.total);
+
+        return res.status(200).json({
+            success: true,
+            summary,
+            regions
+        });
+    } catch (error) {
+        console.error("Error Fetching Regional Stats:", error);
+        next(error);
+    }
+};
+
 
 // 10. Get All Jobs with Pagination & Search
 export const getAllJobs = async (req, res, next) => {

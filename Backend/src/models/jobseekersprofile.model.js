@@ -115,6 +115,8 @@ const jobSeekerProfileSchema = new mongoose.Schema({
     },
 }, { timestamps: true });
 
+jobSeekerProfileSchema.index({ region: 1, district: 1 });
+
 jobSeekerProfileSchema.index(
     { skills: 'text', professionalHeadline: 'text', bio: 'text' },
     { weights: { skills: 10, professionalHeadline: 5, bio: 1 } }

@@ -101,7 +101,9 @@ const serviceProviderSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-// Compound text index to let users search for services by keyword or business name
+serviceProviderSchema.index({ region: 1, district: 1 });
+
+
 serviceProviderSchema.index({ businessName: 'text', serviceType: 'text', description: 'text' });
 
 export const ServiceProvider = mongoose.model("ServiceProvider", serviceProviderSchema);
