@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from "expo-image";
 import SafeScreen from '../../components/SafeScreen';
 import { useAuth } from '../../contexts/authContext';
 import { Href, useRouter } from 'expo-router';
 import useNotifications from '../../hooks/useNotifications';
+import ProfileHeaderCard from '../../components/profile/ProfileHeaderCard';
 
 interface MenuItem {
   id: number;
@@ -27,18 +27,13 @@ const Menu_Items: MenuItem[] = [
   { id: 9, icon: "flag-outline", title: "My Reports", color: "#EF4444", action: "/(profile)/my-reports" as Href },
 ];
 
-
-const SplashImage = 'https://unsplash.com';
-
 export default function ProfileScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const { unreadCount } = useNotifications();
 
   const isAdmin = user?.role === 'admin';
- 
 
-  // Include Admin tile in the grid only if the user is an admin
   const visibleMenuItems: MenuItem[] = isAdmin
     ? [
         ...Menu_Items,
@@ -49,12 +44,19 @@ export default function ProfileScreen() {
           color: "#DC2626",
           action: "/admin" as Href,
         },
+        {
+          id: 11,
+          icon: "map-outline",
+          title: "Regional Stats",
+          color: "#2563EB",
+          action: "/admin/regional-stats" as Href,
+        },
       ]
     : Menu_Items;
 
   return (
     <SafeScreen>
-      {/* Header Layout */}
+      {/* Top Navigation Bar */}
       <View className='px-6 pb-5 pt-12 border-b border-surface flex-row items-center justify-between bg-gray-400'>
         <View className='flex-row items-center'>
           <TouchableOpacity className='mr-4' onPress={() => router.back()}>
@@ -73,42 +75,12 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 150 }}
       >
-        {/* Header Profile Summary */}
-        <View className="bg-white items-center pt-8 pb-6 px-4 shadow-sm rounded-b-[40px]">
-          <View className="relative" style={{ width: 80, height: 80 }}>
-            <Image
-              source={user?.profilePicture ? { uri: user.profilePicture } : SplashImage}
-              style={{
-                width: 80,
-                height: 80,
-                borderRadius: 40,
-                borderWidth: 4,
-                borderColor: '#10B981'
-              }}
-              contentFit="cover"
-              transition={200}
-            />
-            <View className="absolute bottom-0 right-0 bg-emerald-500 p-1.5 rounded-full border-2 border-white">
-              <Ionicons name="checkmark" size={14} color="white" />
-            </View>
-          </View>
+        {/* Extracted Profile Header Component */}
+        <ProfileHeaderCard user={user} />
 
-          <Text className="text-2xl font-bold text-black mt-3">
-            {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : "Alex Morgan"}
-          </Text>
-          <Text className="text-gray-400 font-medium text-sm">Joined October 2026</Text>
-
-          {/* Reputation Stars */}
-          <View className="flex-row items-center mt-2 bg-gray-100 px-3 py-1 rounded-full">
-            <Ionicons name="star" size={16} color="#F59E0B" />
-            <Text className="text-black font-semibold text-sm ml-1">4.9</Text>
-            <Text className="text-gray-400 text-xs ml-1">(48 reviews)</Text>
-          </View>
-        </View>
-
-        {/* Admin Quick-Access Card (Visible only to Admins) */}
+        {/* Admin Quick-Access Cards (Visible only to Admins) */}
         {isAdmin && (
-          <View className="px-4 pt-5">
+          <View className="px-4 pt-5 gap-3">
             <TouchableOpacity
               onPress={() => router.push('/admin' as Href)}
               activeOpacity={0.8}
@@ -126,6 +98,25 @@ export default function ProfileScreen() {
                 </View>
               </View>
               <Ionicons name="chevron-forward" size={22} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => router.push('/admin/regional-stats' as Href)}
+              activeOpacity={0.8}
+              className="bg-blue-950 p-4 rounded-2xl flex-row items-center justify-between shadow-sm"
+            >
+              <View className="flex-row items-center gap-3">
+                <View className="w-11 h-11 rounded-xl bg-blue-500/20 items-center justify-center">
+                  <Ionicons name="map" size={24} color="#60A5FA" />
+                </View>
+                <View>
+                  <Text className="text-white font-bold text-base">Regional Insights</Text>
+                  <Text className="text-blue-200/70 text-xs mt-0.5">
+                    Stats by regions & districts
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={22} color="#93C5FD" />
             </TouchableOpacity>
           </View>
         )}
@@ -147,7 +138,7 @@ export default function ProfileScreen() {
             <TouchableOpacity className="flex-1 bg-white p-4 rounded-2xl shadow-sm items-center">
               <Ionicons name="wallet" size={28} color="#1DB954" />
               <Text className="font-semibold text-black mt-1">Earnings</Text>
-              <Text className="text-gray-400 text-xs">$340.50</Text>
+              <Text className="text-gray-400 text-xs">GHS 340.50</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -190,8 +181,3 @@ export default function ProfileScreen() {
     </SafeScreen>
   );
 }
-
-
-
-
-

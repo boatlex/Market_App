@@ -76,7 +76,8 @@ export default function AdminScreen() {
     const [userSearch, setUserSearch] = useState('');
     const [isRefreshing, setIsRefreshing] = useState(false);
 
-    // 2. All query hooks MUST run before any early return
+        // 2. All query hooks MUST run before any early return
+    // (Auth & admin role checks are handled automatically inside each hook)
     const { data: stats, isLoading: isLoadingStats, refetch: refetchStats } = useAdminStats();
 
     const {
@@ -87,7 +88,12 @@ export default function AdminScreen() {
         updateReportStatus,
         isUpdatingStatus,
         updatingReportId,
-    } = useAdminReports({ page: reportPage, limit: 10, status: reportStatus });
+    } = useAdminReports({
+        page: reportPage,
+        limit: 10,
+        status: reportStatus,
+        enabled: activeTab === 'reports',
+    });
 
     const {
         products,
@@ -97,7 +103,12 @@ export default function AdminScreen() {
         deleteProduct,
         isDeletingProduct,
         deletingProductId,
-    } = useAdminProducts({ page: productPage, limit: 10, search: productSearch });
+    } = useAdminProducts({
+        page: productPage,
+        limit: 10,
+        search: productSearch,
+        enabled: activeTab === 'products',
+    });
 
     const {
         providers,
@@ -115,6 +126,7 @@ export default function AdminScreen() {
         limit: 10,
         search: providerSearch,
         verified: providerVerified,
+        enabled: activeTab === 'providers',
     });
 
     const {
@@ -125,7 +137,12 @@ export default function AdminScreen() {
         deleteJob,
         isDeletingJob,
         deletingJobId,
-    } = useAdminJobs({ page: jobPage, limit: 10, search: jobSearch });
+    } = useAdminJobs({
+        page: jobPage,
+        limit: 10,
+        search: jobSearch,
+        enabled: activeTab === 'jobs',
+    });
 
     const {
         jobSeekers,
@@ -135,7 +152,12 @@ export default function AdminScreen() {
         deleteJobSeeker,
         isDeletingJobSeeker,
         deletingJobSeekerId,
-    } = useAdminJobSeekers({ page: seekerPage, limit: 10, search: seekerSearch });
+    } = useAdminJobSeekers({
+        page: seekerPage,
+        limit: 10,
+        search: seekerSearch,
+        enabled: activeTab === 'jobseekers',
+    });
 
     const {
         users,
@@ -148,7 +170,12 @@ export default function AdminScreen() {
         deleteUser,
         isDeletingUser,
         deletingUserId,
-    } = useAdminUsers({ page: userPage, limit: 10, search: userSearch, enabled: activeTab === 'users' });
+    } = useAdminUsers({
+        page: userPage,
+        limit: 10,
+        search: userSearch,
+        enabled: activeTab === 'users',
+    });
 
     // 3. Auth & Role Guard
     if (isAuthLoading) {

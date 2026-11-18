@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
+import { useAuth } from '../contexts/authContext';
 import {
   User,
   Product,
@@ -11,6 +12,7 @@ import {
   ReportTargetType,
   PaginationMeta,
   DashboardStatsResponse,
+   RegionalStatsResponse,
 } from '../types';
 
 // --- Response & Parameter Types ---
@@ -76,15 +78,24 @@ interface AdminProvidersParams {
 
 const DEFAULT_STALE_TIME = 1000 * 30; // 30 seconds
 
+// Internal helper: Ensures auth is initialized, user is an admin, and caller enabled the query
+const useCanFetchAdmin = (externalEnabled = true) => {
+  const { user, isInitializing } = useAuth();
+  const isAdmin = !isInitializing && user?.role === 'admin';
+  return isAdmin && externalEnabled;
+};
+
 // 1. Dashboard Overview Stats Hook (GET /admin/stats)
 export const useAdminStats = (enabled = true) => {
+  const canFetch = useCanFetchAdmin(enabled);
+
   return useQuery<DashboardStatsResponse['stats']>({
     queryKey: ['admin-stats'],
     queryFn: async () => {
       const { data } = await api.get<DashboardStatsResponse>('/admin/stats');
       return data.stats;
     },
-    enabled,
+    enabled: canFetch,
     staleTime: DEFAULT_STALE_TIME,
   });
 };
@@ -93,6 +104,7 @@ export const useAdminStats = (enabled = true) => {
 export const useAdminUsers = (params: AdminListParams = {}) => {
   const queryClient = useQueryClient();
   const { page = 1, limit = 10, search = '', enabled = true } = params;
+  const canFetch = useCanFetchAdmin(enabled);
 
   const usersQuery = useQuery<PaginatedUsersResponse>({
     queryKey: ['admin-users', { page, limit, search }],
@@ -102,7 +114,7 @@ export const useAdminUsers = (params: AdminListParams = {}) => {
       });
       return data;
     },
-    enabled,
+    enabled: canFetch,
     staleTime: DEFAULT_STALE_TIME,
     placeholderData: (previousData) => previousData,
   });
@@ -158,11 +170,11 @@ export const useAdminUsers = (params: AdminListParams = {}) => {
   };
 };
 
-
 // 3. Manage Products & Delete Hook (GET /admin/all-products & DELETE /admin/delete/:id)
 export const useAdminProducts = (params: AdminListParams = {}) => {
   const queryClient = useQueryClient();
   const { page = 1, limit = 10, search = '', enabled = true } = params;
+  const canFetch = useCanFetchAdmin(enabled);
 
   const productsQuery = useQuery<PaginatedProductsResponse>({
     queryKey: ['admin-products', { page, limit, search }],
@@ -172,7 +184,7 @@ export const useAdminProducts = (params: AdminListParams = {}) => {
       });
       return data;
     },
-    enabled,
+    enabled: canFetch,
     staleTime: DEFAULT_STALE_TIME,
     placeholderData: (previousData) => previousData,
   });
@@ -208,6 +220,7 @@ export const useAdminProducts = (params: AdminListParams = {}) => {
 export const useAdminReports = (params: AdminReportsParams = {}) => {
   const queryClient = useQueryClient();
   const { page = 1, limit = 10, status, targetType, enabled = true } = params;
+  const canFetch = useCanFetchAdmin(enabled);
 
   const reportsQuery = useQuery<PaginatedReportsResponse>({
     queryKey: ['admin-reports', { page, limit, status, targetType }],
@@ -217,7 +230,7 @@ export const useAdminReports = (params: AdminReportsParams = {}) => {
       });
       return data;
     },
-    enabled,
+    enabled: canFetch,
     staleTime: DEFAULT_STALE_TIME,
     placeholderData: (previousData) => previousData,
   });
@@ -255,6 +268,7 @@ export const useAdminReports = (params: AdminReportsParams = {}) => {
 export const useAdminProviders = (params: AdminProvidersParams = {}) => {
   const queryClient = useQueryClient();
   const { page = 1, limit = 10, search = '', verified, enabled = true } = params;
+  const canFetch = useCanFetchAdmin(enabled);
 
   const providersQuery = useQuery<PaginatedProvidersResponse>({
     queryKey: ['admin-providers', { page, limit, search, verified }],
@@ -264,7 +278,7 @@ export const useAdminProviders = (params: AdminProvidersParams = {}) => {
       });
       return data;
     },
-    enabled,
+    enabled: canFetch,
     staleTime: DEFAULT_STALE_TIME,
     placeholderData: (previousData) => previousData,
   });
@@ -313,7 +327,9 @@ export const useAdminProviders = (params: AdminProvidersParams = {}) => {
     deleteProvider: deleteProviderMutation.mutate,
     deleteProviderAsync: deleteProviderMutation.mutateAsync,
     isDeletingProvider: deleteProviderMutation.isPending,
-    deletingProviderId: deleteProviderMutation.isPending ? deleteProviderMutation.variables : null,
+    deletingProviderId: deleteProviderMutation.isPending
+      ? deleteProviderMutation.variables
+      : null,
   };
 };
 
@@ -335,10 +351,11 @@ export const useAdminDeleteReview = () => {
   });
 };
 
-// 7. Manage Jobs & Delete Hook (GET /admin/jobs & DELETE /admin/jobs/:id)
+// 7. Manage Jobs & Delete Hook
 export const useAdminJobs = (params: AdminListParams = {}) => {
   const queryClient = useQueryClient();
   const { page = 1, limit = 10, search = '', enabled = true } = params;
+  const canFetch = useCanFetchAdmin(enabled);
 
   const jobsQuery = useQuery<PaginatedJobsResponse>({
     queryKey: ['admin-jobs', { page, limit, search }],
@@ -348,7 +365,7 @@ export const useAdminJobs = (params: AdminListParams = {}) => {
       });
       return data;
     },
-    enabled,
+    enabled: canFetch,
     staleTime: DEFAULT_STALE_TIME,
     placeholderData: (previousData) => previousData,
   });
@@ -370,6 +387,7 @@ export const useAdminJobs = (params: AdminListParams = {}) => {
     jobs: jobsQuery.data?.jobs || [],
     pagination: jobsQuery.data?.pagination,
     isLoadingJobs: jobsQuery.isLoading,
+    isJobsError: jobsQuery.isError,
     refetchJobs: jobsQuery.refetch,
 
     deleteJob: deleteJobMutation.mutate,
@@ -383,6 +401,7 @@ export const useAdminJobs = (params: AdminListParams = {}) => {
 export const useAdminJobSeekers = (params: AdminListParams = {}) => {
   const queryClient = useQueryClient();
   const { page = 1, limit = 10, search = '', enabled = true } = params;
+  const canFetch = useCanFetchAdmin(enabled);
 
   const seekersQuery = useQuery<PaginatedJobSeekersResponse>({
     queryKey: ['admin-job-seekers', { page, limit, search }],
@@ -392,7 +411,7 @@ export const useAdminJobSeekers = (params: AdminListParams = {}) => {
       });
       return data;
     },
-    enabled,
+    enabled: canFetch,
     staleTime: DEFAULT_STALE_TIME,
     placeholderData: (previousData) => previousData,
   });
@@ -410,20 +429,6 @@ export const useAdminJobSeekers = (params: AdminListParams = {}) => {
     },
   });
 
-const toggleUserVerificationMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      const { data } = await api.patch<{
-        success: boolean;
-        message: string;
-        user: User;
-      }>(`/admin/users/${userId}/verify`);
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-    },
-  });
-
   return {
     jobSeekers: seekersQuery.data?.jobSeekers || [],
     pagination: seekersQuery.data?.pagination,
@@ -436,16 +441,21 @@ const toggleUserVerificationMutation = useMutation({
     deletingJobSeekerId: deleteJobSeekerMutation.isPending
       ? deleteJobSeekerMutation.variables
       : null,
-
- // Add to the return object of useAdminUsers:
-  toggleUserVerification: toggleUserVerificationMutation.mutate,
-  isTogglingUserVerification: toggleUserVerificationMutation.isPending,
-  togglingUserId: toggleUserVerificationMutation.isPending
-    ? toggleUserVerificationMutation.variables
-    : null,
   };
 };
 
+// 9. Regional & District Breakdown Hook (GET /admin/regional-stats)
+export const useAdminRegionalStats = (enabled = true) => {
+  const canFetch = useCanFetchAdmin(enabled);
 
+  return useQuery<RegionalStatsResponse>({
+    queryKey: ['admin-regional-stats'],
+    queryFn: async () => {
+      const { data } = await api.get<RegionalStatsResponse>('/admin/regional-stats');
+      return data;
+    },
+    enabled: canFetch,
+    staleTime: DEFAULT_STALE_TIME,
+  });
+};
 
- 

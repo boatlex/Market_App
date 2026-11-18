@@ -14,7 +14,8 @@ interface AuthContextType {
   forgotPasswordMutation: UseMutationResult<any, any, string, any>;
   verifyOTPMutation: UseMutationResult<any, any, { email: string; otp: string }, any>; 
   logout: () => Promise<void>;
-  setOAuthUser: (user: User | null, token: string | null) => Promise<void>; // Updated signature to be async
+  setOAuthUser: (user: User | null, token: string | null) => Promise<void>; 
+ updateUser: (updatedFields: Partial<User>) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -135,6 +136,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+    // Updates user in both React state and AsyncStorage so changes persist across app restarts
+  const updateUser = async (updatedFields: Partial<User>) => {
+    try {
+      setUser((prev) => {
+        if (!prev) return prev;
+        const nextUser = { ...prev, ...updatedFields };
+        AsyncStorage.setItem('user_session', JSON.stringify(nextUser)).catch((err) =>
+          console.error('Failed to persist updated user session:', err)
+        );
+        return nextUser;
+      });
+    } catch (error) {
+      console.error('Failed to update user state:', error);
+    }
+  };
+
   // Logout Action clearing all instances
   const logout = async () => {
     try {
@@ -158,7 +175,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       forgotPasswordMutation,
       verifyOTPMutation,
       logout,
-      setOAuthUser
+      setOAuthUser,
+      updateUser
+
     }}>
       {children}
     </AuthContext.Provider>

@@ -298,3 +298,46 @@ export interface DashboardStatsResponse {
     };
 }
 
+export interface DistrictStat {
+  district: string;
+  products: number;
+  availableProducts: number;
+  services: number;
+  availableServices: number;
+  jobs: number;
+  openJobs: number;
+  jobSeekers: number;
+  activeJobSeekers: number;
+  total: number;
+}
+
+export interface RegionStat {
+  region: string;
+  products: number;
+  availableProducts: number;
+  services: number;
+  availableServices: number;
+  jobs: number;
+  openJobs: number;
+  jobSeekers: number;
+  activeJobSeekers: number;
+  total: number;
+  districts: DistrictStat[];
+}
+
+export interface RegionalStatsResponse {
+  success: boolean;
+  summary: {
+    totalRegions: number;
+    totalDistricts: number;
+    products: number;
+    availableProducts: number;
+    services: number;
+    availableServices: number;
+    jobs: number;
+    openJobs: number;
+    jobSeekers: number;
+    activeJobSeekers: number;
+  };
+  regions: RegionStat[];
+}
