@@ -7,7 +7,7 @@ import LoadingUi from '../../components/LoadingUi'
 import SafeScreen from '../../components/SafeScreen'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
-import ImageView from 'react-native-image-viewing'
+import ImageView from '../../components/CrossPlatformImageView.native';
 import { useAuth } from '../../contexts/authContext'
 import { useGetJob } from '../../hooks/usegetJob'
 import { useToggleJobStatus } from '../../hooks/useToggleJobStatus'
