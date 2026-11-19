@@ -9,7 +9,6 @@ import {
     FlatList,
     ActivityIndicator,
     ScrollView,
-    RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,9 +20,11 @@ import {
     useAdminProviders,
     useAdminJobs,
     useAdminJobSeekers,
+    useAdminFeedback,
 } from '../../hooks/useAdmin';
-import { ReportStatus } from '../../types';
+import { ReportStatus, FeedbackStatus, PaginationMeta } from '../../types';
 import AdminReportCard from '../../components/admin/AdminReportCard';
+import AdminFeedbackCard from '../../components/admin/AdminFeedBackCard';
 import AdminProductCard from '../../components/admin/AdminProductCard';
 import AdminProviderCard from '../../components/admin/AdminProviderCard';
 import AdminJobCard from '../../components/admin/AdminJobCard';
@@ -31,10 +32,18 @@ import AdminJobSeekerCard from '../../components/admin/AdminJobSeekerCard';
 import AdminUserCard from '../../components/admin/AdminUserCard';
 import RefreshButton from '../../components/admin/RefreshButton';
 
-type AdminTab = 'reports' | 'products' | 'providers' | 'jobs' | 'jobseekers' | 'users';
+type AdminTab =
+    | 'reports'
+    | 'feedback'
+    | 'products'
+    | 'providers'
+    | 'jobs'
+    | 'jobseekers'
+    | 'users';
 
 const ADMIN_TABS: { key: AdminTab; label: string }[] = [
     { key: 'reports', label: 'Reports' },
+    { key: 'feedback', label: 'Feedback' },
     { key: 'products', label: 'Products' },
     { key: 'providers', label: 'Providers' },
     { key: 'jobs', label: 'Jobs' },
@@ -50,6 +59,13 @@ const STATUS_FILTERS: { label: string; value?: ReportStatus }[] = [
     { label: 'Dismissed', value: 'dismissed' },
 ];
 
+const FEEDBACK_STATUS_FILTERS: { label: string; value?: FeedbackStatus }[] = [
+    { label: 'All', value: undefined },
+    { label: 'New', value: 'new' },
+    { label: 'Reviewed', value: 'reviewed' },
+    { label: 'Resolved', value: 'resolved' },
+];
+
 export default function AdminScreen() {
     const { user, isInitializing: isAuthLoading } = useAuth();
 
@@ -58,6 +74,9 @@ export default function AdminScreen() {
 
     const [reportPage, setReportPage] = useState(1);
     const [reportStatus, setReportStatus] = useState<ReportStatus | undefined>('pending');
+
+    const [feedbackPage, setFeedbackPage] = useState(1);
+    const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatus | undefined>('new');
 
     const [productPage, setProductPage] = useState(1);
     const [productSearch, setProductSearch] = useState('');
@@ -76,8 +95,7 @@ export default function AdminScreen() {
     const [userSearch, setUserSearch] = useState('');
     const [isRefreshing, setIsRefreshing] = useState(false);
 
-        // 2. All query hooks MUST run before any early return
-    // (Auth & admin role checks are handled automatically inside each hook)
+    // 2. All query hooks MUST run before any early return
     const { data: stats, isLoading: isLoadingStats, refetch: refetchStats } = useAdminStats();
 
     const {
@@ -93,6 +111,21 @@ export default function AdminScreen() {
         limit: 10,
         status: reportStatus,
         enabled: activeTab === 'reports',
+    });
+
+    const {
+        feedbackList,
+        pagination: feedbackPagination,
+        isLoadingFeedback,
+        refetchFeedback,
+        updateFeedbackStatus,
+        isUpdatingFeedbackStatus,
+        updatingFeedbackId,
+    } = useAdminFeedback({
+        page: feedbackPage,
+        limit: 10,
+        status: feedbackStatus,
+        enabled: activeTab === 'feedback',
     });
 
     const {
@@ -197,6 +230,7 @@ export default function AdminScreen() {
             await Promise.all([
                 refetchStats(),
                 activeTab === 'reports' ? refetchReports() : Promise.resolve(),
+                activeTab === 'feedback' ? refetchFeedback() : Promise.resolve(),
                 activeTab === 'products' ? refetchProducts() : Promise.resolve(),
                 activeTab === 'providers' ? refetchProviders() : Promise.resolve(),
                 activeTab === 'jobs' ? refetchJobs() : Promise.resolve(),
@@ -208,7 +242,167 @@ export default function AdminScreen() {
         }
     };
 
-    const renderHeader = () => (
+    // Active tab resolution helpers
+    const getActiveListConfig = (): {
+        data: any[];
+        isLoading: boolean;
+        pagination?: PaginationMeta;
+        page: number;
+        setPage: React.Dispatch<React.SetStateAction<number>>;
+        emptyMessage: string;
+    } => {
+        switch (activeTab) {
+            case 'reports':
+                return {
+                    data: reports,
+                    isLoading: isLoadingReports,
+                    pagination: reportsPagination,
+                    page: reportPage,
+                    setPage: setReportPage,
+                    emptyMessage: 'No reports found for this filter.',
+                };
+            case 'feedback':
+                return {
+                    data: feedbackList,
+                    isLoading: isLoadingFeedback,
+                    pagination: feedbackPagination,
+                    page: feedbackPage,
+                    setPage: setFeedbackPage,
+                    emptyMessage: 'No feedback entries found.',
+                };
+            case 'products':
+                return {
+                    data: products,
+                    isLoading: isLoadingProducts,
+                    pagination: productsPagination,
+                    page: productPage,
+                    setPage: setProductPage,
+                    emptyMessage: 'No products found.',
+                };
+            case 'providers':
+                return {
+                    data: providers,
+                    isLoading: isLoadingProviders,
+                    pagination: providersPagination,
+                    page: providerPage,
+                    setPage: setProviderPage,
+                    emptyMessage: 'No service providers found.',
+                };
+            case 'jobs':
+                return {
+                    data: jobs,
+                    isLoading: isLoadingJobs,
+                    pagination: jobsPagination,
+                    page: jobPage,
+                    setPage: setJobPage,
+                    emptyMessage: 'No jobs found.',
+                };
+            case 'jobseekers':
+                return {
+                    data: jobSeekers,
+                    isLoading: isLoadingJobSeekers,
+                    pagination: seekersPagination,
+                    page: seekerPage,
+                    setPage: setSeekerPage,
+                                     emptyMessage: 'No job seekers found.',
+                };
+            case 'users':
+                return {
+                    data: users,
+                    isLoading: isLoadingUsers,
+                    pagination: usersPagination,
+                    page: userPage,
+                    setPage: setUserPage,
+                    emptyMessage: 'No users found.',
+                };
+        }
+    };
+
+    const renderActiveItem = ({ item }: { item: any }) => {
+        switch (activeTab) {
+            case 'reports':
+                           case 'reports':
+                return (
+                    <AdminReportCard
+                        report={item}
+                        onUpdateStatus={updateReportStatus}
+                        isBusy={isUpdatingStatus && updatingReportId === item._id}
+                    />
+                );
+
+            case 'feedback':
+                return (
+                    <AdminFeedbackCard
+                        item={item}
+                        onUpdateStatus={(feedbackId, nextStatus) =>
+                            updateFeedbackStatus({ feedbackId, nextStatus })
+                        }
+                        isUpdating={
+                            isUpdatingFeedbackStatus && updatingFeedbackId === item._id
+                        }
+                    />
+                );
+            case 'products':
+                return (
+                    <AdminProductCard
+                        product={item}
+                        onDelete={(productId) => deleteProduct(productId)}
+                        isDeleting={isDeletingProduct && deletingProductId === item._id}
+                    />
+                );
+            case 'providers':
+                          case 'providers':
+                return (
+                    <AdminProviderCard
+                        provider={item}
+                        onToggleVerify={toggleVerification}
+                        isToggling={
+                            isTogglingVerification && togglingProviderId === item._id
+                        }
+                        onDelete={deleteProvider}
+                        isDeleting={isDeletingProvider && deletingProviderId === item._id}
+                    />
+                );
+
+            case 'jobs':
+                return (
+                    <AdminJobCard
+                        job={item}
+                        onDelete={(jobId) => deleteJob(jobId)}
+                        isDeleting={isDeletingJob && deletingJobId === item._id}
+                    />
+                );
+            case 'jobseekers':
+            
+                return (
+                    <AdminJobSeekerCard
+                        seeker={item}
+                        onDelete={deleteJobSeeker}
+                        isDeleting={
+                            isDeletingJobSeeker && deletingJobSeekerId === item._id
+                        }
+                    />
+                );
+
+            case 'users':
+                return (
+                    <AdminUserCard
+                        user={item}
+                        onToggleVerify={toggleUserVerification}
+                        isToggling={
+                            isTogglingUserVerification && togglingUserId === item._id
+                        }
+                        onDelete={deleteUser}
+                        isDeleting={isDeletingUser && deletingUserId === item._id}
+                    />
+                );
+
+        }
+    };
+
+    const activeConfig = getActiveListConfig();
+
+    const headerElement = (
         <View className="mb-3">
             {/* Top Bar */}
             <View className="flex-row justify-between items-center mb-4">
@@ -218,20 +412,16 @@ export default function AdminScreen() {
                         Marketplace moderation & insights
                     </Text>
                 </View>
-                <RefreshButton
-                    isRefreshing={isRefreshing}
-                    onRefresh={handleRefresh}
-                />
+                <RefreshButton isRefreshing={isRefreshing} onRefresh={handleRefresh} />
             </View>
 
-            {/* Stats Grid */}
             {/* Stats Grid (6 Cards in 2 Rows) */}
             {isLoadingStats ? (
                 <ActivityIndicator size="small" color="#2563EB" className="my-4" />
             ) : (
                 stats && (
                     <View className="flex-row flex-wrap justify-between gap-y-2.5 mb-4">
-                        {/* 1. Verified Users */}
+                        {/* 1. Users */}
                         <TouchableOpacity
                             onPress={() => setActiveTab('users')}
                             activeOpacity={0.7}
@@ -241,7 +431,9 @@ export default function AdminScreen() {
                             <View className="w-8 h-8 rounded-lg bg-blue-50 items-center justify-center mb-1.5">
                                 <Ionicons name="people" size={17} color="#2563EB" />
                             </View>
-                            <Text className="text-lg font-bold text-gray-900">{stats.totalUsers}</Text>
+                            <Text className="text-lg font-bold text-gray-900">
+                                {stats.totalUsers}
+                            </Text>
                             <Text className="text-[11px] text-gray-500 mt-0.5">Users</Text>
                         </TouchableOpacity>
 
@@ -255,7 +447,9 @@ export default function AdminScreen() {
                             <View className="w-8 h-8 rounded-lg bg-emerald-50 items-center justify-center mb-1.5">
                                 <Ionicons name="bag-handle" size={17} color="#059669" />
                             </View>
-                            <Text className="text-lg font-bold text-gray-900">{stats.totalProducts}</Text>
+                            <Text className="text-lg font-bold text-gray-900">
+                                {stats.totalProducts}
+                            </Text>
                             <Text className="text-[11px] text-gray-500 mt-0.5">Products</Text>
                         </TouchableOpacity>
 
@@ -269,7 +463,9 @@ export default function AdminScreen() {
                             <View className="w-8 h-8 rounded-lg bg-purple-50 items-center justify-center mb-1.5">
                                 <Ionicons name="construct" size={17} color="#7C3AED" />
                             </View>
-                            <Text className="text-lg font-bold text-gray-900">{stats.totalProviders}</Text>
+                            <Text className="text-lg font-bold text-gray-900">
+                                {stats.totalProviders}
+                            </Text>
                             <Text className="text-[11px] text-gray-500 mt-0.5">Providers</Text>
                         </TouchableOpacity>
 
@@ -283,7 +479,9 @@ export default function AdminScreen() {
                             <View className="w-8 h-8 rounded-lg bg-indigo-50 items-center justify-center mb-1.5">
                                 <Ionicons name="briefcase" size={17} color="#4F46E5" />
                             </View>
-                            <Text className="text-lg font-bold text-gray-900">{stats.totalJobs}</Text>
+                            <Text className="text-lg font-bold text-gray-900">
+                                {stats.totalJobs}
+                            </Text>
                             <Text className="text-[11px] text-gray-500 mt-0.5">Jobs</Text>
                         </TouchableOpacity>
 
@@ -297,7 +495,9 @@ export default function AdminScreen() {
                             <View className="w-8 h-8 rounded-lg bg-amber-50 items-center justify-center mb-1.5">
                                 <Ionicons name="document-text" size={17} color="#D97706" />
                             </View>
-                            <Text className="text-lg font-bold text-gray-900">{stats.totalJobSeekers}</Text>
+                            <Text className="text-lg font-bold text-gray-900">
+                                {stats.totalJobSeekers}
+                            </Text>
                             <Text className="text-[11px] text-gray-500 mt-0.5">Seekers</Text>
                         </TouchableOpacity>
 
@@ -323,11 +523,11 @@ export default function AdminScreen() {
                 )
             )}
 
-
             {/* Horizontal Scrollable Tabs */}
             <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
                 className="mb-3"
                 contentContainerStyle={{
                     backgroundColor: '#E5E7EB',
@@ -341,12 +541,15 @@ export default function AdminScreen() {
                     return (
                         <TouchableOpacity
                             key={tab.key}
-                            className={`px-3.5 py-2 rounded-lg items-center ${isActive ? 'bg-white' : ''}`}
+                            className={`px-3.5 py-2 rounded-lg items-center ${
+                                isActive ? 'bg-white' : ''
+                            }`}
                             onPress={() => setActiveTab(tab.key)}
                         >
                             <Text
-                                className={`text-xs font-semibold ${isActive ? 'text-gray-900' : 'text-gray-600'
-                                    }`}
+                                className={`text-xs font-semibold ${
+                                    isActive ? 'text-gray-900' : 'text-gray-600'
+                                }`}
                             >
                                 {tab.label}
                             </Text>
@@ -360,6 +563,7 @@ export default function AdminScreen() {
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
                     contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
                 >
                     {STATUS_FILTERS.map((filter) => {
@@ -367,16 +571,56 @@ export default function AdminScreen() {
                         return (
                             <TouchableOpacity
                                 key={filter.label}
-                                className={`px-3.5 py-1.5 rounded-full border ${active ? 'bg-gray-900 border-gray-900' : 'bg-white border-gray-200'
-                                    }`}
+                                className={`px-3.5 py-1.5 rounded-full border ${
+                                    active
+                                        ? 'bg-gray-900 border-gray-900'
+                                        : 'bg-white border-gray-200'
+                                }`}
                                 onPress={() => {
                                     setReportStatus(filter.value);
                                     setReportPage(1);
                                 }}
                             >
                                 <Text
-                                    className={`text-xs font-semibold ${active ? 'text-white' : 'text-gray-600'
-                                        }`}
+                                    className={`text-xs font-semibold ${
+                                        active ? 'text-white' : 'text-gray-600'
+                                    }`}
+                                >
+                                    {filter.label}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </ScrollView>
+            )}
+
+            {/* Feedback Filter */}
+            {activeTab === 'feedback' && (
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                    contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
+                >
+                    {FEEDBACK_STATUS_FILTERS.map((filter) => {
+                        const active = feedbackStatus === filter.value;
+                        return (
+                            <TouchableOpacity
+                                key={filter.label}
+                                className={`px-3.5 py-1.5 rounded-full border ${
+                                    active
+                                        ? 'bg-gray-900 border-gray-900'
+                                        : 'bg-white border-gray-200'
+                                }`}
+                                onPress={() => {
+                                    setFeedbackStatus(filter.value);
+                                    setFeedbackPage(1);
+                                }}
+                            >
+                                <Text
+                                    className={`text-xs font-semibold ${
+                                        active ? 'text-white' : 'text-gray-600'
+                                    }`}
                                 >
                                     {filter.label}
                                 </Text>
@@ -388,70 +632,55 @@ export default function AdminScreen() {
 
             {/* Products Search */}
             {activeTab === 'products' && (
-                <View className="flex-row items-center bg-white rounded-xl px-3 h-11 border border-gray-200 gap-2">
-                    <Ionicons name="search" size={18} color="#6B7280" />
-                    <TextInput
-                        className="flex-1 text-sm text-gray-900"
-                        placeholder="Search products by name or category..."
-                        placeholderTextColor="#9CA3AF"
-                        value={productSearch}
-                        onChangeText={(text) => {
-                            setProductSearch(text);
-                            setProductPage(1);
-                        }}
-                    />
-                    {productSearch.length > 0 && (
-                        <TouchableOpacity onPress={() => setProductSearch('')}>
-                            <Ionicons name="close-circle" size={18} color="#9CA3AF" />
-                        </TouchableOpacity>
-                    )}
-                </View>
+                <SearchInputBar
+                    value={productSearch}
+                    onChangeText={(text) => {
+                        setProductSearch(text);
+                        setProductPage(1);
+                    }}
+                    placeholder="Search products by name or category..."
+                />
             )}
 
-            {/* Providers Search & Filter */}
+            {/* Providers Search & Verified Filter */}
             {activeTab === 'providers' && (
-                <View className="gap-2">
-                    <View className="flex-row items-center bg-white rounded-xl px-3 h-11 border border-gray-200 gap-2">
-                        <Ionicons name="search" size={18} color="#6B7280" />
-                        <TextInput
-                            className="flex-1 text-sm text-gray-900"
-                            placeholder="Search providers by business or category..."
-                            placeholderTextColor="#9CA3AF"
-                            value={providerSearch}
-                            onChangeText={(text) => {
-                                setProviderSearch(text);
-                                setProviderPage(1);
-                            }}
-                        />
-                        {providerSearch.length > 0 && (
-                            <TouchableOpacity onPress={() => setProviderSearch('')}>
-                                <Ionicons name="close-circle" size={18} color="#9CA3AF" />
-                            </TouchableOpacity>
-                        )}
-                    </View>
-
-                    <View className="flex-row gap-2">
-                        {[
-                            { label: 'All', value: undefined },
-                            { label: 'Verified', value: 'true' as const },
-                            { label: 'Unverified', value: 'false' as const },
-                        ].map((chip) => {
-                            const active = providerVerified === chip.value;
+                <View>
+                    <SearchInputBar
+                        value={providerSearch}
+                        onChangeText={(text) => {
+                            setProviderSearch(text);
+                            setProviderPage(1);
+                        }}
+                        placeholder="Search service providers..."
+                    />
+                    <View className="flex-row gap-2 mt-2">
+                        {(
+                            [
+                                { label: 'All', val: undefined },
+                                { label: 'Verified', val: 'true' },
+                                { label: 'Unverified', val: 'false' },
+                            ] as const
+                        ).map((item) => {
+                            const active = providerVerified === item.val;
                             return (
                                 <TouchableOpacity
-                                    key={chip.label}
-                                    className={`px-3.5 py-1.5 rounded-full border ${active ? 'bg-gray-900 border-gray-900' : 'bg-white border-gray-200'
-                                        }`}
+                                    key={item.label}
                                     onPress={() => {
-                                        setProviderVerified(chip.value);
+                                        setProviderVerified(item.val);
                                         setProviderPage(1);
                                     }}
+                                    className={`px-3 py-1 rounded-full border ${
+                                        active
+                                            ? 'bg-gray-900 border-gray-900'
+                                            : 'bg-white border-gray-200'
+                                    }`}
                                 >
                                     <Text
-                                        className={`text-xs font-semibold ${active ? 'text-white' : 'text-gray-600'
-                                            }`}
+                                        className={`text-xs font-semibold ${
+                                            active ? 'text-white' : 'text-gray-600'
+                                        }`}
                                     >
-                                        {chip.label}
+                                        {item.label}
                                     </Text>
                                 </TouchableOpacity>
                             );
@@ -462,247 +691,152 @@ export default function AdminScreen() {
 
             {/* Jobs Search */}
             {activeTab === 'jobs' && (
-                <View className="flex-row items-center bg-white rounded-xl px-3 h-11 border border-gray-200 gap-2">
-                    <Ionicons name="search" size={18} color="#6B7280" />
-                    <TextInput
-                        className="flex-1 text-sm text-gray-900"
-                        placeholder="Search jobs by title, company, or category..."
-                        placeholderTextColor="#9CA3AF"
-                        value={jobSearch}
-                        onChangeText={(text) => {
-                            setJobSearch(text);
-                            setJobPage(1);
-                        }}
-                    />
-                    {jobSearch.length > 0 && (
-                        <TouchableOpacity onPress={() => setJobSearch('')}>
-                            <Ionicons name="close-circle" size={18} color="#9CA3AF" />
-                        </TouchableOpacity>
-                    )}
-                </View>
+                <SearchInputBar
+                    value={jobSearch}
+                    onChangeText={(text) => {
+                        setJobSearch(text);
+                        setJobPage(1);
+                    }}
+                    placeholder="Search jobs by title or company..."
+                />
             )}
 
             {/* Job Seekers Search */}
             {activeTab === 'jobseekers' && (
-                <View className="flex-row items-center bg-white rounded-xl px-3 h-11 border border-gray-200 gap-2">
-                    <Ionicons name="search" size={18} color="#6B7280" />
-                    <TextInput
-                        className="flex-1 text-sm text-gray-900"
-                        placeholder="Search job seekers by headline, skills, or region..."
-                        placeholderTextColor="#9CA3AF"
-                        value={seekerSearch}
-                        onChangeText={(text) => {
-                            setSeekerSearch(text);
-                            setSeekerPage(1);
-                        }}
-                    />
-                    {seekerSearch.length > 0 && (
-                        <TouchableOpacity onPress={() => setSeekerSearch('')}>
-                            <Ionicons name="close-circle" size={18} color="#9CA3AF" />
-                        </TouchableOpacity>
-                    )}
-                </View>
+                <SearchInputBar
+                    value={seekerSearch}
+                    onChangeText={(text) => {
+                        setSeekerSearch(text);
+                        setSeekerPage(1);
+                    }}
+                    placeholder="Search job seekers by headline or skills..."
+                />
             )}
 
             {/* Users Search */}
             {activeTab === 'users' && (
-                <View className="flex-row items-center bg-white rounded-xl px-3 h-11 border border-gray-200 gap-2">
-                    <Ionicons name="search" size={18} color="#6B7280" />
-                    <TextInput
-                        className="flex-1 text-sm text-gray-900"
-                        placeholder="Search users by name or email..."
-                        placeholderTextColor="#9CA3AF"
-                        value={userSearch}
-                        onChangeText={(text) => {
-                            setUserSearch(text);
-                            setUserPage(1);
-                        }}
-                    />
-                    {userSearch.length > 0 && (
-                        <TouchableOpacity onPress={() => setUserSearch('')}>
-                            <Ionicons name="close-circle" size={18} color="#9CA3AF" />
-                        </TouchableOpacity>
-                    )}
-                </View>
+                <SearchInputBar
+                    value={userSearch}
+                    onChangeText={(text) => {
+                        setUserSearch(text);
+                        setUserPage(1);
+                    }}
+                    placeholder="Search users by name or email..."
+                />
             )}
         </View>
     );
 
-    const renderPagination = () => {
-        const pagination =
-            activeTab === 'reports'
-                ? reportsPagination
-                : activeTab === 'products'
-                    ? productsPagination
-                    : activeTab === 'providers'
-                        ? providersPagination
-                        : activeTab === 'jobs'
-                            ? jobsPagination
-                            : activeTab === 'jobseekers'
-                                ? seekersPagination
-                                : usersPagination;
-
-        if (!pagination || pagination.totalPages <= 1) return undefined;
-
-        const currentPage = pagination.currentPage;
-        const setPage =
-            activeTab === 'reports'
-                ? setReportPage
-                : activeTab === 'products'
-                    ? setProductPage
-                    : activeTab === 'providers'
-                        ? setProviderPage
-                        : activeTab === 'jobs'
-                            ? setJobPage
-                            : activeTab === 'jobseekers'
-                                ? setSeekerPage
-                                : setUserPage;
-
-        return (
-            <View className="flex-row justify-between items-center mt-3 pt-3 border-t border-gray-200">
-                <TouchableOpacity
-                    className={`px-3.5 py-2 rounded-lg bg-white border border-gray-300 ${currentPage <= 1 ? 'opacity-40' : ''
-                        }`}
-                    disabled={currentPage <= 1}
-                    onPress={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                    <Text className="text-xs font-semibold text-gray-900">Previous</Text>
-                </TouchableOpacity>
-
-                <Text className="text-xs font-semibold text-gray-600">
-                    Page {currentPage} of {pagination.totalPages}
-                </Text>
-
-                <TouchableOpacity
-                    className={`px-3.5 py-2 rounded-lg bg-white border border-gray-300 ${currentPage >= pagination.totalPages ? 'opacity-40' : ''
-                        }`}
-                    disabled={currentPage >= pagination.totalPages}
-                    onPress={() => setPage((p) => p + 1)}
-                >
-                    <Text className="text-xs font-semibold text-gray-900">Next</Text>
-                </TouchableOpacity>
-            </View>
-        );
-    };
-
-    const isLoading =
-        activeTab === 'reports'
-            ? isLoadingReports
-            : activeTab === 'products'
-                ? isLoadingProducts
-                : activeTab === 'providers'
-                    ? isLoadingProviders
-                    : activeTab === 'jobs'
-                        ? isLoadingJobs
-                        : activeTab === 'jobseekers'
-                            ? isLoadingJobSeekers
-                            : isLoadingUsers;
-
-    const listData: any[] =
-        activeTab === 'reports'
-            ? reports
-            : activeTab === 'products'
-                ? products
-                : activeTab === 'providers'
-                    ? providers
-                    : activeTab === 'jobs'
-                        ? jobs
-                        : activeTab === 'jobseekers'
-                            ? jobSeekers
-                            : users;
-
-    return (
-        <SafeAreaView className="flex-1 bg-gray-50" edges={['top']}>
+       return (
+        <SafeAreaView className="flex-1 bg-gray-50 px-4 pt-2" edges={['top']}>
             <FlatList
-                data={isLoading ? [] : listData}
-                keyExtractor={(item) => item._id}
-                ListHeaderComponent={renderHeader}
-                ListFooterComponent={renderPagination}
-                contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={false}
-                        onRefresh={() => {
-                            handleRefresh();
-                        }}
-                        tintColor="#2563EB"
-                    />
-                }
-                renderItem={({ item }) => {
-                    if (activeTab === 'reports') {
-                        return (
-                            <AdminReportCard
-                                report={item}
-                                onUpdateStatus={updateReportStatus}
-                                isBusy={isUpdatingStatus && updatingReportId === item._id}
-                            />
-                        );
-                    }
-                    if (activeTab === 'products') {
-                        return (
-                            <AdminProductCard
-                                product={item}
-                                onDelete={deleteProduct}
-                                isDeleting={isDeletingProduct && deletingProductId === item._id}
-                            />
-                        );
-                    }
-                    if (activeTab === 'providers') {
-                        return (
-                            <AdminProviderCard
-                                provider={item}
-                                onToggleVerify={toggleVerification}
-                                isToggling={isTogglingVerification && togglingProviderId === item._id}
-                                onDelete={deleteProvider}
-                                isDeleting={isDeletingProvider && deletingProviderId === item._id}
-                            />
-                        );
-                    }
-                    if (activeTab === 'jobs') {
-                        return (
-                            <AdminJobCard
-                                job={item}
-                                onDelete={deleteJob}
-                                isDeleting={isDeletingJob && deletingJobId === item._id}
-                            />
-                        );
-                    }
-                    if (activeTab === 'jobseekers') {
-                        return (
-                            <AdminJobSeekerCard
-                                seeker={item}
-                                onDelete={deleteJobSeeker}
-                                isDeleting={isDeletingJobSeeker && deletingJobSeekerId === item._id}
-                            />
-                        );
-                    }
-                    return (
-                        <AdminUserCard
-                            user={item}
-                            onToggleVerify={toggleUserVerification}
-                            isToggling={isTogglingUserVerification && togglingUserId === item._id}
-                            onDelete={deleteUser}
-                            isDeleting={isDeletingUser && deletingUserId === item._id}
-                        />
-                    );
-                }}
+                data={activeConfig.isLoading ? [] : activeConfig.data}
+                keyExtractor={(item) => item._id || item.id}
+                renderItem={renderActiveItem}
+                ListHeaderComponent={headerElement}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 36 }}
                 ListEmptyComponent={
-                    isLoading ? (
-                        <ActivityIndicator size="large" color="#2563EB" className="mt-10" />
+                    activeConfig.isLoading ? (
+                        <ActivityIndicator size="large" color="#2563EB" className="my-10" />
                     ) : (
-                        <View className="items-center py-12">
-                            <Ionicons name="folder-open-outline" size={40} color="#9CA3AF" />
-                            <Text className="text-base font-semibold text-gray-700 mt-2.5">
-                                No {activeTab} found
-                            </Text>
-                            <Text className="text-xs text-gray-400 mt-1">
-                                Try adjusting your filters or search query.
+                        <View className="bg-white rounded-2xl border border-gray-200 p-8 items-center mt-2">
+                            <Ionicons name="folder-open-outline" size={32} color="#9CA3AF" />
+                            <Text className="text-sm font-semibold text-gray-800 mt-2">
+                                {activeConfig.emptyMessage}
                             </Text>
                         </View>
                     )
+                }
+                ListFooterComponent={
+                    !activeConfig.isLoading &&
+                    activeConfig.pagination &&
+                    activeConfig.pagination.totalPages > 1 ? (
+                        <View className="flex-row justify-between items-center mt-2 bg-white p-3 rounded-2xl border border-gray-200">
+                            <TouchableOpacity
+                                disabled={activeConfig.page <= 1}
+                                onPress={() =>
+                                    activeConfig.setPage((p) => Math.max(1, p - 1))
+                                }
+                                className={`px-3.5 py-2 rounded-xl border ${
+                                    activeConfig.page <= 1
+                                        ? 'border-gray-100 bg-gray-50'
+                                        : 'border-gray-200 bg-white'
+                                }`}
+                            >
+                                <Text
+                                    className={`text-xs font-semibold ${
+                                        activeConfig.page <= 1
+                                            ? 'text-gray-300'
+                                            : 'text-gray-700'
+                                    }`}
+                                >
+                                    Previous
+                                </Text>
+                            </TouchableOpacity>
+
+                            <Text className="text-xs font-medium text-gray-600">
+                                Page {activeConfig.pagination.currentPage} of{' '}
+                                {activeConfig.pagination.totalPages}
+                            </Text>
+
+                            <TouchableOpacity
+                                disabled={!activeConfig.pagination.hasNextPage}
+                                onPress={() => activeConfig.setPage((p) => p + 1)}
+                                className={`px-3.5 py-2 rounded-xl border ${
+                                    !activeConfig.pagination.hasNextPage
+                                        ? 'border-gray-100 bg-gray-50'
+                                        : 'border-gray-200 bg-white'
+                                }`}
+                            >
+                                <Text
+                                    className={`text-xs font-semibold ${
+                                        !activeConfig.pagination.hasNextPage
+                                            ? 'text-gray-300'
+                                            : 'text-gray-700'
+                                    }`}
+                                >
+                                    Next
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : undefined
                 }
             />
         </SafeAreaView>
     );
 }
+
+function SearchInputBar({
+    value,
+    onChangeText,
+    placeholder,
+}: {
+    value: string;
+    onChangeText: (text: string) => void;
+    placeholder: string;
+}) {
+    return (
+        <View className="flex-row items-center bg-white border border-gray-200 rounded-xl px-3 py-2">
+            <Ionicons name="search" size={16} color="#9CA3AF" />
+            <TextInput
+                value={value}
+                onChangeText={onChangeText}
+                placeholder={placeholder}
+                placeholderTextColor="#9CA3AF"
+                autoCorrect={false}
+                className="flex-1 ml-2 text-xs text-gray-900"
+            />
+            {value.length > 0 && (
+                <TouchableOpacity onPress={() => onChangeText('')}>
+                    <Ionicons name="close-circle" size={16} color="#9CA3AF" />
+                </TouchableOpacity>
+            )}
+        </View>
+    );
+}
+
+
+
 

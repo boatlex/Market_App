@@ -22,6 +22,14 @@ export type ProductCondition =
     | ServiceProvider
     | Job
     | JobSeekerProfile;
+    export type FeedbackCategory =
+  | 'Bug Report'
+  | 'Feature Request'
+  | 'General Feedback'
+  | 'Account & Billing';
+
+export type FeedbackStatus = 'new' | 'reviewed' | 'resolved';
+
 export interface Application {
     _id: string;
     job: string;
@@ -340,4 +348,16 @@ export interface RegionalStatsResponse {
     activeJobSeekers: number;
   };
   regions: RegionStat[];
+}
+
+export interface FeedbackItem {
+  _id: string;
+  user: string | Pick<User, '_id' | 'firstName' | 'lastName' | 'email' | 'profilePicture'>;
+  category: FeedbackCategory;
+  rating: ReviewRating;
+  subject: string;
+  message: string;
+  status: FeedbackStatus;
+  createdAt: string;
+  updatedAt: string;
 }

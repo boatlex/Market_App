@@ -10,6 +10,7 @@ import { Image } from 'expo-image'
 import ImageView from 'react-native-image-viewing';
 import { useAuth } from '../../contexts/authContext';
 import { useReportModalStore } from '../../stores/useReportModalStore'
+import ItemReviewsSection from '../../components/reviews/ItemsReviewsSection'
 
 const { width } = Dimensions.get("window")
 
@@ -22,9 +23,16 @@ const SeekJobDetailsScreen = () => {
   const [isFavorite, setIsFavorite] = useState(false)
   const [isZoomVisible, setIsZoomVisible] = useState(false);
 
-  const userId = user?.id
+  const currentUserId = user?._id || user?.id;
   const parsedJobSeekerId = Array.isArray(jobSeekerId) ? jobSeekerId[0] : jobSeekerId;
-  const owner = userId === parsedJobSeekerId;
+  const profileUserId =
+    typeof product?.user === 'object' ? (product.user as any)?._id : product?.user;
+
+  const owner =
+    Boolean(currentUserId) &&
+    (String(currentUserId) === String(parsedJobSeekerId) ||
+      String(currentUserId) === String(profileUserId));
+
 
   const handleCallSeller = () => {
     if (!user) {
@@ -252,8 +260,18 @@ const SeekJobDetailsScreen = () => {
             </View>
           )}
 
+          {/* Candidate Reviews & Ratings */}
+          {!owner && ( <ItemReviewsSection
+            targetId={product._id}
+            targetType="JobSeeker"
+            averageRating={product.averageRating}
+            totalReviewsCount={product.totalReviews}
+            isOwner={owner}
+            title="Candidate Reviews & Ratings"
+          />)}
+         
 
-          {/* FIXED: Added clean Trust & Safety report block directly below the content wrapper */}
+          {/*  Added clean Trust & Safety report block directly below the content wrapper */}
           {!owner && (
             <View className="px-6 mt-2">
               <TouchableOpacity

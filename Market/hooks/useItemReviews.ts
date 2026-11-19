@@ -37,10 +37,15 @@ export const useItemReviews = (targetId: string, targetType: ReportTargetType, p
       return data.review;
     },
     onSuccess: () => {
-      
+      const singularKey = targetType.toLowerCase();
+      const pluralKey = `${singularKey}s`;
+
       queryClient.invalidateQueries({ queryKey: ['itemReviews', targetId] });
-      queryClient.invalidateQueries({ queryKey: [targetType.toLowerCase(), targetId] });
+      queryClient.invalidateQueries({ queryKey: [singularKey, targetId] });
+      queryClient.invalidateQueries({ queryKey: [pluralKey, targetId] });
+      queryClient.invalidateQueries({ queryKey: [pluralKey] });
     },
+
   });
 
   // 3. Delete an Item Review

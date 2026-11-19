@@ -25,6 +25,8 @@ export interface JobItem {
     requirements: string[];
     benefits: string[];
     applicationDeadline?: string;
+    averageRating?:number,
+    totalReviews?:number,
     isOpen: boolean;
     createdAt: string;
 }

@@ -10,10 +10,13 @@ import {
   JobSeekerProfile,
   ReportStatus,
   ReportTargetType,
+  FeedbackItem,
+  FeedbackStatus,
   PaginationMeta,
   DashboardStatsResponse,
-   RegionalStatsResponse,
+  RegionalStatsResponse,
 } from '../types';
+
 
 // --- Response & Parameter Types ---
 
@@ -74,6 +77,18 @@ interface AdminProvidersParams {
   search?: string;
   verified?: 'true' | 'false';
   enabled?: boolean;
+}
+interface UseAdminFeedbackParams {
+  page?: number;
+  limit?: number;
+  status?: FeedbackStatus;
+  enabled?: boolean;
+}
+
+interface PaginatedFeedbackResponse {
+  success: boolean;
+  feedback: FeedbackItem[];
+  pagination: PaginationMeta;
 }
 
 const DEFAULT_STALE_TIME = 1000 * 30; // 30 seconds
@@ -459,3 +474,62 @@ export const useAdminRegionalStats = (enabled = true) => {
   });
 };
 
+
+
+// 9. Manage User Feedback & Status Updates (GET /admin/feedback & PATCH /admin/feedback/:id/status)
+export const useAdminFeedback = (params: UseAdminFeedbackParams = {}) => {
+  const queryClient = useQueryClient();
+  const { page = 1, limit = 10, status, enabled = true } = params;
+  const canFetch = useCanFetchAdmin(enabled);
+
+  const feedbackQuery = useQuery<PaginatedFeedbackResponse>({
+    queryKey: ['admin-feedback', { page, limit, status }],
+    queryFn: async () => {
+      const { data } = await api.get<PaginatedFeedbackResponse>('/admin/feedback', {
+        params: { page, limit, ...(status ? { status } : {}) },
+      });
+      return data;
+    },
+    enabled: canFetch,
+    staleTime: DEFAULT_STALE_TIME,
+    placeholderData: (previousData) => previousData,
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: async ({
+      feedbackId,
+      nextStatus,
+    }: {
+      feedbackId: string;
+      nextStatus: FeedbackStatus;
+    }) => {
+      const { data } = await api.patch<{
+        success: boolean;
+        message: string;
+        feedback: FeedbackItem;
+      }>(`/admin/feedback/${feedbackId}/status`, {
+        status: nextStatus,
+      });
+      return data.feedback;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-feedback'] });
+    },
+  });
+  return {
+    feedbackList: feedbackQuery.data?.feedback || [],
+    pagination: feedbackQuery.data?.pagination,
+    isLoadingFeedback: feedbackQuery.isLoading,
+    refetchFeedback: feedbackQuery.refetch,
+
+    updateFeedbackStatus: statusMutation.mutate,
+    isUpdatingFeedbackStatus: statusMutation.isPending,
+    updatingFeedbackId: statusMutation.isPending
+      ? statusMutation.variables?.feedbackId
+      : null,
+    updatingFeedbackStatus: statusMutation.isPending
+      ? statusMutation.variables?.nextStatus
+      : null,
+  };
+
+};

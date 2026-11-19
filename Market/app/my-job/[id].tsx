@@ -12,6 +12,8 @@ import { useAuth } from '../../contexts/authContext'
 import { useGetJob } from '../../hooks/usegetJob'
 import { useToggleJobStatus } from '../../hooks/useToggleJobStatus'
 import { useReportModalStore } from '../../stores/useReportModalStore'
+import ItemReviewsSection from '../../components/reviews/ItemsReviewsSection';
+
 
 const { width } = Dimensions.get("window")
 
@@ -25,9 +27,15 @@ const JobDetailsScreen = () => {
   const [isFavorite, setIsFavorite] = useState(false)
   const [isZoomVisible, setIsZoomVisible] = useState(false)
 
-  const userId = user?.id
-  const parsedEmployerId = (Array.isArray(employerId) ? employerId[0] : employerId);
-  const owner = userId === parsedEmployerId;
+  const currentUserId = user?._id || user?.id;
+  const parsedEmployerId = Array.isArray(employerId) ? employerId[0] : employerId;
+  const employerObjId =
+    typeof job?.employer === 'object' ? (job.employer as any)?._id : job?.employer;
+  const owner =
+    Boolean(currentUserId) &&
+    (String(currentUserId) === String(parsedEmployerId) ||
+      String(currentUserId) === String(employerObjId));
+
 
 
   const handleCallEmployer = () => {
@@ -232,7 +240,18 @@ const JobDetailsScreen = () => {
               ))}
             </View>
           )}
-
+          {/* Employer / Job Reviews & Ratings */ }
+          {!owner && (
+           
+            < ItemReviewsSection
+          targetId={job._id}
+          targetType="Job"
+          averageRating={job.averageRating}
+          totalReviewsCount={job.totalReviews}
+          isOwner={owner}
+          title="Employer & Job Reviews"
+         />
+         )}
 
           {/* Administrative Control Dashboard panel */}
 
@@ -307,8 +326,8 @@ const JobDetailsScreen = () => {
           )
           }
 
-          
-          {/* FIXED: Added clean Trust & Safety report block directly below the content wrapper */}
+
+          {/*clean Trust & Safety report block directly below the content wrapper */}
           {!owner && (
             <View className="px-6 mt-2">
               <TouchableOpacity

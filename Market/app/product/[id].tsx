@@ -14,6 +14,7 @@ import { getSocket } from '../../sockets/sockets'
 import { useReportModalStore } from '../../stores/useReportModalStore'
 import ProductComments from '../../components/comments/ProductComments'
 import OfferDialog from '../../components/dialogues/OfferDialogue'
+import ItemReviewsSection from '../../components/reviews/ItemsReviewsSection'
 
 const { width } = Dimensions.get("window")
 
@@ -30,11 +31,20 @@ const ProductDetailsScreen = () => {
   const [isFavorite, setIsFavorite] = useState(false)
   const [isZoomVisible, setIsZoomVisible] = useState(false);
 
- // 💡 Controlled State for our custom Dialogue component
+  // 💡 Controlled State for our custom Dialogue component
   const [promptVisible, setPromptVisible] = useState<boolean>(false);
 
-  const parsedSellerId = Array.isArray(sellerID) ? sellerID[0] : sellerID;
-  const owner = user?.id === parsedSellerId;
+const parsedSellerId = Array.isArray(sellerID) ? sellerID[0] : sellerID;
+
+const currentUserId = user?._id || user?.id;
+const productSellerId =
+  typeof product?.seller === 'object' ? product.seller?._id : product?.seller;
+
+const owner =
+  Boolean(currentUserId) &&
+  (String(currentUserId) === String(parsedSellerId) ||
+    String(currentUserId) === String(productSellerId));
+
 
 
   const handleCallSeller = () => {
@@ -80,7 +90,7 @@ const ProductDetailsScreen = () => {
 
     socket.emit("requestCallMeBack", {
       sellerId: parsedSellerId,
-      productId: id, 
+      productId: id,
       itemDetails: `Requested callback regarding product: "${product?.name}"`
     });
 
@@ -89,7 +99,7 @@ const ProductDetailsScreen = () => {
 
 
 
- const handleOfferPrompt = () => {
+  const handleOfferPrompt = () => {
     if (!socket || !socket.connected) {
       Alert.alert("Connection Error", "You are currently offline.");
       return;
@@ -97,11 +107,11 @@ const ProductDetailsScreen = () => {
     setPromptVisible(true);
   };
 
-  
-   const handleOfferSubmit = (amount: number) => {
+
+  const handleOfferSubmit = (amount: number) => {
     socket.emit("sendOffer", {
       sellerId: parsedSellerId,
-      productId: id, 
+      productId: id,
       itemDetails: `Offered deal on product: "${product?.name}"`,
       offerPrice: amount
     });
@@ -126,269 +136,280 @@ const ProductDetailsScreen = () => {
 
   return (
     <SafeScreen>
-        <KeyboardAvoidingView
-       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1 bg-white"
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 0} 
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 0}
       >
-      {/* Absolute Header Overlay */}
-      <View className='absolute top-12 right-0 left-0 z-10 px-6 pb-4 flex-row items-center justify-between'>
-        <TouchableOpacity
-          className='bg-black/50 w-12 h-12 rounded-full items-center justify-center'
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name='arrow-back' size={24} color={"#FFFFFF"} />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView
-        className='flex-1 bg-white'
-        contentContainerStyle={{ paddingBottom: 140 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Image Gallery */}
-        <View className='relative bg-gray-100 m-2' >
-          {validImages.length > 0 ? (
-            <>
-              <ScrollView
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onScroll={(e) => {
-                  const index = Math.round(e.nativeEvent.contentOffset.x / width)
-                  setSelectedImageIndex(index)
-                }}
-                scrollEventThrottle={16}
-              >
-                {validImages.map((image: string, index: number) => (
-                  <TouchableOpacity
-                    key={index}
-                    activeOpacity={0.9}
-                    style={{ width }}
-                    onPress={() => {
-                      setSelectedImageIndex(index);
-                      setIsZoomVisible(true);
-                    }}
-                  >
-                    <Image
-                      source={image}
-                      style={{ width, height: 400 }}
-                      contentFit='cover'
-                    />
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              <ImageView
-                images={validImages.map((img: string) => ({ uri: img }))}
-                imageIndex={selectedImageIndex}
-                visible={isZoomVisible}
-                onRequestClose={() => setIsZoomVisible(false)}
-                doubleTapToZoomEnabled={true}
-                swipeToCloseEnabled={true}
-              />
-            </>
-          ) : (
-            <View style={{ width, height: 400 }} className="items-center justify-center bg-gray-200">
-              <Ionicons name="image-outline" size={64} color="#9CA3AF" />
-            </View>
-          )}
-
-          {validImages.length > 1 && (
-            <View className='absolute bottom-4 left-0 right-0 flex-row justify-center gap-2'>
-              {validImages.map((_: any, index: number) => (
-                <View
-                  key={index}
-                  className={`h-2 rounded-full ${index === selectedImageIndex ? "bg-green-600 w-6" : "bg-white/50 w-2"}`}
-                />
-              ))}
-            </View>
-          )}
+        {/* Absolute Header Overlay */}
+        <View className='absolute top-12 right-0 left-0 z-10 px-6 pb-4 flex-row items-center justify-between'>
+          <TouchableOpacity
+            className='bg-black/50 w-12 h-12 rounded-full items-center justify-center'
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name='arrow-back' size={24} color={"#FFFFFF"} />
+          </TouchableOpacity>
         </View>
 
-        {/* Product Info Content Wrapper */}
-        <View className='p-6'>
-          {/* Badges: Category, Condition, Status & Post Date */}
-          <View className='mb-3 flex-row items-center flex-wrap gap-2'>
-            <View className='bg-green-50 px-3 py-1 rounded-full border border-green-100'>
-              <Text className='text-green-600 text-xs font-bold capitalize'>{product.category}</Text>
-            </View>
+        <ScrollView
+          className='flex-1 bg-white'
+          contentContainerStyle={{ paddingBottom: 140 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Image Gallery */}
+          <View className='relative bg-gray-100 m-2' >
+            {validImages.length > 0 ? (
+              <>
+                <ScrollView
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  onScroll={(e) => {
+                    const index = Math.round(e.nativeEvent.contentOffset.x / width)
+                    setSelectedImageIndex(index)
+                  }}
+                  scrollEventThrottle={16}
+                >
+                  {validImages.map((image: string, index: number) => (
+                    <TouchableOpacity
+                      key={index}
+                      activeOpacity={0.9}
+                      style={{ width }}
+                      onPress={() => {
+                        setSelectedImageIndex(index);
+                        setIsZoomVisible(true);
+                      }}
+                    >
+                      <Image
+                        source={image}
+                        style={{ width, height: 400 }}
+                        contentFit='cover'
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
 
-            {product.condition && (
-              <View className='bg-gray-100 px-3 py-1 rounded-full'>
-                <Text className='text-gray-600 text-xs font-semibold'>{product.condition}</Text>
+                <ImageView
+                  images={validImages.map((img: string) => ({ uri: img }))}
+                  imageIndex={selectedImageIndex}
+                  visible={isZoomVisible}
+                  onRequestClose={() => setIsZoomVisible(false)}
+                  doubleTapToZoomEnabled={true}
+                  swipeToCloseEnabled={true}
+                />
+              </>
+            ) : (
+              <View style={{ width, height: 400 }} className="items-center justify-center bg-gray-200">
+                <Ionicons name="image-outline" size={64} color="#9CA3AF" />
               </View>
             )}
 
-            <View className={`px-3 py-1 rounded-full ${product.isAvailable ? 'bg-emerald-50 border border-emerald-100' : 'bg-rose-50 border border-rose-100'}`}>
-              <Text className={`text-xs font-bold ${product.isAvailable ? 'text-emerald-600' : 'text-rose-600'}`}>
-                {product.isAvailable ? 'Available' : 'Sold Out'}
+            {validImages.length > 1 && (
+              <View className='absolute bottom-4 left-0 right-0 flex-row justify-center gap-2'>
+                {validImages.map((_: any, index: number) => (
+                  <View
+                    key={index}
+                    className={`h-2 rounded-full ${index === selectedImageIndex ? "bg-green-600 w-6" : "bg-white/50 w-2"}`}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+
+          {/* Product Info Content Wrapper */}
+          <View className='p-6'>
+            {/* Badges: Category, Condition, Status & Post Date */}
+            <View className='mb-3 flex-row items-center flex-wrap gap-2'>
+              <View className='bg-green-50 px-3 py-1 rounded-full border border-green-100'>
+                <Text className='text-green-600 text-xs font-bold capitalize'>{product.category}</Text>
+              </View>
+
+              {product.condition && (
+                <View className='bg-gray-100 px-3 py-1 rounded-full'>
+                  <Text className='text-gray-600 text-xs font-semibold'>{product.condition}</Text>
+                </View>
+              )}
+
+              <View className={`px-3 py-1 rounded-full ${product.isAvailable ? 'bg-emerald-50 border border-emerald-100' : 'bg-rose-50 border border-rose-100'}`}>
+                <Text className={`text-xs font-bold ${product.isAvailable ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {product.isAvailable ? 'Available' : 'Sold Out'}
+                </Text>
+              </View>
+
+              {/* Localized Post Date Badge */}
+              {product.createdAt && (
+                <View className='bg-blue-50 px-3 py-1 rounded-full border border-blue-100 flex-row items-center gap-1'>
+                  <Ionicons name="calendar-outline" size={12} color="#2563EB" />
+                  <Text className='text-blue-600 text-xs font-medium'>
+                    {new Date(product.createdAt).toLocaleDateString(undefined, {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
+                    })}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Geography Context Layout */}
+            <View className='flex-row items-center gap-2 bg-gray-50 p-3.5 rounded-xl mb-6 border border-gray-100/50'>
+              <Ionicons name="location-outline" size={20} color="#4B5563" />
+              <Text className='text-gray-600 text-sm font-medium flex-1' numberOfLines={2}>
+                {product.location}, {product.district} - {product.region}
               </Text>
             </View>
 
-            {/* Localized Post Date Badge */}
-            {product.createdAt && (
-              <View className='bg-blue-50 px-3 py-1 rounded-full border border-blue-100 flex-row items-center gap-1'>
-                <Ionicons name="calendar-outline" size={12} color="#2563EB" />
-                <Text className='text-blue-600 text-xs font-medium'>
-                  {new Date(product.createdAt).toLocaleDateString(undefined, {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                  })}
-                </Text>
+            {/* Product Name */}
+            <Text className='text-gray-900 text-2xl font-bold mb-3'>{product.name}</Text>
+
+            {/* Price formatted in Ghana Cedis */}
+            <View className='flex-row items-center mb-4'>
+              <Text className='text-green-600 text-3xl font-black'>
+                GHS {product.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </Text>
+            </View>
+
+
+            {/* Management Control Box (Renders conditionally for the item owner) */}
+            {owner ? (
+              <View className="mb-6 p-4 bg-gray-50 border border-gray-100 rounded-2xl">
+                <Text className="text-gray-950 font-bold text-sm mb-2">Listing Dashboard Controls</Text>
+                <TouchableOpacity
+                  disabled={toggleMutation.isPending}
+                  onPress={handleStatusUpdate}
+                  activeOpacity={0.8}
+                  className={`h-11 rounded-xl flex-row items-center justify-center gap-2 border ${product.isAvailable
+                    ? 'bg-amber-50 border-amber-200'
+                    : 'bg-emerald-50 border-emerald-200'
+                    }`}
+                >
+                  {toggleMutation.isPending ? (
+                    <ActivityIndicator size="small" color={product.isAvailable ? "#B45309" : "#047857"} />
+                  ) : (
+                    <>
+                      <Ionicons
+                        name={product.isAvailable ? "ban-outline" : "checkmark-circle-outline"}
+                        size={18}
+                        color={product.isAvailable ? "#B45309" : "#047857"}
+                      />
+                      <Text style={{ color: product.isAvailable ? "#B45309" : "#047857" }} className="font-bold text-sm">
+                        {product.isAvailable ? "Mark as Sold Out" : "Re-activate Listing"}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            ) : (
+              /* Buyer Interactive Buttons Panel */
+              <View className="gap-3 mb-6">
+                {/* Primary Action: Direct App Chat */}
+                <TouchableOpacity
+                  onPress={() => router.push({ pathname: "/chat" as any, params: { userId: parsedSellerId } })}
+                  activeOpacity={0.8}
+                  className="h-12 bg-blue-600 rounded-xl flex-row items-center justify-center gap-2"
+                >
+                  <Ionicons name="chatbubble-ellipses-outline" size={18} color="#FFFFFF" />
+                  <Text className="text-white font-bold text-sm">Chat with Seller</Text>
+                </TouchableOpacity>
+
+                {/* Secondary Actions: Quick Triggers */}
+                <View className="flex-row items-center gap-3">
+                  <TouchableOpacity
+                    onPress={handleCallMeBackEmit}
+                    activeOpacity={0.8}
+                    className="flex-1 h-12 bg-amber-500 rounded-xl flex-row items-center justify-center gap-2"
+                  >
+                    <Ionicons name="phone-portrait-outline" size={18} color="#FFFFFF" />
+                    <Text className="text-white font-bold text-sm">Call Me Back</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={handleOfferPrompt}
+                    activeOpacity={0.8}
+                    className="flex-1 h-12 bg-green-600 rounded-xl flex-row items-center justify-center gap-2"
+                  >
+                    <Ionicons name="cash-outline" size={18} color="#FFFFFF" />
+                    <Text className="text-white font-bold text-sm">Make an Offer</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+
+            {/* Description Section */}
+            <Text className="text-gray-900 font-bold text-base mb-2">Description</Text>
+            <Text className="text-gray-600 text-sm leading-relaxed mb-6">{product.description}</Text>
+
+            {/* Product Reviews & Ratings */}
+            {!owner && (
+                <ItemReviewsSection
+              targetId={product._id}
+              targetType="Product"
+              averageRating={product.averageRating}
+              totalReviewsCount={product.totalReviews}
+              isOwner={owner}
+            />
+            )}
+          
+            {/* Comments Section Divider Layer */}
+            <View className='border-t border-gray-100 mt-6 pt-4'>
+              <ProductComments productId={id as string} />
+            </View>
+
+
+
+            {/*  clean Trust & Safety report block directly below the content wrapper */}
+            {!owner && (
+              <View className="px-6 mt-2">
+                <TouchableOpacity
+                  onPress={() => openReportModal('Product', product._id)}
+                  activeOpacity={0.7}
+                  className="flex-row items-center justify-between p-4 bg-red-50/60 border border-red-100 rounded-2xl"
+                >
+                  <View className="flex-row items-center flex-1 mr-3">
+                    <View className="w-9 h-9 rounded-full bg-red-100 items-center justify-center mr-3">
+                      <Ionicons name="alert-circle-outline" size={18} color="#EF4444" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-sm font-semibold text-gray-900">Report this listing</Text>
+                      <Text className="text-xs text-gray-500 mt-0.5">Flag this item if you suspect fraud, scams,</Text>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+                </TouchableOpacity>
               </View>
             )}
           </View>
+        </ScrollView>
 
-          {/* Geography Context Layout */}
-          <View className='flex-row items-center gap-2 bg-gray-50 p-3.5 rounded-xl mb-6 border border-gray-100/50'>
-            <Ionicons name="location-outline" size={20} color="#4B5563" />
-            <Text className='text-gray-600 text-sm font-medium flex-1' numberOfLines={2}>
-              {product.location}, {product.district} - {product.region}
-            </Text>
+        {/* Floating Action Button Footer for External Actions */}
+        {!owner && (
+          <View className="absolute bottom-0 right-0 left-0 bg-white/95 border-t border-gray-100 p-6 pb-20 flex-row items-center gap-4">
+            <TouchableOpacity
+              onPress={handleToggleFavorite}
+              activeOpacity={0.7}
+              className="w-12 h-12 bg-gray-100 rounded-xl items-center justify-center"
+            >
+              <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={22} color={isFavorite ? "#E11D48" : "#4B5563"} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleCallSeller}
+              activeOpacity={0.8}
+              className="flex-1 h-12 bg-green-600 rounded-xl flex-row items-center justify-center gap-2"
+            >
+              <Ionicons name="call" size={18} color="#FFFFFF" />
+              <Text className="text-white font-bold text-base">Contact via Phone</Text>
+            </TouchableOpacity>
           </View>
-
-          {/* Product Name */}
-          <Text className='text-gray-900 text-2xl font-bold mb-3'>{product.name}</Text>
-
-          {/* Price formatted in Ghana Cedis */}
-          <View className='flex-row items-center mb-4'>
-            <Text className='text-green-600 text-3xl font-black'>
-              GHS {product.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </Text>
-          </View>
-
-
-          {/* Management Control Box (Renders conditionally for the item owner) */}
-          {owner ? (
-            <View className="mb-6 p-4 bg-gray-50 border border-gray-100 rounded-2xl">
-              <Text className="text-gray-950 font-bold text-sm mb-2">Listing Dashboard Controls</Text>
-              <TouchableOpacity
-                disabled={toggleMutation.isPending}
-                onPress={handleStatusUpdate}
-                activeOpacity={0.8}
-                className={`h-11 rounded-xl flex-row items-center justify-center gap-2 border ${product.isAvailable
-                  ? 'bg-amber-50 border-amber-200'
-                  : 'bg-emerald-50 border-emerald-200'
-                  }`}
-              >
-                {toggleMutation.isPending ? (
-                  <ActivityIndicator size="small" color={product.isAvailable ? "#B45309" : "#047857"} />
-                ) : (
-                  <>
-                    <Ionicons
-                      name={product.isAvailable ? "ban-outline" : "checkmark-circle-outline"}
-                      size={18}
-                      color={product.isAvailable ? "#B45309" : "#047857"}
-                    />
-                    <Text style={{ color: product.isAvailable ? "#B45309" : "#047857" }} className="font-bold text-sm">
-                      {product.isAvailable ? "Mark as Sold Out" : "Re-activate Listing"}
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-          ) : (
-            /* Buyer Interactive Buttons Panel */
-            <View className="gap-3 mb-6">
-              {/* Primary Action: Direct App Chat */}
-              <TouchableOpacity
-                onPress={() => router.push({ pathname: "/chat" as any, params: { userId: parsedSellerId } })}
-                activeOpacity={0.8}
-                className="h-12 bg-blue-600 rounded-xl flex-row items-center justify-center gap-2"
-              >
-                <Ionicons name="chatbubble-ellipses-outline" size={18} color="#FFFFFF" />
-                <Text className="text-white font-bold text-sm">Chat with Seller</Text>
-              </TouchableOpacity>
-
-              {/* Secondary Actions: Quick Triggers */}
-              <View className="flex-row items-center gap-3">
-                <TouchableOpacity
-                  onPress={handleCallMeBackEmit}
-                  activeOpacity={0.8}
-                  className="flex-1 h-12 bg-amber-500 rounded-xl flex-row items-center justify-center gap-2"
-                >
-                  <Ionicons name="phone-portrait-outline" size={18} color="#FFFFFF" />
-                  <Text className="text-white font-bold text-sm">Call Me Back</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={handleOfferPrompt}
-                  activeOpacity={0.8}
-                  className="flex-1 h-12 bg-green-600 rounded-xl flex-row items-center justify-center gap-2"
-                >
-                  <Ionicons name="cash-outline" size={18} color="#FFFFFF" />
-                  <Text className="text-white font-bold text-sm">Make an Offer</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-
-
-          {/* Description Section */}
-          <Text className="text-gray-900 font-bold text-base mb-2">Description</Text>
-          <Text className="text-gray-600 text-sm leading-relaxed mb-6">{product.description}</Text>
-           
-          
-          {/* Comments Section Divider Layer */}
-           <View className='border-t border-gray-100 mt-6 pt-4'>
-            <ProductComments productId={id as string} />
-          </View>
-
-
-          {/* FIXED: Added clean Trust & Safety report block directly below the content wrapper */}
-          {!owner && (
-            <View className="px-6 mt-2">
-              <TouchableOpacity
-                onPress={() => openReportModal('Product', product._id)}
-                activeOpacity={0.7}
-                className="flex-row items-center justify-between p-4 bg-red-50/60 border border-red-100 rounded-2xl"
-              >
-                <View className="flex-row items-center flex-1 mr-3">
-                  <View className="w-9 h-9 rounded-full bg-red-100 items-center justify-center mr-3">
-                    <Ionicons name="alert-circle-outline" size={18} color="#EF4444" />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-sm font-semibold text-gray-900">Report this listing</Text>
-                    <Text className="text-xs text-gray-500 mt-0.5">Flag this item if you suspect fraud, scams,</Text>
-                  </View>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      </ScrollView>
-
-      {/* Floating Action Button Footer for External Actions */}
-      {!owner && (
-        <View className="absolute bottom-0 right-0 left-0 bg-white/95 border-t border-gray-100 p-6 pb-20 flex-row items-center gap-4">
-          <TouchableOpacity
-            onPress={handleToggleFavorite}
-            activeOpacity={0.7}
-            className="w-12 h-12 bg-gray-100 rounded-xl items-center justify-center"
-          >
-            <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={22} color={isFavorite ? "#E11D48" : "#4B5563"} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={handleCallSeller}
-            activeOpacity={0.8}
-            className="flex-1 h-12 bg-green-600 rounded-xl flex-row items-center justify-center gap-2"
-          >
-            <Ionicons name="call" size={18} color="#FFFFFF" />
-            <Text className="text-white font-bold text-base">Contact via Phone</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+        )}
       </KeyboardAvoidingView>
 
-       {/* 🛠️ Isolated Component Layer */}
-      <OfferDialog 
-        visible={promptVisible} 
-        onClose={() => setPromptVisible(false)} 
+      {/* 🛠️ Isolated Component Layer */}
+      <OfferDialog
+        visible={promptVisible}
+        onClose={() => setPromptVisible(false)}
         onSubmit={handleOfferSubmit}
       />
     </SafeScreen>
