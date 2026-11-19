@@ -1,4 +1,8 @@
 import { User } from "../models/user.model.js";
+import { Job } from "../models/job.model.js";
+import { Product } from "../models/product.model.js";
+import { ServiceProvider } from "../models/serviceprovider.model.js";
+import { JobSeekerProfile } from "../models/jobseekersprofile.model.js";
 import filterObj from "../utils/filterObjects.js";
 import cloudinary from "../config/cloudinary.js";
 
@@ -179,4 +183,89 @@ export const removeFromWishList = async (req, res, next) => {
         next(error); 
     }
 };
+export const deleteMyAccount = async (req, res, next) => {
+    try {
+        const userId = req.user._id;
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({
+                status: "fail",
+                message: "User not found",
+            });
+        }
+
+        if (user.role === "admin") {
+            return res.status(403).json({
+                status: "fail",
+                message: "Admin accounts cannot be self-deleted here.",
+            });
+        }
+
+        // 1. Gather all user-owned records that hold Cloudinary files
+        const [userProducts, userProviders, userJobs, userSeekerProfile] = await Promise.all([
+            Product.find({ seller: userId }).select("images"),
+            ServiceProvider.find({ user: userId }).select("portfolioImages"),
+            Job.find({ employer: userId }).select("jobImage"),
+            JobSeekerProfile.findOne({ user: userId }).select("profilePicture resumeUrl"),
+        ]);
+
+        // Collect all Cloudinary image URLs
+        const imageUrlsToDelete = [];
+        if (user.profilePicture) imageUrlsToDelete.push(user.profilePicture);
+        if (userSeekerProfile?.profilePicture) imageUrlsToDelete.push(userSeekerProfile.profilePicture);
+
+        userProducts.forEach((p) => {
+            if (Array.isArray(p.images)) imageUrlsToDelete.push(...p.images);
+        });
+        userProviders.forEach((sp) => {
+            if (Array.isArray(sp.portfolioImages)) imageUrlsToDelete.push(...sp.portfolioImages);
+        });
+        userJobs.forEach((j) => {
+            if (j.jobImage) imageUrlsToDelete.push(j.jobImage);
+        });
+
+        // 2. Delete all user-owned documents from MongoDB in parallel
+        await Promise.all([
+            Product.deleteMany({ seller: userId }),
+            ServiceProvider.deleteMany({ user: userId }),
+            Job.deleteMany({ employer: userId }),
+            JobSeekerProfile.deleteMany({ user: userId }),
+            User.findByIdAndDelete(userId),
+        ]);
+
+        // 3. Non-blocking Cloudinary cleanup (images + raw resume file if applicable)
+        const cleanupTasks = imageUrlsToDelete.map((url) => {
+            const publicId = getCloudinaryPublicId(url);
+            return publicId ? cloudinary.uploader.destroy(publicId) : Promise.resolve();
+        });
+
+        if (userSeekerProfile?.resumeUrl) {
+            const resumePublicId = getCloudinaryPublicId(userSeekerProfile.resumeUrl);
+            if (resumePublicId) {
+                // Resumes uploaded as PDF/DOCX on Cloudinary are often stored under resource_type: "raw" or "image"
+                cleanupTasks.push(
+                    cloudinary.uploader.destroy(resumePublicId, { resource_type: "raw" }),
+                    cloudinary.uploader.destroy(resumePublicId, { resource_type: "image" })
+                );
+            }
+        }
+
+        if (cleanupTasks.length > 0) {
+            Promise.allSettled(cleanupTasks).catch((err) =>
+                console.error("Cloudinary cleanup error on account delete:", err)
+            );
+        }
+
+        return res.status(200).json({
+            status: "success",
+            message: "Your account and all associated data have been permanently deleted.",
+        });
+    } catch (error) {
+        console.error("Error deleting user account:", error);
+        next(error);
+    }
+};
+
+
 

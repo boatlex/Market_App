@@ -7,7 +7,7 @@ const updateItemStats = async (targetId, targetType) => {
     const TargetModel = mongoose.model(targetType);
     if (!TargetModel) return;
 
-    
+
     const stats = await ItemReview.aggregate([
         { $match: { targetId: new mongoose.Types.ObjectId(targetId) } },
         {
@@ -19,7 +19,7 @@ const updateItemStats = async (targetId, targetType) => {
         }
     ]);
 
-    
+
     if (stats.length > 0) {
         await TargetModel.findByIdAndUpdate(targetId, {
             averageRating: Math.round(stats[0].avgRating * 10) / 10,
@@ -54,12 +54,18 @@ export const createItemReview = async (req, res, next) => {
             return res.status(404).json({ message: `${targetType} item not found.` });
         }
 
-        // Prevent users from reviewing their own items if an owner identity field exists
-        // Adjust the 'owner' or 'user' property name depending on how your schemas are built
-        const creatorId = itemExists.user || itemExists.owner || itemExists.provider;
+        const creatorId =
+            itemExists.seller ||
+            itemExists.employer ||
+            itemExists.user ||
+            itemExists.owner;
+
         if (creatorId && creatorId.equals(reviewerId)) {
-            return res.status(400).json({ message: `You cannot review your own ${targetType.toLowerCase()}!` });
+            return res.status(400).json({
+                message: `You cannot review your own ${targetType.toLowerCase()}!`,
+            });
         }
+
 
         // Enforce the unique index check manually for a clean error message
         const alreadyReviewed = await ItemReview.findOne({ targetId, reviewer: reviewerId });
@@ -125,7 +131,7 @@ export const deleteItemReview = async (req, res, next) => {
 export const getItemReviews = async (req, res, next) => {
     try {
         const { targetId } = req.params;
-        
+
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;

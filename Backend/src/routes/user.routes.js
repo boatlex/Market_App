@@ -1,6 +1,6 @@
 import express from "express"
 import { protectRoute } from "../controllers/auth.controller.js"
-import { addToWishList, getMe, getWishList, removeFromWishList, updateUserProfile } from "../controllers/user.controller.js"
+import { addToWishList, getMe, getWishList, removeFromWishList, updateUserProfile, deleteMyAccount } from "../controllers/user.controller.js"
 import upload from "../middleware/jobmulter.middleware.js"
 const router = express.Router()
 
@@ -11,5 +11,8 @@ router.patch("/update-profile", protectRoute, upload.single("profilePicture"), u
 router.post('/wishList', protectRoute, addToWishList);
 router.get('/wishList', protectRoute, getWishList);
 router.delete('/wishList/:productId', protectRoute, removeFromWishList);
+
+router.delete("/delete-account", protectRoute, deleteMyAccount);
+
 
 export default router;

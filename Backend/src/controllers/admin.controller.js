@@ -8,6 +8,7 @@ import mongoose from "mongoose";
 import { ServiceProviderReview } from "../models/serviceProviderReview.model.js";
 import { Job } from "../models/job.model.js";
 import { JobSeekerProfile } from "../models/jobseekersprofile.model.js";
+import { Feedback } from "../models/feedback.model.js";
 
 
 
@@ -733,4 +734,78 @@ export const toggleUserVerification = async (req, res, next) => {
     }
 };
 
+// GET /admin/feedback?page=1&limit=10&status=new
+export const getAllFeedback = async (req, res, next) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 10));
+    const skip = (page - 1) * limit;
+
+    const filter = {};
+    if (req.query.status && ["new", "reviewed", "resolved"].includes(req.query.status)) {
+      filter.status = req.query.status;
+    }
+
+    const [feedbackList, totalItems] = await Promise.all([
+      Feedback.find(filter)
+        .populate("user", "firstName lastName email profilePicture")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Feedback.countDocuments(filter),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      feedback: feedbackList,
+      pagination: {
+        totalItems,
+        currentPage: page,
+        totalPages: Math.ceil(totalItems / limit) || 1,
+        limit,
+        hasNextPage: page * limit < totalItems,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching admin feedback:", error);
+    next(error);
+  }
+};
+
+// PATCH /admin/feedback/:id/status
+export const updateFeedbackStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!["new", "reviewed", "resolved"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status value. Allowed: new, reviewed, resolved.",
+      });
+    }
+
+    const updatedFeedback = await Feedback.findByIdAndUpdate(
+      id,
+      { $set: { status } },
+      { returnDocument: "after", runValidators: true }
+    ).populate("user", "firstName lastName email profilePicture");
+
+    if (!updatedFeedback) {
+      return res.status(404).json({
+        success: false,
+        message: "Feedback entry not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Feedback marked as ${status}.`,
+      feedback: updatedFeedback,
+    });
+  } catch (error) {
+    console.error("Error updating feedback status:", error);
+    next(error);
+  }
+};
 

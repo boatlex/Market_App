@@ -19,6 +19,8 @@ import {
     getRegionalStats,
     toggleProviderVerification,
     toggleUserVerification,
+    getAllFeedback,
+    updateFeedbackStatus,
 } from "../controllers/admin.controller.js";
 
 const router = express.Router();
@@ -38,6 +40,7 @@ router.use(protectRoute, adminOnly);
 router.get("/stats", getDashboardStats);
 router.get("/regional-stats", getRegionalStats);
 router.get("/users", getAllUsers);
+router.patch("/users/:id/verify", validateObjectId, toggleUserVerification);
 router.delete("/users/:id", validateObjectId, adminDeleteUser);
 
 // 2. Products
@@ -60,8 +63,8 @@ router.delete("/job-seekers/:id", validateObjectId, adminDeleteJobSeeker);
 router.get("/reports", getAllReports);
 router.patch("/reports/:id", validateObjectId, updateReportStatus);
 
-
-router.patch("/users/:id/verify", validateObjectId, toggleUserVerification);
-
+// 6. Feedback
+router.get("/feedback", getAllFeedback);
+router.patch("/feedback/:id/status", validateObjectId, updateFeedbackStatus);
 
 export default router;

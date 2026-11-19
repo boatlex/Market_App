@@ -8,6 +8,8 @@ import {loginUserClerk,
         resetPassword,
         sendOTP,
         verifyOTP,
+        changePassword,
+        protectRoute
 } from "../controllers/auth.controller.js"
 
 
@@ -36,5 +38,7 @@ router.post("/reset-password", resetPassword )
 router.post("/send-otp", otpLimiter, sendOTP )
 
 router.post("/verify-otp", verifyOTP )
+
+router.patch("/change-password", loginLimiter, protectRoute, changePassword);
 
 export default router

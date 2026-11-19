@@ -81,4 +81,14 @@ userSchema.pre('save', async function () {
 
 });
 
+userSchema.set("toJSON", {
+  transform: (_doc, ret) => {
+    delete ret.password;
+    delete ret.otp;
+    delete ret.resetPasswordToken;
+    delete ret.resetPasswordExpires;
+    return ret;
+  },
+});
+
 export const User = mongoose.model("User", userSchema);
