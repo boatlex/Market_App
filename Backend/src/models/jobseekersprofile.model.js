@@ -83,6 +83,20 @@ const jobSeekerProfileSchema = new mongoose.Schema({
             message: props => `${props.value} is not a valid 10-digit phone number!`
         }
     },
+      category: {
+        type: String,
+        required: [true, "Job category is required"],
+        trim: true,
+        lowercase: true,
+        index: true
+    },
+    seekJobType: {
+        type: String,
+        required: [true, "Job type is required"],
+        trim: true,
+        lowercase: true,
+        index: true
+    },
     workMode: {
         type: String,
         enum: ["On-site", "Remote", "Hybrid"],
@@ -121,5 +135,7 @@ jobSeekerProfileSchema.index(
     { skills: 'text', professionalHeadline: 'text', bio: 'text' },
     { weights: { skills: 10, professionalHeadline: 5, bio: 1 } }
 );
+jobSeekerProfileSchema.index({ isSearchingForJob: 1, category: 1, seekJobType: 1 });
+
 
 export const JobSeekerProfile = mongoose.model("JobSeekerProfile", jobSeekerProfileSchema);

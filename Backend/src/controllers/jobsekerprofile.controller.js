@@ -2,7 +2,6 @@ import { JobSeekerProfile } from "../models/jobseekersprofile.model.js";
 import cloudinary from "cloudinary";
 
 
-
 export const upsertJobSeekerProfile = async (req, res, next) => {
     try {
         const userId = req.user._id;
@@ -12,6 +11,8 @@ export const upsertJobSeekerProfile = async (req, res, next) => {
             skills,
             experience,
             education,
+            category,
+            seekJobType,
             preferredJobTypes,
             expectedSalaryMin,
             expectedSalaryCurrency,
@@ -19,12 +20,20 @@ export const upsertJobSeekerProfile = async (req, res, next) => {
             region,
             district,
             location,
-            phoneNumber, 
+            phoneNumber,
             workMode
         } = req.body;
 
         if (!professionalHeadline) {
             return res.status(400).json({ message: "Professional headline is required." });
+        }
+
+        if (!category || !category.trim()) {
+            return res.status(400).json({ message: "Job category is required." });
+        }
+
+        if (!seekJobType || !seekJobType.trim()) {
+            return res.status(400).json({ message: "Job type is required." });
         }
 
         // Sub-array parser
@@ -54,6 +63,8 @@ export const upsertJobSeekerProfile = async (req, res, next) => {
         const updateData = {
             professionalHeadline,
             bio,
+            category: category.trim().toLowerCase(),
+            seekJobType: seekJobType.trim().toLowerCase(),
             skills: processedSkills,
             preferredJobTypes: processedJobTypes,
             expectedSalary: {
@@ -100,7 +111,7 @@ export const upsertJobSeekerProfile = async (req, res, next) => {
                     const base64Doc = `data:${docFile.mimetype};base64,${docFile.buffer.toString('base64')}`;
                     const uploadResponse = await cloudinary.v2.uploader.upload(base64Doc, {
                         folder: "user_resumes",
-                        resource_type: "raw", // 👈 Crucial for raw PDF document file assets
+                        resource_type: "raw",
                         flags: "attachment"
                     });
                     updateData.resumeUrl = uploadResponse.secure_url;
@@ -135,6 +146,8 @@ export const searchCandidatePool = async (req, res, next) => {
     try {
         const {
             keyword,
+            category,
+            seekJobType,
             region,
             district,
             workMode,
@@ -142,14 +155,21 @@ export const searchCandidatePool = async (req, res, next) => {
             limit = 10
         } = req.query;
 
-
-        const query = {};
-
-
-        query.isSearchingForJob = true;
+        const query = {
+            isSearchingForJob: true
+        };
 
         if (keyword) {
             query.$text = { $search: String(keyword) };
+        }
+
+        // Exact lowercase match uses your MongoDB index directly (faster than regex)
+        if (category) {
+            query.category = String(category).trim().toLowerCase();
+        }
+
+        if (seekJobType) {
+            query.seekJobType = String(seekJobType).trim().toLowerCase();
         }
 
         if (region) {
@@ -173,7 +193,6 @@ export const searchCandidatePool = async (req, res, next) => {
             .limit(Number(limit))
             .populate("user", "firstName lastName email profilePicture");
 
-
         const totalProfiles = await JobSeekerProfile.countDocuments(query);
 
         return res.status(200).json({
@@ -189,6 +208,7 @@ export const searchCandidatePool = async (req, res, next) => {
     }
 };
 
+
 export const getMyJobSeekingAds = async (req, res, next) => {
     try {
         const userId = req.user._id;
@@ -199,7 +219,7 @@ export const getMyJobSeekingAds = async (req, res, next) => {
 
         return res.status(200).json({
             success: true,
-            resultsCount: profile ? 1 : 0, 
+            resultsCount: profile ? 1 : 0,
             profile: profile || null // Returns the profile object directly or null if none exists
         });
 
@@ -230,11 +250,13 @@ export const getMyProfile = async (req, res, next) => {
                     },
                     professionalHeadline: "",
                     bio: "",
+                    category: "",       // 👈 Added default for new users
+                    seekJobType: "",    // 👈 Added default for new users
                     skills: [],
                     experience: [],
                     education: [],
                     preferredJobTypes: [],
-                    expectedSalary: { min: 0, currency: "GHS" }, 
+                    expectedSalary: { min: 0, currency: "GHS" },
                     profilePicture: "",
                     phoneNumber: "",
                     isSearchingForJob: true
@@ -251,6 +273,7 @@ export const getMyProfile = async (req, res, next) => {
         next(error);
     }
 };
+
 
 export const getMyJobSeekingAdById = async (req, res, next) => {
     try {
@@ -274,9 +297,9 @@ export const deleteJobSeekerProfile = async (req, res, next) => {
     try {
         const userId = req.user._id;
 
-    
+
         const profile = await JobSeekerProfile.findOne({ user: userId });
-        
+
         if (!profile) {
             return res.status(404).json({
                 success: false,
@@ -286,45 +309,48 @@ export const deleteJobSeekerProfile = async (req, res, next) => {
 
         const publicIdsToDestroy = [];
 
-        const extractPublicId = (url, folderName) => {
+        const extractPublicId = (url, folderName, isRaw = false) => {
             try {
                 const urlSegments = url.split("/");
                 const filenameWithExtension = urlSegments[urlSegments.length - 1];
-                const publicIdWithoutExtension = filenameWithExtension.split(".")[0];
-                return `${folderName}/${publicIdWithoutExtension}`;
+                const publicId = isRaw
+                    ? filenameWithExtension
+                    : filenameWithExtension.split(".")[0];
+                return `${folderName}/${publicId}`;
             } catch (err) {
                 console.error("Failed to parse publicId from url:", url, err);
                 return null;
             }
         };
 
-    
+
+
         if (profile.profilePicture && profile.profilePicture.includes("cloudinary.com")) {
             const imgId = extractPublicId(profile.profilePicture, "user_profiles");
             if (imgId) publicIdsToDestroy.push({ id: imgId, type: "image" });
         }
 
-        
+
         if (profile.resumeUrl && profile.resumeUrl.includes("cloudinary.com")) {
             const docId = extractPublicId(profile.resumeUrl, "user_resumes");
             if (docId) publicIdsToDestroy.push({ id: docId, type: "raw" });
         }
 
-        
+
         if (publicIdsToDestroy.length > 0) {
             try {
                 await Promise.all(
-                    publicIdsToDestroy.map((asset) => 
+                    publicIdsToDestroy.map((asset) =>
                         cloudinary.v2.uploader.destroy(asset.id, { resource_type: asset.type })
                     )
                 );
             } catch (cloudinaryError) {
                 console.error("Cloudinary storage background purge dropped:", cloudinaryError);
-            
+
             }
         }
 
-        
+
         try {
             await Job.updateMany(
                 { applications: profile._id },
@@ -334,7 +360,7 @@ export const deleteJobSeekerProfile = async (req, res, next) => {
             console.error("Relational schema cascade cleanup error:", relationError);
         }
 
-    
+
         await JobSeekerProfile.findOneAndDelete({ user: userId });
 
         return res.status(200).json({
