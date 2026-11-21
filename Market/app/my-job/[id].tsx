@@ -1,6 +1,6 @@
 
 import { View, Text, Alert, TouchableOpacity, ScrollView, Dimensions, Linking, ActivityIndicator } from 'react-native'
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { router, useLocalSearchParams } from 'expo-router'
 import ErrorUi from '../../components/ErrorUi'
 import LoadingUi from '../../components/LoadingUi'
@@ -13,6 +13,8 @@ import { useGetJob } from '../../hooks/usegetJob'
 import { useToggleJobStatus } from '../../hooks/useToggleJobStatus'
 import { useReportModalStore } from '../../stores/useReportModalStore'
 import ItemReviewsSection from '../../components/reviews/ItemsReviewsSection';
+import RelatedJobCard from '../../components/createJob/RelatedJobCard';
+import { useGetJobs } from '../../hooks/useGetJobs'
 
 
 const { width } = Dimensions.get("window")
@@ -21,11 +23,13 @@ const JobDetailsScreen = () => {
   const { id, employerId } = useLocalSearchParams<{ id: string; employerId: string }>();
 
   const { data: job, isError, isLoading } = useGetJob(id)
+  const { data: jobs = [] } = useGetJobs();
   const { user } = useAuth()
   const toggleMutation = useToggleJobStatus()
   const openReportModal = useReportModalStore((state) => state.openReportModal);
   const [isFavorite, setIsFavorite] = useState(false)
   const [isZoomVisible, setIsZoomVisible] = useState(false)
+  const [relatedViewMode, setRelatedViewMode] = useState<'grid' | 'list'>('grid');
 
   const currentUserId = user?._id || user?.id;
   const parsedEmployerId = Array.isArray(employerId) ? employerId[0] : employerId;
@@ -35,6 +39,54 @@ const JobDetailsScreen = () => {
     Boolean(currentUserId) &&
     (String(currentUserId) === String(parsedEmployerId) ||
       String(currentUserId) === String(employerObjId));
+
+  const relatedJobs = useMemo(() => {
+    if (!job) return [];
+
+    const jobsList = Array.isArray(jobs) ? jobs : (jobs as any)?.jobs || [];
+    if (!Array.isArray(jobsList)) return [];
+
+    const currentCategory = job.category?.trim().toLowerCase();
+    const currentRegion = job.region?.trim().toLowerCase();
+
+    return jobsList
+      .filter((item) => {
+        // 1. Exclude the currently opened job
+        if (String(item._id) === String(job._id)) return false;
+
+        // 2. Match strictly on category or region
+        const sameCategory =
+          Boolean(currentCategory) &&
+          item.category?.trim().toLowerCase() === currentCategory;
+
+        const sameRegion =
+          Boolean(currentRegion) &&
+          item.region?.trim().toLowerCase() === currentRegion;
+
+        return sameCategory || sameRegion;
+      })
+      .sort((a, b) => {
+        // Rank: Both match (3) > Category match (2) > Region match (1)
+        const getScore = (item: any) => {
+          const catMatch =
+            Boolean(currentCategory) &&
+              item.category?.trim().toLowerCase() === currentCategory
+              ? 2
+              : 0;
+          const regMatch =
+            Boolean(currentRegion) &&
+              item.region?.trim().toLowerCase() === currentRegion
+              ? 1
+              : 0;
+          return catMatch + regMatch;
+        };
+        return getScore(b) - getScore(a);
+      })
+      .slice(0, 6);
+  }, [jobs, job]);
+
+
+
 
 
 
@@ -240,18 +292,18 @@ const JobDetailsScreen = () => {
               ))}
             </View>
           )}
-          {/* Employer / Job Reviews & Ratings */ }
+          {/* Employer / Job Reviews & Ratings */}
           {!owner && (
-           
+
             < ItemReviewsSection
-          targetId={job._id}
-          targetType="Job"
-          averageRating={job.averageRating}
-          totalReviewsCount={job.totalReviews}
-          isOwner={owner}
-          title="Employer & Job Reviews"
-         />
-         )}
+              targetId={job._id}
+              targetType="Job"
+              averageRating={job.averageRating}
+              totalReviewsCount={job.totalReviews}
+              isOwner={owner}
+              title="Employer & Job Reviews"
+            />
+          )}
 
           {/* Administrative Control Dashboard panel */}
 
@@ -350,6 +402,53 @@ const JobDetailsScreen = () => {
           )}
 
         </View>
+
+        {/* Related Ads */}
+        {relatedJobs.length > 0 && (
+          <View className="mt-6 pt-6 border-t border-gray-100">
+            {/* Header & Single / 2-Column Toggle Bar */}
+            <View className="flex-row items-center justify-between mb-4">
+              <View>
+                <Text className="text-gray-900 text-lg font-bold">Related Ads</Text>
+                <Text className="text-gray-400 text-xs">
+                  More providers in {job.category || job.region || 'this area'}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                onPress={() =>
+                  setRelatedViewMode((prev) => (prev === 'grid' ? 'list' : 'grid'))
+                }
+                activeOpacity={0.7}
+                className="bg-gray-100 p-2 rounded-xl border border-gray-200/70"
+              >
+                <Ionicons
+                  name={relatedViewMode === 'grid' ? 'list-outline' : 'grid-outline'}
+                  size={20}
+                  color="#2563EB"
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Related Job Cards */}
+            <View className="flex-row flex-wrap justify-between">
+              {relatedJobs.map((relatedItem) => (
+                <RelatedJobCard
+                  key={relatedItem._id}
+                  item={relatedItem}
+                  viewMode={relatedViewMode}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/my-job/[id]',
+                      params: { id: relatedItem._id },
+                    })
+                  }
+                />
+              ))}
+            </View>
+          </View>
+        )}
+
       </ScrollView>
 
       {/* Floating Application Action Controls Footer */}

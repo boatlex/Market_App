@@ -1,5 +1,5 @@
 import { View, Text, Alert, TouchableOpacity, ScrollView, Dimensions, Linking, ActivityIndicator } from 'react-native'
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useGetJobSeekerById } from '../../hooks/useGetJobSeekerById'
 import ErrorUi from '../../components/ErrorUi'
@@ -11,6 +11,9 @@ import ImageView from '../../components/CrossPlatformImageView.native';
 import { useAuth } from '../../contexts/authContext';
 import { useReportModalStore } from '../../stores/useReportModalStore'
 import ItemReviewsSection from '../../components/reviews/ItemsReviewsSection'
+import RelatedJobSeekerCard, { RelatedSeekJobCard } from '../../components/lookForJob/RelatedJobseekerCard'
+import { useGetRelatedJobSeekers } from '../../hooks/useGetRelatedJobSeekers';
+
 
 const { width } = Dimensions.get("window")
 
@@ -19,9 +22,11 @@ const SeekJobDetailsScreen = () => {
   const { user } = useAuth()
 
   const { data: product, isError, isLoading } = useGetJobSeekerById(id)
+  const { data: regionCandidates = [] } = useGetRelatedJobSeekers(product?.region)
   const openReportModal = useReportModalStore((state) => state.openReportModal);
   const [isFavorite, setIsFavorite] = useState(false)
   const [isZoomVisible, setIsZoomVisible] = useState(false);
+  const [relatedViewMode, setRelatedViewMode] = useState<'grid' | 'list'>('grid');
 
   const currentUserId = user?._id || user?.id;
   const parsedJobSeekerId = Array.isArray(jobSeekerId) ? jobSeekerId[0] : jobSeekerId;
@@ -32,6 +37,56 @@ const SeekJobDetailsScreen = () => {
     Boolean(currentUserId) &&
     (String(currentUserId) === String(parsedJobSeekerId) ||
       String(currentUserId) === String(profileUserId));
+
+
+
+  const relatedCandidates = useMemo(() => {
+    if (!product) return [];
+
+    // Safely unwrap array regardless of API wrapper shape
+    const list = Array.isArray(regionCandidates)
+      ? regionCandidates
+      : (regionCandidates as any)?.profiles || (regionCandidates as any)?.profile || [];
+
+    if (!Array.isArray(list)) return [];
+
+    const currentCategory = (product as any).category?.trim().toLowerCase();
+    const currentRegion = (product as any).region?.trim().toLowerCase();
+
+    return list
+      .filter((item: any) => {
+        // 1. Exclude the candidate currently being viewed
+        if (String(item._id) === String(product._id)) return false;
+
+        // 2. Match strictly by category or region
+        const sameCategory =
+          Boolean(currentCategory) &&
+          item.category?.trim().toLowerCase() === currentCategory;
+
+        const sameRegion =
+          Boolean(currentRegion) &&
+          item.region?.trim().toLowerCase() === currentRegion;
+
+        return sameCategory || sameRegion;
+      })
+      .sort((a: any, b: any) => {
+        const getScore = (item: any) => {
+          const catMatch =
+            Boolean(currentCategory) &&
+              item.category?.trim().toLowerCase() === currentCategory
+              ? 2
+              : 0;
+          const regMatch =
+            Boolean(currentRegion) &&
+              item.region?.trim().toLowerCase() === currentRegion
+              ? 1
+              : 0;
+          return catMatch + regMatch;
+        };
+        return getScore(b) - getScore(a);
+      })
+      .slice(0, 6);
+  }, [regionCandidates, product]);
 
 
   const handleCallSeller = () => {
@@ -261,7 +316,7 @@ const SeekJobDetailsScreen = () => {
           )}
 
           {/* Candidate Reviews & Ratings */}
-          {!owner && ( <ItemReviewsSection
+          {!owner && (<ItemReviewsSection
             targetId={product._id}
             targetType="JobSeeker"
             averageRating={product.averageRating}
@@ -269,7 +324,7 @@ const SeekJobDetailsScreen = () => {
             isOwner={owner}
             title="Candidate Reviews & Ratings"
           />)}
-         
+
 
           {/*  Added clean Trust & Safety report block directly below the content wrapper */}
           {!owner && (
@@ -294,6 +349,54 @@ const SeekJobDetailsScreen = () => {
           )}
 
         </View>
+
+        {/* related adds  */}
+        {relatedCandidates.length > 0 && (
+          <View className="mt-6 pt-6 border-t border-gray-100">
+            {/* Header & Single / 2-Column Toggle Bar */}
+            <View className="flex-row items-center justify-between mb-4">
+              <View>
+                <Text className="text-gray-900 text-lg font-bold">Related Ads</Text>
+                <Text className="text-gray-400 text-xs">
+                  More providers in {product.district || product.region || 'this area'}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                onPress={() =>
+                  setRelatedViewMode((prev) => (prev === 'grid' ? 'list' : 'grid'))
+                }
+                activeOpacity={0.7}
+                className="bg-gray-100 p-2 rounded-xl border border-gray-200/70"
+              >
+                <Ionicons
+                  name={relatedViewMode === 'grid' ? 'list-outline' : 'grid-outline'}
+                  size={20}
+                  color="#2563EB"
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Cards Grid / List */}
+            <View className="flex-row flex-wrap justify-between">
+              {relatedCandidates.map((candidate) => (
+                <RelatedSeekJobCard
+                  key={candidate._id}
+                  item={candidate}
+                  viewMode={relatedViewMode}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/seek-job/[id]',
+                      params: { id: candidate._id },
+                    })
+                  }
+                />
+              ))}
+            </View>
+          </View>
+        )}
+
+
       </ScrollView>
 
       {/* Action Footer for External Clients */}

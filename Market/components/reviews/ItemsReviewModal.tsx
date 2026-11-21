@@ -148,6 +148,8 @@ export default function WriteReviewModal({
               editable={!isSubmitting}
               placeholder="Share helpful details for other members..."
               placeholderTextColor="#9CA3AF"
+              returnKeyType="done"              
+              submitBehavior="blurAndSubmit"
               style={{ minHeight: 100 }}
               className="border border-gray-200 rounded-xl px-3.5 py-3 text-sm text-gray-900 mb-5"
             />

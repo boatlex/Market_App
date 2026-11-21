@@ -1,5 +1,6 @@
 import { View, Text, Alert, TouchableOpacity, KeyboardAvoidingView, ScrollView, Platform, Dimensions, Linking, ActivityIndicator } from 'react-native'
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
+import useProducts from '../../hooks/useProducts'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useProduct } from '../../hooks/useProduct'
 import { useToggleAvailability } from '../../hooks/useProductToggleAvailability'
@@ -15,6 +16,7 @@ import { useReportModalStore } from '../../stores/useReportModalStore'
 import ProductComments from '../../components/comments/ProductComments'
 import OfferDialog from '../../components/dialogues/OfferDialogue'
 import ItemReviewsSection from '../../components/reviews/ItemsReviewsSection'
+import RelatedProductCard from '../../components/product/RelatedProductCard'
 
 const { width } = Dimensions.get("window")
 
@@ -23,6 +25,8 @@ const ProductDetailsScreen = () => {
   const socket = getSocket()
 
   const { data: product, isError, isLoading } = useProduct(id)
+  const { results: allProducts = [] } = useProducts({ limit: 30 });
+
   const { user } = useAuth()
   const toggleMutation = useToggleAvailability()
   const openReportModal = useReportModalStore((state) => state.openReportModal);
@@ -33,19 +37,79 @@ const ProductDetailsScreen = () => {
 
   // 💡 Controlled State for our custom Dialogue component
   const [promptVisible, setPromptVisible] = useState<boolean>(false);
+  const [relatedViewMode, setRelatedViewMode] = useState<'grid' | 'list'>('grid');
 
-const parsedSellerId = Array.isArray(sellerID) ? sellerID[0] : sellerID;
+  const parsedSellerId = Array.isArray(sellerID) ? sellerID[0] : sellerID;
 
-const currentUserId = user?._id || user?.id;
-const productSellerId =
-  typeof product?.seller === 'object' ? product.seller?._id : product?.seller;
+  const currentUserId = user?._id || user?.id;
+  const productSellerId =
+    typeof product?.seller === 'object' ? product.seller?._id : product?.seller;
 
-const owner =
-  Boolean(currentUserId) &&
-  (String(currentUserId) === String(parsedSellerId) ||
-    String(currentUserId) === String(productSellerId));
+  const owner =
+    Boolean(currentUserId) &&
+    (String(currentUserId) === String(parsedSellerId) ||
+      String(currentUserId) === String(productSellerId));
 
 
+
+
+
+  const relatedProducts = useMemo(() => {
+    if (!product || !Array.isArray(allProducts)) return [];
+
+    const currentCategory =
+      typeof product.category === 'object'
+        ? (product.category as any)?._id || (product.category as any)?.name
+        : product.category;
+    const normalizedCategory = String(currentCategory || '').trim().toLowerCase();
+    const normalizedRegion = String(product.region || '').trim().toLowerCase();
+
+    return allProducts
+      .filter((item) => {
+        // 1. Exclude the currently opened product
+        if (String(item._id) === String(product._id)) return false;
+
+        // 2. Match strictly on category or region
+        const itemCategory =
+          typeof item.category === 'object'
+            ? (item.category as any)?._id || (item.category as any)?.name
+            : item.category;
+
+        const sameCategory =
+          Boolean(normalizedCategory) &&
+          String(itemCategory || '').trim().toLowerCase() === normalizedCategory;
+
+        const sameRegion =
+          Boolean(normalizedRegion) &&
+          String(item.region || '').trim().toLowerCase() === normalizedRegion;
+
+        return sameCategory || sameRegion;
+      })
+      .sort((a, b) => {
+        // Rank: Both match (3) > Category match (2) > Region match (1)
+        const getScore = (item: any) => {
+          const itemCategory =
+            typeof item.category === 'object'
+              ? item.category?._id || item.category?.name
+              : item.category;
+
+          const catMatch =
+            Boolean(normalizedCategory) &&
+              String(itemCategory || '').trim().toLowerCase() === normalizedCategory
+              ? 2
+              : 0;
+          const regMatch =
+            Boolean(normalizedRegion) &&
+              String(item.region || '').trim().toLowerCase() === normalizedRegion
+              ? 1
+              : 0;
+          return catMatch + regMatch;
+        };
+
+        return getScore(b) - getScore(a);
+      })
+      .slice(0, 6);
+  }, [allProducts, product]);
 
   const handleCallSeller = () => {
     if (!product?.isAvailable) {
@@ -343,15 +407,15 @@ const owner =
 
             {/* Product Reviews & Ratings */}
             {!owner && (
-                <ItemReviewsSection
-              targetId={product._id}
-              targetType="Product"
-              averageRating={product.averageRating}
-              totalReviewsCount={product.totalReviews}
-              isOwner={owner}
-            />
+              <ItemReviewsSection
+                targetId={product._id}
+                targetType="Product"
+                averageRating={product.averageRating}
+                totalReviewsCount={product.totalReviews}
+                isOwner={owner}
+              />
             )}
-          
+
             {/* Comments Section Divider Layer */}
             <View className='border-t border-gray-100 mt-6 pt-4'>
               <ProductComments productId={id as string} />
@@ -381,6 +445,53 @@ const owner =
               </View>
             )}
           </View>
+
+          {/* Related Ads */}
+          {relatedProducts.length > 0 && (
+            <View className="mt-6 pt-6 border-t border-gray-100">
+              {/* Header & Single / 2-Column Toggle Bar */}
+              <View className="flex-row items-center justify-between mb-4">
+                <View>
+                  <Text className="text-gray-900 text-lg font-bold">Related Ads</Text>
+                  <Text className="text-gray-400 text-xs">
+                    More providers in {product.category || product.region || 'this area'}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  onPress={() =>
+                    setRelatedViewMode((prev) => (prev === 'grid' ? 'list' : 'grid'))
+                  }
+                  activeOpacity={0.7}
+                  className="bg-gray-100 p-2 rounded-xl border border-gray-200/70"
+                >
+                  <Ionicons
+                    name={relatedViewMode === 'grid' ? 'list-outline' : 'grid-outline'}
+                    size={20}
+                    color="#2563EB"
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* Related Product Cards */}
+              <View className="flex-row flex-wrap justify-between">
+                {relatedProducts.map((relatedItem: any) => (
+                  <RelatedProductCard
+                    key={relatedItem._id}
+                    item={relatedItem}
+                    viewMode={relatedViewMode}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/product/[id]',
+                        params: { id: relatedItem._id },
+                      })
+                    }
+                  />
+                ))}
+              </View>
+            </View>
+          )}
+
         </ScrollView>
 
         {/* Floating Action Button Footer for External Actions */}

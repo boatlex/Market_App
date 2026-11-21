@@ -1,4 +1,4 @@
-import { View, Text, Alert, TouchableOpacity, Dimensions, Linking, ActivityIndicator, TextInput, Modal } from 'react-native';
+import { View, Text, Alert, TouchableOpacity, Dimensions, Linking, ActivityIndicator, TextInput, Modal, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import React, { useMemo, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useGetServiceProviderById } from '../../hooks/useGetServiceProviderById';
@@ -12,10 +12,12 @@ import ImageView from '../../components/CrossPlatformImageView.native';
 import { useAuth } from '../../contexts/authContext';
 import { useReportModalStore } from '../../stores/useReportModalStore';
 import { ScrollView } from 'react-native-gesture-handler';
-
-import { StarRating } from '../../components/reviews/serviceRatings';
+import { useSearchServiceProviders } from '../../hooks/useSearchServiceProviders';
 import { ProviderReviewsList } from '../../components/reviews/serviceProviderReviewList';
 import { useServiceProviderReviews } from '../../hooks/useServiceProviderReviews';
+import RelatedServiceCard from '../../components/createService/RelatedServiceCard';
+import { ServiceProvider } from '../../types';
+import { WriteReviewModal } from '../../components/reviews/WriteReviewModal';
 
 const { width } = Dimensions.get("window");
 
@@ -23,19 +25,19 @@ const ServiceDetailsScreen = () => {
   const { serviceId } = useLocalSearchParams<{ serviceId: string }>();
 
   const { data: response, isError, isLoading } = useGetServiceProviderById(serviceId || "");
+  const { data: providersData } = useSearchServiceProviders({ page: 1, limit: 30 });
   const deleteMutation = useDeleteServiceProvider();
   const { user } = useAuth();
-  
-  // 🚩 Report Modal Global Store Hook
+
   const openReportModal = useReportModalStore((state) => state.openReportModal);
 
   const { addReview, isAddingReview } = useServiceProviderReviews(serviceId || "");
   const [isReviewModalVisible, setIsReviewModalVisible] = useState(false);
-  const [formRating, setFormRating] = useState(0);
-  const [formComment, setFormComment] = useState('');
+
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isZoomVisible, setIsZoomVisible] = useState(false);
+  const [relatedViewMode, setRelatedViewMode] = useState<'grid' | 'list'>('grid');
 
   const provider = response?.success ? response.data : null;
 
@@ -45,6 +47,50 @@ const ServiceDetailsScreen = () => {
     const currentUserId = user._id || user.id;
     return String(currentUserId) === String(providerUser);
   }, [user, provider]);
+
+  // Filter strictly by category and region
+  const relatedServices = useMemo(() => {
+    if (!provider) return [];
+
+    const providersList = providersData?.providers || [];
+    if (!Array.isArray(providersList)) return [];
+
+    const normalizedCategory = String(provider.category || '').trim().toLowerCase();
+    const normalizedRegion = String(provider.region || '').trim().toLowerCase();
+
+    return providersList
+      .filter((item) => {
+        if (String(item._id) === String(provider._id)) return false;
+
+        const sameCategory =
+          Boolean(normalizedCategory) &&
+          String(item.category || '').trim().toLowerCase() === normalizedCategory;
+
+        const sameRegion =
+          Boolean(normalizedRegion) &&
+          String(item.region || '').trim().toLowerCase() === normalizedRegion;
+
+        return sameCategory || sameRegion;
+      })
+      .sort((a, b) => {
+        const getScore = (item: ServiceProvider) => {
+          const catMatch =
+            Boolean(normalizedCategory) &&
+              String(item.category || '').trim().toLowerCase() === normalizedCategory
+              ? 2
+              : 0;
+          const regMatch =
+            Boolean(normalizedRegion) &&
+              String(item.region || '').trim().toLowerCase() === normalizedRegion
+              ? 1
+              : 0;
+          return catMatch + regMatch;
+        };
+
+        return getScore(b) - getScore(a);
+      })
+      .slice(0, 6);
+  }, [providersData, provider]);
 
   const handleCallProvider = () => {
     if (!user) { router.push("/(auth)"); return; }
@@ -61,16 +107,15 @@ const ServiceDetailsScreen = () => {
     Linking.openURL(`whatsapp://send?phone=${formattedNumber}&text=${encodeURIComponent(message)}`);
   };
 
-  // 💬 In-App Chat Action Handler
   const handleChatProvider = () => {
     if (!user) { router.push("/(auth)"); return; }
     const providerUserId = typeof provider?.user === 'object' ? provider?.user?._id : provider?.user;
     if (!providerUserId) return Alert.alert("Error", "Cannot initialize chat with this provider.");
-    
+
     router.push({
       pathname: '/chat',
-      params: { 
-        userId: providerUserId, 
+      params: {
+        userId: providerUserId,
       }
     });
   };
@@ -80,16 +125,20 @@ const ServiceDetailsScreen = () => {
     setIsReviewModalVisible(true);
   };
 
-  const handleSubmitReview = () => {
-    if (formRating === 0) return;
-    addReview({ rating: formRating, comment: formComment }, {
-      onSuccess: () => {
-        setIsReviewModalVisible(false);
-        setFormRating(0);
-        setFormComment('');
+
+
+  const handleSubmitReview = ({ rating, comment }: { rating: number; comment?: string }) => {
+    if (rating === 0) return;
+    addReview(
+      { rating, comment },
+      {
+        onSuccess: () => {
+          setIsReviewModalVisible(false);
+        },
       }
-    });
+    );
   };
+
 
   const handleProfilePurge = () => {
     Alert.alert(
@@ -151,185 +200,207 @@ const ServiceDetailsScreen = () => {
             <Ionicons name="construct-outline" size={56} color="#9CA3AF" />
           </View>
         )}
+
+        {/* Back Button */}
+        <View className="absolute top-12 left-5 right-5 flex-row justify-between items-center">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="w-10 h-10 rounded-full bg-black/50 items-center justify-center"
+          >
+            <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Main Profile Context Layout */}
+      {/* Main Details Block */}
       <View className="p-6">
-        <View className="mb-4 flex-row items-center justify-between flex-wrap">
-          <View className="flex-row items-center gap-2">
-            <View className="bg-blue-50 px-3 py-1 rounded-full border border-blue-100"><Text className="text-blue-600 text-xs font-black capitalize">{provider.category}</Text></View>
-            <View className="bg-gray-50 px-3 py-1 rounded-full border border-gray-100"><Text className="text-gray-600 text-xs font-bold capitalize">{provider.serviceType}</Text></View>
+        <View className="flex-row items-center justify-between gap-2 mb-2">
+          <View className={`px-3 py-1 rounded-full ${provider.availabilityStatus === 'Available' ? 'bg-green-50' : 'bg-amber-50'}`}>
+            <Text className={`text-xs font-bold ${provider.availabilityStatus === 'Available' ? 'text-green-600' : 'text-amber-600'}`}>
+              {provider.availabilityStatus || 'Available'}
+            </Text>
           </View>
+          {provider.category && (
+            <View className="bg-blue-50 px-3 py-1 rounded-full">
+              <Text className="text-blue-600 text-xs font-bold">{provider.category}</Text>
+            </View>
+          )}
 
           {/* 🚩 REPORT BUTTON */}
           {!isOwner && (
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => openReportModal("Service", provider._id)}
-              className=" flex-row p-2 bg-red-50 rounded-full border border-red-100 "
+              className="flex-row items-center gap-1.5 px-3 py-1.5 bg-red-50 rounded-full border border-red-100"
               activeOpacity={0.7}
             >
-              <Ionicons name="flag-outline" size={18} color="#DC2626" />
+              <Text className="text-red-600 text-xs font-semibold">Report</Text>
+              <Ionicons name="flag-outline" size={16} color="#DC2626" />
             </TouchableOpacity>
+
           )}
         </View>
 
-        <Text className="text-2xl font-black text-gray-900 mt-1">{provider.businessName}</Text>
-        
-        <View className="flex-row items-center gap-1.5 mt-2 mb-4">
-          <StarRating rating={provider.averageRating || 0} isReadOnly size={18} />
-          <Text className="text-sm font-bold text-gray-800">{(provider.averageRating || 0).toFixed(1)}</Text>
-          <Text className="text-sm text-gray-500">({provider.totalReviews || 0} reviews)</Text>
-        </View>
+        <Text className="text-2xl font-extrabold text-gray-900 mb-1">{provider.businessName}</Text>
+        <Text className="text-sm font-semibold text-gray-500 mb-3 capitalize">{provider.serviceType}</Text>
 
-        <View className="flex-row items-center gap-2 mb-6 bg-gray-50 p-3 rounded-xl border border-gray-100">
-          <Ionicons name="location-outline" size={18} color="#4B5563" />
-          <Text className="text-gray-600 text-sm font-medium flex-1">{provider.location}, {provider.district} - {provider.region}</Text>
-        </View>
+        <Text className="text-blue-600 text-2xl font-black mb-4">
+          {displaySalary}
+          {provider.pricing?.rate && provider.pricing?.basis ? (
+            <Text className="text-gray-400 text-sm font-normal"> / {provider.pricing.basis}</Text>
+          ) : null}
+        </Text>
 
-        <View className="mb-6">
-          <Text className="text-lg font-bold text-gray-900 mb-2">About Our Services</Text>
-          <Text className="text-gray-600 text-sm leading-relaxed">{provider.description}</Text>
-        </View>
-
-        <View className="mb-8 p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50 flex-row justify-between items-center">
-          <View>
-            <Text className="text-gray-500 text-xs font-bold uppercase tracking-wider">Pricing Basis</Text>
-            <Text className="text-xl font-black text-blue-600 mt-0.5">{displaySalary}</Text>
+        {(provider.region || provider.district || provider.location) && (
+          <View className="flex-row items-center gap-1.5 mb-5">
+            <Ionicons name="location-outline" size={16} color="#6B7280" />
+            <Text className="text-gray-600 font-medium text-sm">
+              {[provider.location, provider.district, provider.region].filter(Boolean).join(', ')}
+            </Text>
           </View>
-          <View className="bg-blue-100 px-3 py-1 rounded-md">
-            <Text className="text-blue-700 text-xs font-bold capitalize">{provider.pricing?.basis || "Job"}</Text>
-          </View>
-        </View>
+        )}
 
-        {/* 🌟 REVIEW LIST HEADER */}
-        <View className="flex-row items-center justify-between mb-4 border-t border-gray-100 pt-6">
-          <Text className="text-lg font-bold text-gray-900">Community Reviews</Text>
-          {!isOwner && (
-            <TouchableOpacity onPress={handleOpenReviewModal} className="bg-orange-500 px-4 py-2 rounded-xl">
-              <Text className="text-white font-bold text-xs">Write Review</Text>
-            </TouchableOpacity>
-          )}
+        {(provider as any).description && (
+          <View className="mb-6">
+            <Text className="text-gray-900 font-bold text-base mb-1.5">About Service</Text>
+            <Text className="text-gray-600 text-sm leading-relaxed">
+              {(provider as any).description}
+            </Text>
+          </View>
+        )}
+
+        {/* Owner Delete or Customer Review Action */}
+        {isOwner ? (
+          <TouchableOpacity
+            onPress={handleProfilePurge}
+            className="bg-red-50 border border-red-200 py-3.5 rounded-xl flex-row items-center justify-center gap-2 mb-4"
+          >
+            <Ionicons name="trash-outline" size={18} color="#DC2626" />
+            <Text className="text-red-600 font-bold text-sm">Delete Service Listing</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={handleOpenReviewModal}
+            className="bg-orange-50 border border-orange-200 py-3.5 rounded-xl flex-row items-center justify-center gap-2 mb-2"
+          >
+            <Ionicons name="star-outline" size={18} color="#EA580C" />
+            <Text className="text-orange-600 font-bold text-sm">Write  Review</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Customer Reviews Section Header */}
+      <View className="px-6 py-3 border-t border-gray-100 flex-row items-center justify-between">
+        <Text className="text-gray-900 text-lg font-bold">Customer Reviews</Text>
+        <View className="flex-row items-center gap-1">
+          <Ionicons name="star" size={16} color="#F59E0B" />
+          <Text className="text-gray-800 font-bold text-sm">
+            {Number((provider as any).averageRating || 0).toFixed(1)} ({(provider as any).totalReviews || 0})
+          </Text>
         </View>
       </View>
     </View>
   );
 
+  // Rendered in ListFooterComponent so it appears BELOW Customer Reviews and scrolls smoothly
+  const renderRelatedServices = () => {
+    if (relatedServices.length === 0) return null;
+
+    return (
+      <View className="mt-6 pt-6 px-6 border-t border-gray-100 bg-white">
+        {/* Header & Single-Icon Layout Toggle Button */}
+        <View className="flex-row items-center justify-between mb-4">
+          <View>
+            <Text className="text-gray-900 text-lg font-bold">Related Ads</Text>
+            <Text className="text-gray-400 text-xs">
+              More providers in {provider.category || provider.region || 'this area'}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={() =>
+              setRelatedViewMode((prev) => (prev === 'grid' ? 'list' : 'grid'))
+            }
+            activeOpacity={0.7}
+            className="bg-gray-100 p-2 rounded-xl border border-gray-200/70"
+          >
+            <Ionicons
+              name={relatedViewMode === 'grid' ? 'list-outline' : 'grid-outline'}
+              size={20}
+              color="#2563EB"
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Related Service Cards (2-column grid or 1-column list) */}
+        <View className="w-full flex-row flex-wrap justify-between">
+          {relatedServices.map((relatedItem) => (
+            <RelatedServiceCard
+              key={relatedItem._id}
+              item={relatedItem}
+              viewMode={relatedViewMode}
+              onPress={() =>
+                router.push({
+                  pathname: '/my-service/[serviceId]',
+                  params: { serviceId: relatedItem._id },
+                })
+              }
+            />
+          ))}
+        </View>
+      </View>
+    );
+  };
+
   return (
     <SafeScreen>
-           {/* Floating Top Back Control Button */}
-      <View className="absolute top-12 left-6 z-10">
-        <TouchableOpacity 
-          onPress={() => router.back()} 
-          className="bg-black/50 w-12 h-12 rounded-full items-center justify-center border border-white/10"
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Single scroll-management hierarchy using internal reviews FlatList container */}
       <ProviderReviewsList
         providerId={serviceId || ""}
         currentUserId={user?._id || user?.id}
         ListHeaderComponent={renderDetailsHeader}
+        ListFooterComponent={renderRelatedServices()}
       />
 
-      {/* 📞 FLOATING FOOTER ACTION ROW */}
-      <View className="absolute pb-10
-       bottom-6 left-6 right-6 flex-row gap-2 bg-white/90 p-3 rounded-2xl border border-gray-100 shadow-lg items-center justify-between">
-        {isOwner ? (
-          <TouchableOpacity 
-            onPress={handleProfilePurge}
-            className="flex-1 bg-red-600 items-center justify-center h-12 rounded-xl flex-row gap-2"
+      {/* Sticky Contact Action Dock */}
+      {!isOwner && (
+        <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-5 py-4  pb-20 flex-row items-center gap-3">
+          <TouchableOpacity
+            onPress={handleCallProvider}
+            className="flex-1 bg-blue-600 py-3.5 rounded-xl flex-row items-center justify-center gap-2"
           >
-            <Ionicons name="trash-outline" size={18} color="#FFF" />
-            <Text className="text-white font-bold">Delete Listing Profile</Text>
+            <Ionicons name="call" size={18} color="#FFFFFF" />
+            <Text className="text-white font-bold text-sm">Call</Text>
           </TouchableOpacity>
-        ) : (
-          <>
-            {/* 💬 CHAT BUTTON */}
-            <TouchableOpacity 
-              onPress={handleChatProvider}
-              className="flex-1 bg-amber-500 items-center justify-center h-12 rounded-xl flex-row gap-1.5"
-              activeOpacity={0.8}
-            >
-              <Ionicons name="chatbubble-ellipses-outline" size={18} color="#FFF" />
-              <Text className="text-white font-bold text-xs">Chat</Text>
-            </TouchableOpacity>
 
-            {/* CALL BUTTON */}
-            <TouchableOpacity 
-              onPress={handleCallProvider}
-              className="flex-1 bg-blue-600 items-center justify-center h-12 rounded-xl flex-row gap-1.5"
-              activeOpacity={0.8}
-            >
-              <Ionicons name="call-outline" size={18} color="#FFF" />
-              <Text className="text-white font-bold text-xs">Call</Text>
-            </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleWhatsAppProvider}
+            className="flex-1 bg-green-600 py-3.5 rounded-xl flex-row items-center justify-center gap-2"
+          >
+            <Ionicons name="logo-whatsapp" size={18} color="#FFFFFF" />
+            <Text className="text-white font-bold text-sm">WhatsApp</Text>
+          </TouchableOpacity>
 
-            {/* WHATSAPP BUTTON */}
-            <TouchableOpacity 
-              onPress={handleWhatsAppProvider}
-              className="flex-1 bg-green-600 items-center justify-center h-12 rounded-xl flex-row gap-1.5"
-              activeOpacity={0.8}
-            >
-              <Ionicons name="logo-whatsapp" size={18} color="#FFF" />
-              <Text className="text-white font-bold text-xs">WhatsApp</Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </View>
+          <TouchableOpacity
+            onPress={handleChatProvider}
+            className="bg-gray-100 p-3.5 rounded-xl items-center justify-center"
+          >
+            <Ionicons name="chatbubble-ellipses-outline" size={20} color="#111827" />
+          </TouchableOpacity>
+        </View>
+      )}
+
+
 
       {/* 📋 LEAVE A REVIEW DIALOG MODAL */}
-      <Modal
+
+      <WriteReviewModal
         visible={isReviewModalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setIsReviewModalVisible(false)}
-      >
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white rounded-t-3xl p-6 min-h-[420px]">
-            <View className="flex-row justify-between items-center mb-6">
-              <Text className="text-xl font-black text-gray-900">Leave Feedback</Text>
-              <TouchableOpacity onPress={() => setIsReviewModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#4B5563" />
-              </TouchableOpacity>
-            </View>
+        onClose={() => setIsReviewModalVisible(false)}
+        onSubmit={handleSubmitReview}
+        isSubmitting={isAddingReview}
+        businessName={provider.businessName}
+      />
 
-            <Text className="text-gray-700 mb-2 font-bold text-sm">Your Rating</Text>
-            <View className="mb-6">
-              <StarRating
-                rating={formRating}
-                isReadOnly={false}
-                size={32}
-                onRatingChange={(selectedRating) => setFormRating(selectedRating)}
-              />
-            </View>
 
-            <Text className="text-gray-700 mb-2 font-bold text-sm">Comments</Text>
-            <TextInput
-              className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800 h-28"
-              placeholder="Tell others about your experience with this service provider..."
-              multiline
-              textAlignVertical="top"
-              value={formComment}
-              onChangeText={setFormComment}
-            />
-
-            <TouchableOpacity
-              onPress={handleSubmitReview}
-              disabled={formRating === 0 || isAddingReview}
-              className={`mt-6 h-14 rounded-xl items-center justify-center ${formRating === 0 || isAddingReview ? 'bg-gray-200' : 'bg-orange-500'}`}
-            >
-              {isAddingReview ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <Text className="text-white font-bold text-base">Submit Review</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </SafeScreen>
   );
 };

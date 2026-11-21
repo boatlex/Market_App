@@ -27,7 +27,6 @@ export default function GlobalReportModal() {
   useEffect(() => {
     if (isOpen && !user) {
       closeReportModal();
-      // Redirects unauthenticated users to the Auth Stack Screen group
       router.push('/(auth)');
     }
   }, [isOpen, user]);
@@ -124,7 +123,7 @@ export default function GlobalReportModal() {
           <TouchableOpacity
             onPress={handleSubmit}
             disabled={isCreatingReport}
-            className={`w-full h-12 rounded-xl items-center justify-center ${isCreatingReport ? 'bg-blue-400' : 'bg-blue-600'}`}
+            className={`w-full h-12 rounded-xl items-center mb-6 justify-center ${isCreatingReport ? 'bg-blue-400' : 'bg-blue-600'}`}
           >
             {isCreatingReport ? (
               <ActivityIndicator color="#fff" size="small" />
