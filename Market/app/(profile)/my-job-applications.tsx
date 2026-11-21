@@ -9,9 +9,11 @@ import { FormInput } from '../../components/FormInput';
 import { FormDropdown } from '../../components/FormDropdown';
 import SeekJobCard from '../../components/lookForJob/SeekJodCard';
 import { useAuth } from '../../contexts/authContext';
+import { JOB_CATEGORIES } from '../../constants/createJobs';
 import {
   GHANA_REGIONS,
   GHANA_DISTRICTS_BY_REGION,
+  JOB_TYPES,
   WORK_MODE,
 } from '../../constants/seekJob';
 import { JobSeekerProfile } from '../../types';
@@ -74,13 +76,16 @@ const JobSeekerScreen = () => {
   const [showRegionModal, setShowRegionModal] = useState(false);
   const [showDistrictModal, setShowDistrictModal] = useState(false);
   const [showWorkModeModal, setShowWorkModeModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showJobTypeModal, setShowJobTypeModal] = useState(false);
 
   const [searchInput, setSearchInput] = useState(initialQuery);
-
   const [activeFilters, setActiveFilters] = useState<SearchCandidatesFilters>({
     page: 1,
     limit: 10,
-    keyword: initialQuery,
+    keyword: "",
+    category: params.category || "",
+    seekJobType: params.subCategory || "",
     region: "",
     district: "",
     workMode: "",
@@ -90,19 +95,20 @@ const JobSeekerScreen = () => {
 
   // Sync incoming route params from HomeScreen SubCategoryModal
   useEffect(() => {
-    const incomingQuery = params.subCategory || params.category || "";
     setActiveTab('all');
-    setSearchInput(incomingQuery);
-    setActiveFilters((prev) => ({
-      ...prev,
-      keyword: incomingQuery,
+    setSearchInput("");
+    const updatedFromParams: SearchCandidatesFilters = {
       page: 1,
-    }));
-    setTempFilters((prev) => ({
-      ...prev,
-      keyword: incomingQuery,
-      page: 1,
-    }));
+      limit: 10,
+      keyword: "",
+      category: params.category || "",
+      seekJobType: params.subCategory || "",
+      region: "",
+      district: "",
+      workMode: "",
+    };
+    setActiveFilters(updatedFromParams);
+    setTempFilters(updatedFromParams);
   }, [params.category, params.subCategory]);
 
   const {
@@ -117,17 +123,17 @@ const JobSeekerScreen = () => {
     refetch: refetchMyAds,
   } = useGetMyJobSeekerAds();
 
- const myAdsList: JobSeekerProfile[] = Array.isArray(myAdsData)
-  ? myAdsData
-  : myAdsData
-  ? [myAdsData]
-  : [];
+  const myAdsList: JobSeekerProfile[] = Array.isArray(myAdsData)
+    ? myAdsData
+    : myAdsData
+      ? [myAdsData]
+      : [];
 
-const candidateProfiles: JobSeekerProfile[] =
-  activeTab === 'all' ? searchData?.profiles || [] : myAdsList;
+  const candidateProfiles: JobSeekerProfile[] =
+    activeTab === 'all' ? searchData?.profiles || [] : myAdsList;
 
-const adsCount =
-  activeTab === 'all' ? searchData?.profiles?.length || 0 : myAdsList.length;
+  const adsCount =
+    activeTab === 'all' ? searchData?.profiles?.length || 0 : myAdsList.length;
 
 
   const isLoading = activeTab === 'all' ? isSearchLoading : isMyAdsLoading;
@@ -140,16 +146,16 @@ const adsCount =
 
     return () => clearTimeout(delayDebounceFn);
   }, [searchInput]);
+const handleFilterInputChange = (field: keyof SearchCandidatesFilters, value: string) => {
+  setTempFilters((prev) => {
+    const updated = { ...prev, [field]: value };
+    if (field === "region") {
+      updated.district = "";
+    }
+    return updated;
+  });
+};
 
-  const handleFilterInputChange = (field: keyof SearchCandidatesFilters, value: string) => {
-    setTempFilters((prev) => {
-      const updated = { ...prev, [field]: value };
-      if (field === "region") {
-        updated.district = "";
-      }
-      return updated;
-    });
-  };
 
   const handleApplyFilters = () => {
     setActiveFilters({ ...tempFilters, page: 1 });
@@ -161,6 +167,8 @@ const adsCount =
       page: 1,
       limit: 10,
       keyword: "",
+      category: "",
+      seekJobType: "",
       region: "",
       district: "",
       workMode: "",
@@ -175,6 +183,7 @@ const adsCount =
     ? GHANA_DISTRICTS_BY_REGION[tempFilters.region as keyof typeof GHANA_DISTRICTS_BY_REGION] || []
     : [];
 
+  
   return (
     <SafeScreen>
       <View className="flex-1 bg-gray-50">
@@ -264,7 +273,7 @@ const adsCount =
           </View>
         )}
 
-              {/* TALENT FEED LIST */}
+        {/* TALENT FEED LIST */}
         {isLoading ? (
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator color="#2563eb" size="large" />
@@ -281,21 +290,21 @@ const adsCount =
             refreshing={isLoading}
             onRefresh={currentRefetch}
             renderItem={({ item }) => (
-               <SeekJobCard
-                    item={item}
-                    onPress={() => {
-                    const secureSeekerId = item.user && typeof item.user === 'object'
-                     ? (item.user as any)._id || (item.user as any).id
-                        : item.user;
-                        router.push({
-                            pathname: '/seek-job/[id]',
-                            params: {
-                                id: item._id,
-                                jobSeekerId: secureSeekerId
-                                }
-                                } as any);
-                                }}
-                />
+              <SeekJobCard
+                item={item}
+                onPress={() => {
+                  const secureSeekerId = item.user && typeof item.user === 'object'
+                    ? (item.user as any)._id || (item.user as any).id
+                    : item.user;
+                  router.push({
+                    pathname: '/seek-job/[id]',
+                    params: {
+                      id: item._id,
+                      jobSeekerId: secureSeekerId
+                    }
+                  } as any);
+                }}
+              />
             )}
             ListEmptyComponent={
               <View className="items-center justify-center pt-20">
@@ -322,6 +331,19 @@ const adsCount =
               </View>
 
               <ScrollView showsVerticalScrollIndicator={false} className="mb-4">
+                <FormDropdown
+                  label="Category"
+                  placeholder="Select Category"
+                  value={tempFilters.category || ""}
+                  onPress={() => setShowCategoryModal(true)}
+                />
+
+                <FormDropdown
+                  label="Job Type"
+                  placeholder="Select Job Type"
+                  value={tempFilters.seekJobType || ""}
+                  onPress={() => setShowJobTypeModal(true)}
+                />
                 <FormDropdown
                   label="Work Mode"
                   placeholder="All Work Modes"
@@ -365,6 +387,22 @@ const adsCount =
         </Modal>
 
         {/* SELECTION PICKERS */}
+        <FlatListSelectionModal
+          visible={showCategoryModal}
+          title="Select Category"
+          data={JOB_CATEGORIES} // Import from your constants/seekJob or constants/jobs
+          onSelect={(val) => handleFilterInputChange("category", val)}
+          onClose={() => setShowCategoryModal(false)}
+        />
+
+        <FlatListSelectionModal
+          visible={showJobTypeModal}
+          title="Select Job Type"
+          data={JOB_TYPES} // 👈 Use JOB_TYPES directly instead of availableJobTypes
+          onSelect={(val) => handleFilterInputChange("seekJobType", val)}
+          onClose={() => setShowJobTypeModal(false)}
+        />
+
         <FlatListSelectionModal
           visible={showRegionModal}
           title="Choose Region"

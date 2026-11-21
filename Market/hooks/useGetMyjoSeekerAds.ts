@@ -5,13 +5,13 @@ import { JobSeekerProfile } from "../types";
 interface MyAdsResponse {
     success: boolean;
     resultsCount: number;
-    profile: JobSeekerProfile[];
+    profile: JobSeekerProfile | JobSeekerProfile[] | null;
 }
 
 const fetchMyAds = async (): Promise<JobSeekerProfile[]> => {
-  
     const { data } = await api.get<MyAdsResponse>("/jobseekerprofiles/jobseeker/my-ads");
-    return data.profile;
+    if (!data.profile) return [];
+    return Array.isArray(data.profile) ? data.profile : [data.profile];
 };
 
 export const useGetMyJobSeekerAds = () => {
@@ -20,4 +20,4 @@ export const useGetMyJobSeekerAds = () => {
         queryFn: fetchMyAds,
         staleTime: 1000 * 60 * 3, 
     });
-}
+};

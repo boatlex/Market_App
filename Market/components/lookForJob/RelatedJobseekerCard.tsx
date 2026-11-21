@@ -34,7 +34,14 @@ export const RelatedSeekJobCard = ({
   const displayImage =
     item.profilePicture && item.profilePicture.trim().length > 0
       ? item.profilePicture
-      : fallbackImage;
+      : (typeof item.user === 'object' && (item.user as any)?.profilePicture) || fallbackImage;
+
+  const preferredTypesLabel =
+    Array.isArray(item.preferredJobTypes) && item.preferredJobTypes.length > 0
+      ? item.preferredJobTypes.length > 1
+        ? `${item.preferredJobTypes[0]} +${item.preferredJobTypes.length - 1}`
+        : item.preferredJobTypes[0]
+      : null;
 
   return (
     <TouchableOpacity
@@ -60,7 +67,7 @@ export const RelatedSeekJobCard = ({
         />
         <View className="absolute bottom-1.5 left-1.5 bg-green-600/90 px-2 py-0.5 rounded-md">
           <Text className="text-[9px] text-white font-black uppercase tracking-wider">
-            {(item as any).workMode || 'On-site'}
+            {item.workMode || 'On-site'}
           </Text>
         </View>
       </View>
@@ -75,11 +82,40 @@ export const RelatedSeekJobCard = ({
             {displayName}
           </Text>
           <Text
-            className="text-gray-500 font-semibold text-[11px] mb-2"
+            className="text-gray-500 font-semibold text-[11px] mb-1.5"
             numberOfLines={1}
           >
             {item.professionalHeadline || 'Open to work'}
           </Text>
+
+          {/* Category, Subcategory (seekJobType) & Preferred Job Type Badges */}
+          {(item.category || item.seekJobType || preferredTypesLabel) ? (
+            <View className="flex-row flex-wrap gap-1 mb-2">
+              {item.category ? (
+                <View className="bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded">
+                  <Text className="text-blue-700 text-[9px] font-bold capitalize" numberOfLines={1}>
+                    {item.category}
+                  </Text>
+                </View>
+              ) : null}
+
+              {item.seekJobType ? (
+                <View className="bg-purple-50 border border-purple-100 px-1.5 py-0.5 rounded">
+                  <Text className="text-purple-700 text-[9px] font-bold capitalize" numberOfLines={1}>
+                    {item.seekJobType}
+                  </Text>
+                </View>
+              ) : null}
+
+              {preferredTypesLabel ? (
+                <View className="bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded">
+                  <Text className="text-gray-700 text-[9px] font-semibold" numberOfLines={1}>
+                    {preferredTypesLabel}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
         </View>
 
         {/* Expected Salary & Region */}
@@ -101,7 +137,7 @@ export const RelatedSeekJobCard = ({
               className="text-[10px] text-gray-400 font-medium ml-0.5"
               numberOfLines={1}
             >
-              {(item as any).district || (item as any).region || 'Ghana'}
+              {item.district || item.region || 'Ghana'}
             </Text>
           </View>
         </View>

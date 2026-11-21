@@ -6,6 +6,8 @@ export interface SearchCandidatesFilters {
     page: number;
     limit: number;
     keyword: string;
+    category: string;
+    seekJobType: string;
     region: string;
     district: string;
     workMode: string;
@@ -26,7 +28,6 @@ export const useSearchCandidate = (filters: SearchCandidatesFilters) => {
             });
             return data;
         },
-        
         enabled: !!filters,
         retry: false,
         refetchOnWindowFocus: false,

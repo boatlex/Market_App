@@ -10,22 +10,34 @@ interface SearchCandidateResponse {
   profiles: JobSeekerProfile[];
 }
 
-export const useGetRelatedJobSeekers = (region?: string) => {
+interface RelatedJobSeekersFilters {
+  region?: string;
+  category?: string;
+  seekJobType?: string;
+}
+
+export const useGetRelatedJobSeekers = ({
+  region,
+  category,
+  seekJobType,
+}: RelatedJobSeekersFilters = {}) => {
   return useQuery<JobSeekerProfile[], Error>({
-    queryKey: ["related-job-seekers", region],
+    queryKey: ["related-job-seekers", { region, category, seekJobType }],
     queryFn: async () => {
       const { data } = await api.get<SearchCandidateResponse>(
-        "/jobseekerprofiles/search", // Match your exact searchCandidatePool route
+        "/jobseekerprofiles/search",
         {
           params: {
             region: region || undefined,
+            category: category || undefined,
+            seekJobType: seekJobType || undefined,
             limit: 10,
           },
         }
       );
       return data.profiles || [];
     },
-    enabled: Boolean(region),
+    enabled: Boolean(region || category || seekJobType),
     staleTime: 1000 * 60 * 3,
   });
 };

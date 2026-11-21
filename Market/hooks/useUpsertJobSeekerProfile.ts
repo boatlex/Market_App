@@ -12,6 +12,8 @@ export interface FormDataFile {
 export interface UpsertProfileVariables {
     professionalHeadline: string;
     bio?: string;
+    category: string;      
+    seekJobType: string;   
     skills: string[];
     experience: WorkExperience[];
     education: Education[];
@@ -25,7 +27,7 @@ export interface UpsertProfileVariables {
     phoneNumber: string; 
     workMode?: string;  
     profilePictureFile?: FormDataFile | null; 
-    resumeFile?: FormDataFile | null; // 👈 ADDED: Explicit variable pointer for PDF document picks
+    resumeFile?: FormDataFile | null;
 }
 
 interface UpsertProfileResponse {
@@ -42,6 +44,8 @@ export const useUpsertJobSeekerProfile = () => {
 
             // Text primitives mappings
             formData.append("professionalHeadline", variables.professionalHeadline);
+            formData.append("category", variables.category);         // 👈 Appended
+            formData.append("seekJobType", variables.seekJobType);   // 👈 Appended
             if (variables.bio) formData.append("bio", variables.bio);
             formData.append("expectedSalaryMin", String(variables.expectedSalaryMin || 0));
             formData.append("expectedSalaryCurrency", variables.expectedSalaryCurrency);
@@ -64,7 +68,7 @@ export const useUpsertJobSeekerProfile = () => {
                 formData.append("image", variables.profilePictureFile as any);
             }
 
-            //  Resume attachment pipeline matching backend router upload.fields key
+            // Resume attachment pipeline matching backend router upload.fields key
             if (variables.resumeFile) {
                 formData.append("resume", variables.resumeFile as any);
             }

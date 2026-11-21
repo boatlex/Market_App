@@ -21,27 +21,36 @@ const SeekJobAdScreen = () => {
     const [editingSeekJob, setEditingSeekJob] = useState<any | null>(null);
     const [images, setImages] = useState<SelectedFileMeta[]>([]);
     const [resumeFile, setResumeFile] = useState<SelectedFileMeta | null>(null); 
+useEffect(() => {
+    if (params?.seekJobData) {
+        try {
+            const parsedJob = JSON.parse(params.seekJobData as string);
+            setEditingSeekJob(parsedJob);
+            setShowModal(true);
 
-    useEffect(() => {
-        if (params?.seekJobData) {
-            try {
-                const parsedJob = JSON.parse(params.seekJobData as string);
-                setEditingSeekJob(parsedJob);
-                setShowModal(true); 
-                
-                if (parsedJob.resumeUrl) {
-                    setResumeFile({
-                        uri: parsedJob.resumeUrl,
-                        type: 'application/pdf',
-                        name: 'Attached Resume.pdf',
-                        isRemote: true
-                    });
-                }
-            } catch (error) {
-                console.error("Failed to parse job entity parameters:", error);
+            if (parsedJob.profilePicture) {
+                setImages([{
+                    uri: parsedJob.profilePicture,
+                    type: 'image/jpeg',
+                    name: 'profile.jpg',
+                    isRemote: true,
+                }]);
             }
+
+            if (parsedJob.resumeUrl) {
+                setResumeFile({
+                    uri: parsedJob.resumeUrl,
+                    type: 'application/pdf',
+                    name: 'Attached Resume.pdf',
+                    isRemote: true,
+                });
+            }
+        } catch (error) {
+            console.error("Failed to parse job entity parameters:", error);
         }
-    }, [params?.seekJobData]);
+    }
+}, [params?.seekJobData]);
+
 
     const takePhoto = async () => {
         if (images.length >= 1) {

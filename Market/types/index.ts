@@ -129,6 +129,8 @@ export interface JobSeekerProfile {
     profilePicture?: string;
     professionalHeadline: string;
     bio?: string;
+    category: string;
+    seekJobType: string;
     skills: string[];
     experience: WorkExperience[];
     education: Education[];
@@ -136,7 +138,7 @@ export interface JobSeekerProfile {
     region: string;
     district: string;
     location?: string;
-    phoneNumber: string,
+    phoneNumber: string;
     workMode: WorkMode;
     preferredJobTypes: string[];
     expectedSalary: ExpectedSalary;
@@ -146,6 +148,7 @@ export interface JobSeekerProfile {
     createdAt: string;
     updatedAt: string;
 }
+
 
 export interface Message {
     _id: string;
