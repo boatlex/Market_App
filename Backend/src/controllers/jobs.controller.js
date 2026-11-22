@@ -38,6 +38,7 @@ export const createJob = async (req, res, next) => {
             district,
             location,
             requirements,
+            responsibilities,
             benefits,
             applicationDeadline
         } = req.body;
@@ -137,6 +138,7 @@ export const createJob = async (req, res, next) => {
             district: String(district).trim(),
             location: String(location).trim(),
             requirements: parseArrayField(requirements),
+            responsibilities: parseArrayField(responsibilities),
             benefits: parseArrayField(benefits),
             applicationDeadline: deadlineDate || undefined,
             isOpen: true
@@ -262,7 +264,7 @@ export const editJob = async (req, res, next) => {
         const {
             companyName, title, description, category, jobType, workMode,
             minSalary, maxSalary, currency, phoneNumber, emailForApplications,
-            region, district, location, requirements, benefits, applicationDeadline
+            region, district, location, requirements,responsibilities, benefits, applicationDeadline
         } = req.body;
 
         // ========================================================
@@ -363,6 +365,7 @@ export const editJob = async (req, res, next) => {
         };
 
         if (requirements !== undefined) updates.requirements = parseArrayField(requirements);
+        if (responsibilities !== undefined) updates.responsibilities = parseArrayField(responsibilities);
         if (benefits !== undefined) updates.benefits = parseArrayField(benefits);
 
       

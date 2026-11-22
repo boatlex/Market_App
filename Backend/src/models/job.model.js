@@ -80,6 +80,10 @@ const jobSchema = new mongoose.Schema({
         type: [String], 
         default: []
     },
+    responsibilities: {
+        type: [String], 
+        default: []
+    },
     benefits: {
         type: [String], 
         default: []
