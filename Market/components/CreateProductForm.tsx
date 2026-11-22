@@ -1,15 +1,17 @@
-import { View, Text, Modal, KeyboardAvoidingView, Platform, TouchableOpacity, FlatList } from 'react-native'
-import React, { useEffect, useState } from 'react'
-import { Ionicons } from '@expo/vector-icons'
-import { useRouter } from 'expo-router'
-import { useUpdateProduct } from '../hooks/useUpdateProduct'
-import { useCreateProduct } from '../hooks/usecreateProduct'
-import { ProductFormFields } from './ProductFormFields'
+import { View, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
+import { useUpdateProduct } from '../hooks/useUpdateProduct';
+import { useCreateProduct } from '../hooks/usecreateProduct';
+import { ProductFormFields } from './ProductFormFields';
+import { FlatListPickerModal } from './FlatListPickerModal';
 import {
     GHANA_DISTRICTS_BY_REGION,
-    GHANA_REGIONS, PRODUCT_CATEGORIES,
-    PRODUCT_CONDITIONS, SUB_CATEGORIES_BY_CATEGORY
-} from '../constants/products'
+    GHANA_REGIONS,
+    PRODUCT_CATEGORIES,
+    PRODUCT_CONDITIONS,
+    SUB_CATEGORIES_BY_CATEGORY,
+} from '../constants/products';
 
 interface CreateProductFormProps {
     showModal: boolean;
@@ -32,7 +34,7 @@ const CreateProductForm = ({
     setImages,
     pickImages,
     takePhoto,
-    removeImage
+    removeImage,
 }: CreateProductFormProps) => {
     const isEditing = !!editingProduct;
     const router = useRouter();
@@ -65,7 +67,7 @@ const CreateProductForm = ({
         brand: "",
         color: "",
         deliveryFrom: "",
-        deliveryTo: ""
+        deliveryTo: "",
     });
 
     useEffect(() => {
@@ -92,7 +94,11 @@ const CreateProductForm = ({
             if (editingProduct.brand || editingProduct.color) setShowDiscountConfig(true);
             if (editingProduct.delivery) setShowDeliveryConfig(true);
 
-            setImages(editingProduct.images ? editingProduct.images.map((img: string) => ({ uri: img, isRemote: true })) : []);
+            setImages(
+                editingProduct.images
+                    ? editingProduct.images.map((img: string) => ({ uri: img, isRemote: true }))
+                    : []
+            );
         } else {
             resetForm();
         }
@@ -114,7 +120,7 @@ const CreateProductForm = ({
             brand: "",
             color: "",
             deliveryFrom: "",
-            deliveryTo: ""
+            deliveryTo: "",
         });
         setImages([]);
         setShowDeliveryConfig(false);
@@ -136,7 +142,7 @@ const CreateProductForm = ({
     };
 
     const handleInputChange = (field: string, value: string) => {
-        setFormData(prev => {
+        setFormData((prev) => {
             const updated = { ...prev, [field]: value };
             if (field === "region") {
                 updated.district = "";
@@ -149,7 +155,16 @@ const CreateProductForm = ({
     };
 
     const handleSubmit = async () => {
-        if (!formData.name || !formData.price || !formData.region || !formData.condition || !formData.category || !formData.district || !formData.location || !formData.phoneNumber) {
+        if (
+            !formData.name ||
+            !formData.price ||
+            !formData.region ||
+            !formData.condition ||
+            !formData.category ||
+            !formData.district ||
+            !formData.location ||
+            !formData.phoneNumber
+        ) {
             alert("Please fill in all the required fields including Phone Number and District/City.");
             return;
         }
@@ -168,16 +183,27 @@ const CreateProductForm = ({
             warranty: showWarrantyConfig && formData.warranty ? formData.warranty : undefined,
             brand: showDiscountConfig && formData.brand ? formData.brand : undefined,
             color: showDiscountConfig && formData.color ? formData.color : undefined,
-            delivery: showDeliveryConfig && (formData.deliveryFrom || formData.deliveryTo) ? {
-                from: formData.deliveryFrom ? new Date(Date.now() + parseInt(formData.deliveryFrom) * 24 * 60 * 60 * 1000).toISOString() : undefined,
-                to: formData.deliveryTo ? new Date(Date.now() + parseInt(formData.deliveryTo) * 24 * 60 * 60 * 1000).toISOString() : undefined,
-            } : undefined
+            delivery:
+                showDeliveryConfig && (formData.deliveryFrom || formData.deliveryTo)
+                    ? {
+                          from: formData.deliveryFrom
+                              ? new Date(
+                                    Date.now() + parseInt(formData.deliveryFrom) * 24 * 60 * 60 * 1000
+                                ).toISOString()
+                              : undefined,
+                          to: formData.deliveryTo
+                              ? new Date(
+                                    Date.now() + parseInt(formData.deliveryTo) * 24 * 60 * 60 * 1000
+                                ).toISOString()
+                              : undefined,
+                      }
+                    : undefined,
         };
 
         try {
             if (isEditing) {
-                const retainedRemoteImages = images.filter(img => img.isRemote).map(img => img.uri);
-                const localPicksOnly = images.filter(img => !img.isRemote);
+                const retainedRemoteImages = images.filter((img) => img.isRemote).map((img) => img.uri);
+                const localPicksOnly = images.filter((img) => !img.isRemote);
 
                 if (retainedRemoteImages.length + localPicksOnly.length > 3) {
                     alert("Maximum 3 images allowed in total.");
@@ -188,7 +214,7 @@ const CreateProductForm = ({
                     productId: editingProduct._id,
                     ...finalPayload,
                     images: localPicksOnly,
-                    existingImages: retainedRemoteImages
+                    existingImages: retainedRemoteImages,
                 });
             } else {
                 if (images.length === 0) {
@@ -199,9 +225,9 @@ const CreateProductForm = ({
                     alert("Maximum 3 images allowed.");
                     return;
                 }
-                await createProductAsync({
+                               await createProductAsync({
                     ...finalPayload,
-                    images: images
+                    images: images,
                 });
             }
 
@@ -216,180 +242,159 @@ const CreateProductForm = ({
 
     const isSubmitting = isCreatingProduct || isUpdatingProduct;
 
+    const availableSubCategories = formData.category
+        ? SUB_CATEGORIES_BY_CATEGORY[
+              formData.category as keyof typeof SUB_CATEGORIES_BY_CATEGORY
+          ] || []
+        : [];
+
+    const availableDistricts = formData.region
+        ? GHANA_DISTRICTS_BY_REGION[
+              formData.region as keyof typeof GHANA_DISTRICTS_BY_REGION
+          ] || []
+        : [];
+
+    if (!showModal) return null;
+
+
+        const handleOpenSubCategoryModal = (open: boolean | ((prev: boolean) => boolean)) => {
+        const shouldOpen = typeof open === 'function' ? open(showSubCategoryModal) : open;
+        if (shouldOpen && !formData.category) {
+            Alert.alert(
+                "Select Category First",
+                "Please choose a product category before selecting a subcategory."
+            );
+            return;
+        }
+        setShowSubCategoryModal(shouldOpen);
+    };
+
+    const handleOpenDistrictModal = (open: boolean | ((prev: boolean) => boolean)) => {
+        const shouldOpen = typeof open === 'function' ? open(showDistrictModal) : open;
+        if (shouldOpen && !formData.region) {
+            Alert.alert(
+                "Select Region First",
+                "Please choose your region before selecting a district."
+            );
+            return;
+        }
+        setShowDistrictModal(shouldOpen);
+    };
+
+
     return (
-        <Modal visible={showModal} animationType="slide" onRequestClose={handleCloseModal}>
-            <View className="flex-1 bg-white">
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === "ios" ? "padding" : undefined}
-                    className="flex-1 bg-white"
-                >
-                    <ProductFormFields 
-                        formData={formData}
-                        handleInputChange={handleInputChange}
-                        images={images}
-                        pickImages={pickImages}
-                        takePhoto={takePhoto}
-                        removeImage={removeImage}
-                        setShowCategoryModal={setShowCategoryModal}
-                        setShowSubCategoryModal={setShowSubCategoryModal}
-                        setShowConditionModal={setShowConditionModal}
-                        setShowRegionModal={setShowRegionModal}
-                        setShowDistrictModal={setShowDistrictModal}
-                        showDeliveryConfig={showDeliveryConfig}
-                        setShowDeliveryConfig={setShowDeliveryConfig}
-                        showWarrantyConfig={showWarrantyConfig}
-                        setShowWarrantyConfig={setShowWarrantyConfig}
-                        showDiscountConfig={showDiscountConfig}
-                        setShowDiscountConfig={setShowDiscountConfig}
-                        handleSubmit={handleSubmit}
-                        isSubmitting={isSubmitting}
-                        isEditing={isEditing}
-                        handleCloseModal={handleCloseModal}
-                    />
-                </KeyboardAvoidingView>
-            </View>
+        <View className="flex-1 bg-white">
+            <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : undefined}
+                className="flex-1 bg-white"
+            >
+                                <ProductFormFields
+                    formData={formData}
+                    handleInputChange={handleInputChange}
+                    images={images}
+                    pickImages={pickImages}
+                    takePhoto={takePhoto}
+                    removeImage={removeImage}
+                    setShowCategoryModal={setShowCategoryModal}
+                    setShowSubCategoryModal={handleOpenSubCategoryModal}
+                    setShowConditionModal={setShowConditionModal}
+                    setShowRegionModal={setShowRegionModal}
+                    setShowDistrictModal={handleOpenDistrictModal}
+                    showDeliveryConfig={showDeliveryConfig}
+                    setShowDeliveryConfig={setShowDeliveryConfig}
+                    showWarrantyConfig={showWarrantyConfig}
+                    setShowWarrantyConfig={setShowWarrantyConfig}
+                    showDiscountConfig={showDiscountConfig}
+                    setShowDiscountConfig={setShowDiscountConfig}
+                    handleSubmit={handleSubmit}
+                    isSubmitting={isSubmitting}
+                    isEditing={isEditing}
+                    handleCloseModal={handleCloseModal}
+                />
 
-            {/* Reusable Core Selection Picker Modals */}
+            </KeyboardAvoidingView>
 
+            {/* Conditionally Mounted Selection Picker Modals */}
+            {showCategoryModal && (
+                <FlatListPickerModal
+                    visible={showCategoryModal}
+                    title="Select Category"
+                    data={[...PRODUCT_CATEGORIES]}
+                    selectedValue={formData.category}
+                    searchable={true}
+                    searchPlaceholder="Search category..."
+                    onSelect={(val) => {
+                        handleInputChange('category', val);
+                        setShowCategoryModal(false);
+                    }}
+                    onClose={() => setShowCategoryModal(false)}
+                />
+            )}
 
-            {/* Reusable Core Selection Picker Modals */}
-            <Modal visible={showCategoryModal} transparent animationType="slide" onRequestClose={() => setShowCategoryModal(false)}>
-                <View className="flex-1 bg-black/40 justify-end">
-                    <View className="bg-white rounded-t-3xl max-h-[75%] shadow-xl">
-                        <View className="flex-row justify-between items-center px-5 py-4 border-b border-gray-100">
-                            <Text className="text-lg font-bold text-gray-900">Select Category</Text>
-                            <TouchableOpacity onPress={() => setShowCategoryModal(false)} className="p-1 bg-gray-100 rounded-full">
-                                <Ionicons name="close" size={20} color="#4B5563" />
-                            </TouchableOpacity>
-                        </View>
-                        <FlatList
-                            data={PRODUCT_CATEGORIES}
-                            keyExtractor={(item) => item}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity 
-                                    className="px-6 py-4 border-b border-gray-50 flex-row justify-between items-center active:bg-blue-50/40"
-                                    onPress={() => { handleInputChange('category', item); setShowCategoryModal(false); }}
-                                >
-                                    <Text className="text-base text-gray-700 font-medium">{item}</Text>
-                                    <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-                                </TouchableOpacity>
-                            )}
-                        />
-                    </View>
-                </View>
-            </Modal>
+            {showSubCategoryModal && (
+                <FlatListPickerModal
+                    visible={showSubCategoryModal}
+                    title="Select Subcategory"
+                    data={availableSubCategories}
+                    selectedValue={formData.productType}
+                    searchable={true}
+                    searchPlaceholder="Search subcategory..."
+                    onSelect={(val) => {
+                        handleInputChange('productType', val);
+                        setShowSubCategoryModal(false);
+                    }}
+                    onClose={() => setShowSubCategoryModal(false)}
+                />
+            )}
 
-            <Modal visible={showSubCategoryModal} transparent animationType="slide" onRequestClose={() => setShowSubCategoryModal(false)}>
-                <View className="flex-1 bg-black/40 justify-end">
-                    <View className="bg-white rounded-t-3xl max-h-[75%] shadow-xl">
-                        <View className="flex-row justify-between items-center px-5 py-4 border-b border-gray-100">
-                            <Text className="text-lg font-bold text-gray-900">Select Subcategory</Text>
-                            <TouchableOpacity onPress={() => setShowSubCategoryModal(false)} className="p-1 bg-gray-100 rounded-full">
-                                <Ionicons name="close" size={20} color="#4B5563" />
-                            </TouchableOpacity>
-                        </View>
-                        <FlatList
-                            data={
-                                formData.category 
-                                    ? SUB_CATEGORIES_BY_CATEGORY[formData.category as keyof typeof SUB_CATEGORIES_BY_CATEGORY] || [] 
-                                    : []
-                            }
-                            keyExtractor={(item) => item}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity 
-                                    className="px-6 py-4 border-b border-gray-50 flex-row justify-between items-center active:bg-blue-50/40"
-                                    onPress={() => { handleInputChange('productType', item); setShowSubCategoryModal(false); }}
-                                >
-                                    <Text className="text-base text-gray-700 font-medium">{item}</Text>
-                                    <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-                                </TouchableOpacity>
-                            )}
-                        />
-                    </View>
-                </View>
-            </Modal>
+            {showConditionModal && (
+                <FlatListPickerModal
+                    visible={showConditionModal}
+                    title="Select Condition"
+                    data={[...PRODUCT_CONDITIONS]}
+                    selectedValue={formData.condition}
+                    searchable={false}
+                    onSelect={(val) => {
+                        handleInputChange('condition', val);
+                        setShowConditionModal(false);
+                    }}
+                    onClose={() => setShowConditionModal(false)}
+                />
+            )}
 
-            <Modal visible={showConditionModal} transparent animationType="slide" onRequestClose={() => setShowConditionModal(false)}>
-                <View className="flex-1 bg-black/40 justify-end">
-                    <View className="bg-white rounded-t-3xl max-h-[75%] shadow-xl">
-                        <View className="flex-row justify-between items-center px-5 py-4 border-b border-gray-100">
-                            <Text className="text-lg font-bold text-gray-900">Select Condition</Text>
-                            <TouchableOpacity onPress={() => setShowConditionModal(false)} className="p-1 bg-gray-100 rounded-full">
-                                <Ionicons name="close" size={20} color="#4B5563" />
-                            </TouchableOpacity>
-                        </View>
-                        <FlatList
-                            data={PRODUCT_CONDITIONS}
-                            keyExtractor={(item) => item}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity 
-                                    className="px-6 py-4 border-b border-gray-50 flex-row justify-between items-center active:bg-blue-50/40"
-                                    onPress={() => { handleInputChange('condition', item); setShowConditionModal(false); }}
-                                >
-                                    <Text className="text-base text-gray-700 font-medium">{item}</Text>
-                                    <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-                                </TouchableOpacity>
-                            )}
-                        />
-                    </View>
-                </View>
-            </Modal>
+            {showRegionModal && (
+                <FlatListPickerModal
+                    visible={showRegionModal}
+                    title="Select Region"
+                    data={[...GHANA_REGIONS]}
+                    selectedValue={formData.region}
+                    searchable={true}
+                    searchPlaceholder="Search region..."
+                    onSelect={(val) => {
+                        handleInputChange('region', val);
+                        setShowRegionModal(false);
+                    }}
+                    onClose={() => setShowRegionModal(false)}
+                />
+            )}
 
-            <Modal visible={showRegionModal} transparent animationType="slide" onRequestClose={() => setShowRegionModal(false)}>
-                <View className="flex-1 bg-black/40 justify-end">
-                    <View className="bg-white rounded-t-3xl max-h-[75%] shadow-xl">
-                        <View className="flex-row justify-between items-center px-5 py-4 border-b border-gray-100">
-                            <Text className="text-lg font-bold text-gray-900">Select Region</Text>
-                            <TouchableOpacity onPress={() => setShowRegionModal(false)} className="p-1 bg-gray-100 rounded-full">
-                                <Ionicons name="close" size={20} color="#4B5563" />
-                            </TouchableOpacity>
-                        </View>
-                        <FlatList
-                            data={GHANA_REGIONS}
-                            keyExtractor={(item) => item}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity 
-                                    className="px-6 py-4 border-b border-gray-50 flex-row justify-between items-center active:bg-blue-50/40"
-                                    onPress={() => { handleInputChange('region', item); setShowRegionModal(false); }}
-                                >
-                                    <Text className="text-base text-gray-700 font-medium">{item}</Text>
-                                    <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-                                </TouchableOpacity>
-                            )}
-                        />
-                    </View>
-                </View>
-            </Modal>
-
-            <Modal visible={showDistrictModal} transparent animationType="slide" onRequestClose={() => setShowDistrictModal(false)}>
-                <View className="flex-1 bg-black/40 justify-end">
-                    <View className="bg-white rounded-t-3xl max-h-[75%] shadow-xl">
-                        <View className="flex-row justify-between items-center px-5 py-4 border-b border-gray-100">
-                            <Text className="text-lg font-bold text-gray-900">Select District</Text>
-                            <TouchableOpacity onPress={() => setShowDistrictModal(false)} className="p-1 bg-gray-100 rounded-full">
-                                <Ionicons name="close" size={20} color="#4B5563" />
-                            </TouchableOpacity>
-                        </View>
-                        <FlatList
-                            data={GHANA_DISTRICTS_BY_REGION[formData.region as keyof typeof GHANA_DISTRICTS_BY_REGION] || []}
-                            keyExtractor={(item) => item}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity 
-                                    className="px-6 py-4 border-b border-gray-50 flex-row justify-between items-center active:bg-blue-50/40"
-                                    onPress={() => { handleInputChange('district', item); setShowDistrictModal(false); }}
-                                >
-                                    <Text className="text-base text-gray-700 font-medium">{item}</Text>
-                                    <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-                                </TouchableOpacity>
-                            )}
-                        />
-                    </View>
-                </View>
-            </Modal>
-        </Modal>
+            {showDistrictModal && (
+                <FlatListPickerModal
+                    visible={showDistrictModal}
+                    title="Select District"
+                    data={availableDistricts}
+                    selectedValue={formData.district}
+                    searchable={true}
+                    searchPlaceholder="Search district or city..."
+                    onSelect={(val) => {
+                        handleInputChange('district', val);
+                        setShowDistrictModal(false);
+                    }}
+                    onClose={() => setShowDistrictModal(false)}
+                />
+            )}
+        </View>
     );
 };
 
 export default CreateProductForm;
-
-

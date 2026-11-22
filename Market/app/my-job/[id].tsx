@@ -152,14 +152,16 @@ const JobDetailsScreen = () => {
         >
           <Ionicons name='arrow-back' size={24} color={"#FFFFFF"} />
         </TouchableOpacity>
-
-        <TouchableOpacity
+          {!owner && (
+              <TouchableOpacity
           className='bg-black/50 w-12 h-12 rounded-full items-center justify-center'
           onPress={handleToggleFavorite}
           activeOpacity={0.7}
         >
           <Ionicons name={isFavorite ? 'bookmark' : 'bookmark-outline'} size={22} color={isFavorite ? "#3B82F6" : "#FFFFFF"} />
         </TouchableOpacity>
+          )}
+      
       </View>
 
       <ScrollView

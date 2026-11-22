@@ -51,9 +51,6 @@ const ProductDetailsScreen = () => {
       String(currentUserId) === String(productSellerId));
 
 
-
-
-
   const relatedProducts = useMemo(() => {
     if (!product || !Array.isArray(allProducts)) return [];
 
@@ -122,6 +119,40 @@ const ProductDetailsScreen = () => {
     }
     Linking.openURL(`tel:${product.phoneNumber}`);
   }
+
+  const handleWhatsAppSeller = () => {
+    if (!product?.isAvailable) {
+      Alert.alert("Notice", "This product has already been sold.");
+      return;
+    }
+    if (!product?.phoneNumber) {
+      Alert.alert("Error", "Seller phone number is unavailable.");
+      return;
+    }
+
+    // Format phone number for WhatsApp (converts '0XXXXXXXXX' to '233XXXXXXXXX')
+    let cleanPhone = product.phoneNumber.replace(/\D/g, '');
+    if (cleanPhone.startsWith('0')) {
+      cleanPhone = `233${cleanPhone.slice(1)}`;
+    }
+
+    const priceText = product?.price ? ` (GHS ${Number(product.price).toLocaleString()})` : '';
+    const message = `Hello, I'm interested in your listing "${product?.name}"${priceText} on the marketplace. Is it still available?`;
+    const whatsappUrl = `https://wa.me{cleanPhone}?text=${encodeURIComponent(message)}`;
+
+    Linking.canOpenURL(whatsappUrl)
+      .then((supported) => {
+        if (supported) {
+          return Linking.openURL(whatsappUrl);
+        } else {
+          Alert.alert("Error", "WhatsApp is not installed on your device.");
+        }
+      })
+      .catch(() => {
+        Alert.alert("Error", "Unable to open WhatsApp.");
+      });
+  };
+
 
   const handleToggleFavorite = () => {
     setIsFavorite(!isFavorite)
@@ -494,24 +525,37 @@ const ProductDetailsScreen = () => {
 
         </ScrollView>
 
-        {/* Floating Action Button Footer for External Actions */}
+               {/* Floating Action Button Footer for External Actions */}
         {!owner && (
-          <View className="absolute bottom-0 right-0 left-0 bg-white/95 border-t border-gray-100 p-6 pb-20 flex-row items-center gap-4">
+          <View className="absolute bottom-0 right-0 left-0 bg-white/95 border-t border-gray-100 px-4 pt-4 pb-20 flex-row items-center gap-2.5">
             <TouchableOpacity
               onPress={handleToggleFavorite}
               activeOpacity={0.7}
               className="w-12 h-12 bg-gray-100 rounded-xl items-center justify-center"
             >
-              <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={22} color={isFavorite ? "#E11D48" : "#4B5563"} />
+              <Ionicons
+                name={isFavorite ? "heart" : "heart-outline"}
+                size={22}
+                color={isFavorite ? "#E11D48" : "#4B5563"}
+              />
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={handleCallSeller}
               activeOpacity={0.8}
-              className="flex-1 h-12 bg-green-600 rounded-xl flex-row items-center justify-center gap-2"
+              className="flex-1 h-12 bg-blue-600 rounded-xl flex-row items-center justify-center gap-1.5"
             >
               <Ionicons name="call" size={18} color="#FFFFFF" />
-              <Text className="text-white font-bold text-base">Contact via Phone</Text>
+              <Text className="text-white font-bold text-sm">Call</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleWhatsAppSeller}
+              activeOpacity={0.8}
+              className="flex-1 h-12 bg-[#25D366] rounded-xl flex-row items-center justify-center gap-1.5"
+            >
+              <Ionicons name="logo-whatsapp" size={20} color="#FFFFFF" />
+              <Text className="text-white font-bold text-sm">WhatsApp</Text>
             </TouchableOpacity>
           </View>
         )}

@@ -58,7 +58,7 @@ export const ProductFormFields = ({
             keyboardShouldPersistTaps='handled'
             showsVerticalScrollIndicator={false}
         >
-            {/* FIXED: Removed layout-crashing 'auto-cols-max' grid class name */}
+            {/* Removed layout-crashing 'auto-cols-max' grid class name */}
             <View className='space-y-4 pb-28'>
 
                 {/* Inline Cancel / Title Action Bar Header */}
@@ -160,7 +160,6 @@ export const ProductFormFields = ({
                     placeholder={formData.category ? "Select Subcategory" : "Please select a Category first"}
                     value={formData.productType}
                     onPress={() => {
-                        if (!formData.category) return;
                         setShowSubCategoryModal(true);
                     }}
                 />
@@ -187,7 +186,6 @@ export const ProductFormFields = ({
                     placeholder={formData.region ? "Select District" : "Please select a Region first"}
                     value={formData.district}
                     onPress={() => {
-                        if (!formData.region) return;
                         setShowDistrictModal(true);
                     }}
                 />

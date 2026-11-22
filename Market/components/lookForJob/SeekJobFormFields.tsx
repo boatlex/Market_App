@@ -59,6 +59,7 @@ interface SeekJobFormFieldsProps {
     educationList: EducationItem[];
     setEducationList: React.Dispatch<React.SetStateAction<EducationItem[]>>;
     openEducationModal: () => void;
+    onEditEducation?: (index: number) => void;
     openRegionPicker: () => void;
     openDistrictPicker: () => void;
     openCategoryPicker: () => void;
@@ -80,6 +81,7 @@ export const SeekJobFormFields = ({
     educationList,
     setEducationList,
     openEducationModal,
+    onEditEducation,
     openCategoryPicker,
     openJobTypePicker,
     openRegionPicker,
@@ -307,7 +309,7 @@ export const SeekJobFormFields = ({
                 </View>
             )}
 
-            {/* 8. Education History List */}
+                  {/* 8. Education History List */}
             <View className="mb-6 mt-2">
                 <View className="flex-row justify-between items-center mb-3">
                     <Text className="text-gray-700 text-sm font-bold">Education History</Text>
@@ -327,16 +329,34 @@ export const SeekJobFormFields = ({
                                 key={edu.id || index}
                                 className="flex-row items-center justify-between p-3.5 bg-gray-50 border border-gray-200 rounded-xl"
                             >
-                                <View className="flex-1 pr-2">
+                                <TouchableOpacity
+                                    activeOpacity={0.7}
+                                    onPress={() => onEditEducation?.(index)}
+                                    className="flex-1 pr-2"
+                                >
                                     <Text className="text-gray-900 font-bold text-sm">{edu.degree}</Text>
                                     <Text className="text-gray-600 text-xs mt-0.5">{edu.schoolName}</Text>
                                     {edu.fieldOfStudy ? (
                                         <Text className="text-gray-500 text-xs">{edu.fieldOfStudy}</Text>
                                     ) : null}
-                                </View>
-                                <TouchableOpacity onPress={() => handleRemoveEducation(index)} className="p-1.5">
-                                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
                                 </TouchableOpacity>
+
+                                <View className="flex-row items-center gap-1">
+                                    {onEditEducation && (
+                                        <TouchableOpacity
+                                            onPress={() => onEditEducation(index)}
+                                            className="p-1.5"
+                                        >
+                                            <Ionicons name="create-outline" size={18} color="#2563EB" />
+                                        </TouchableOpacity>
+                                    )}
+                                    <TouchableOpacity
+                                        onPress={() => handleRemoveEducation(index)}
+                                        className="p-1.5"
+                                    >
+                                        <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                                    </TouchableOpacity>
+                                </View>
                             </View>
                         ))}
                     </View>
@@ -344,6 +364,7 @@ export const SeekJobFormFields = ({
                     <Text className="text-gray-400 text-xs italic">No education added yet.</Text>
                 )}
             </View>
+
 
             {/* 9. Actively Searching Switch */}
             <View className="flex-row items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl mb-2">

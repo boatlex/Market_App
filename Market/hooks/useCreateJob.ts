@@ -27,6 +27,7 @@ export interface CreateJobVariables {
     district: string;
     location: string;
     requirements: string[];
+    responsibilities: string[];
     benefits: string[];
     applicationDeadline?: string;
     jobImage: PickerImage;
@@ -70,6 +71,7 @@ export const useCreateJob = () => {
             formData.append("location", variables.location);
 
             formData.append("requirements", JSON.stringify(variables.requirements));
+            formData.append("responsibilities", JSON.stringify(variables.responsibilities));
             formData.append("benefits", JSON.stringify(variables.benefits));
 
             if (variables.applicationDeadline) {

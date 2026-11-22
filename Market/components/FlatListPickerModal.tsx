@@ -8,13 +8,14 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 export interface FlatListPickerModalProps {
   visible: boolean;
   title: string;
-  data: readonly string[] | string[];
+  data: readonly any[] | any[];
   selectedValue?: string;
   onSelect: (item: string) => void;
   onClose: () => void;
@@ -36,23 +37,39 @@ export const FlatListPickerModal: React.FC<FlatListPickerModalProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Clear search query whenever the picker opens or closes
   useEffect(() => {
     if (!visible) {
       setSearchQuery('');
     }
   }, [visible]);
 
-  // Show search bar automatically when searchable is true and list has > 6 items
-  const showSearchBar = searchable && data.length > 6;
+  // Safely normalize data whether items are strings or { label, value } objects
+  const normalizedData = useMemo(() => {
+    if (!Array.isArray(data)) return [];
+    return data
+      .map((item) => {
+        if (typeof item === 'string') return item;
+        if (item && typeof item === 'object') {
+          return item.value || item.label || item.name || '';
+        }
+        return String(item ?? '');
+      })
+      .filter((val) => val.length > 0);
+  }, [data]);
+
+  const showSearchBar = searchable && normalizedData.length > 6;
 
   const filteredData = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return data as string[];
-    return (data as string[]).filter((item) =>
-      item.toLowerCase().includes(query)
-    );
-  }, [data, searchQuery]);
+    if (!query) return normalizedData;
+    return normalizedData.filter((item) => item.toLowerCase().includes(query));
+  }, [normalizedData, searchQuery]);
+
+  const handleClose = () => {
+    Keyboard.dismiss();
+    setSearchQuery('');
+    onClose();
+  };
 
   if (!visible) return null;
 
@@ -62,14 +79,14 @@ export const FlatListPickerModal: React.FC<FlatListPickerModalProps> = ({
       className="absolute inset-0 z-50 justify-end bg-black/50"
     >
       {/* Tap darkened backdrop to close */}
-      <Pressable className="flex-1" onPress={onClose} />
+      <Pressable className="flex-1" onPress={handleClose} />
 
-      <View className="bg-white rounded-t-3xl max-h-[80%] pb-6 shadow-xl">
+      <View className="bg-white rounded-t-3xl max-h-[80%] pb-12 shadow-xl">
         {/* Header */}
-        <View className="flex-row justify-between items-center px-6 py-4 border-b border-gray-100">
+        <View className="flex-row justify-between items-center px-6 py-4 border-b pb-22 border-gray-100">
           <Text className="text-gray-900 font-extrabold text-lg">{title}</Text>
           <TouchableOpacity
-            onPress={onClose}
+            onPress={handleClose}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             className="p-1.5 bg-gray-100 rounded-full"
           >
@@ -129,6 +146,7 @@ export const FlatListPickerModal: React.FC<FlatListPickerModalProps> = ({
                   isSelected ? 'bg-blue-50/60' : 'active:bg-blue-50'
                 }`}
                 onPress={() => {
+                  Keyboard.dismiss();
                   onSelect(item);
                   onClose();
                 }}

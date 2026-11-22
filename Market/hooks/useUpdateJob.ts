@@ -27,6 +27,7 @@ export interface UpdateJobVariables {
     district?: string;
     location?: string;
     requirements?: string[];
+    responsibilities?: string[];
     benefits?: string[];
     applicationDeadline?: string | Date | null; 
     jobImage?: PickerImage | null; 
@@ -73,6 +74,9 @@ export const useUpdateJob = () => {
             
             if (updateFields.requirements !== undefined) {
                 formData.append("requirements", JSON.stringify(updateFields.requirements));
+            }
+            if (updateFields.responsibilities !== undefined) {
+                formData.append("responsibilities", JSON.stringify(updateFields.responsibilities));
             }
             if (updateFields.benefits !== undefined) {
                 formData.append("benefits", JSON.stringify(updateFields.benefits));
