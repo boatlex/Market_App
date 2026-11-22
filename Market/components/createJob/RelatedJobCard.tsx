@@ -30,7 +30,7 @@ export const RelatedJobCard = ({ item, onPress, viewMode }: RelatedJobCardProps)
       activeOpacity={0.85}
       style={isList ? { width: '100%' } : { width: GRID_CARD_WIDTH }}
       className={`bg-white border border-gray-100 rounded-2xl p-3 mb-3 shadow-sm ${
-        isList ? 'flex-row items-center gap-3' : 'flex-col justify-between'
+        isList ? 'flex-row items-center gap-2' : 'flex-col justify-between'
       }`}
     >
       {/* Image Banner */}

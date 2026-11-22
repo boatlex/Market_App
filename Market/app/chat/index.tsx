@@ -1,5 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, FlatList, TextInput, TouchableOpacity, Keyboard, Animated, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  TextInput,
+  TouchableOpacity,
+  Keyboard,
+  Animated,
+  Platform,
+} from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useMessages } from '../../hooks/useMessages';
 import { useRealTimeMessages } from '../../hooks/useRealTimeMessages';
@@ -7,30 +16,32 @@ import { getSocket } from '../../sockets/sockets';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import { 
-  useAudioRecorder, 
-  requestRecordingPermissionsAsync, 
-  setAudioModeAsync, 
-  RecordingPresets 
-} from 'expo-audio'; // Updated method imports for SDK 58
+import {
+  useAudioRecorder,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+  RecordingPresets,
+} from 'expo-audio';
 
 // Imported Modular Component Elements
 import { ChatImageMessage } from '../../components/chat/ChatImageMessage';
 import { ChatAudioMessage } from '../../components/chat/ChatAudioMessage';
+import { MemePickerSheet, MemeItem } from '../../components/chat/MemePickerSheet';
 
 export default function ChatScreen() {
   const { userId } = useLocalSearchParams<{ userId: string }>();
   const [text, setText] = useState('');
+  const [showMemePicker, setShowMemePicker] = useState(false);
   const socket = getSocket();
-  
+
   const { messages, sendMessage } = useMessages(userId);
-  const { isPeerTyping } = useRealTimeMessages(userId); 
-  
+  const { isPeerTyping } = useRealTimeMessages(userId);
+
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isCurrentlyTypingEmitRef = useRef(false);
 
   const insets = useSafeAreaInsets();
-  
+
   const translateY = useRef(new Animated.Value(0)).current;
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
@@ -47,7 +58,7 @@ export default function ChatScreen() {
     const showSubscription = Keyboard.addListener(showEvent, (e) => {
       setKeyboardHeight(e.endCoordinates.height);
       Animated.timing(translateY, {
-        toValue: -e.endCoordinates.height, 
+        toValue: -e.endCoordinates.height,
         duration: e.duration || 250,
         useNativeDriver: true,
       }).start();
@@ -103,23 +114,31 @@ export default function ChatScreen() {
     setText('');
   };
 
+  const handleSendMeme = (meme: MemeItem) => {
+    setShowMemePicker(false);
+    sendMessage({
+      content: `[MEME]|${meme.emoji}|${meme.topText}|${meme.bottomText}|${meme.bgColor}|${meme.textColor}`,
+      type: 'text',
+    });
+  };
+
   const handlePickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permissionResult.granted) return alert("Storage access denied.");
+    if (!permissionResult.granted) return alert('Storage access denied.');
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       quality: 0.8,
     });
 
-    if (!result.canceled && result.assets) {
+    if (!result.canceled && result.assets && result.assets.length > 0) {
       const targetAsset = result.assets[0];
       sendMessage({
         type: 'image',
         fileUri: targetAsset.uri,
         fileName: targetAsset.fileName || 'photo.jpg',
-        fileType: targetAsset.mimeType || 'image/jpeg'
+        fileType: targetAsset.mimeType || 'image/jpeg',
       });
     }
   };
@@ -127,13 +146,13 @@ export default function ChatScreen() {
   const startRecording = async () => {
     try {
       const permission = await requestRecordingPermissionsAsync();
-      if (!permission.granted) return alert("Microphone access denied.");
+      if (!permission.granted) return alert('Microphone access denied.');
 
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-      
+
       await audioRecorder.prepareToRecordAsync();
       audioRecorder.record();
-      
+
       setIsRecording(true);
       setRecordingDuration(0);
 
@@ -141,7 +160,7 @@ export default function ChatScreen() {
         setRecordingDuration((prev) => prev + 1);
       }, 1000);
     } catch (err) {
-      alert("Failed to initialize recording hardware.");
+      alert('Failed to initialize recording hardware.');
     }
   };
 
@@ -159,11 +178,11 @@ export default function ChatScreen() {
           fileUri: uri,
           fileName: `voice_note_${Date.now()}.m4a`,
           fileType: 'audio/m4a',
-          duration: recordingDuration
+          duration: recordingDuration,
         });
       }
     } catch (err) {
-      alert("Error processing voice file compression parameters.");
+      alert('Error processing voice file compression parameters.');
     }
   };
 
@@ -187,29 +206,65 @@ export default function ChatScreen() {
         data={messages}
         keyExtractor={(item) => item._id}
         style={{ flex: 1 }}
-        contentContainerStyle={{ 
+        contentContainerStyle={{
           paddingHorizontal: 16,
           paddingTop: insets.top || 16,
-          paddingBottom: keyboardHeight > 0 ? (keyboardHeight + 80) : (insets.bottom + 80), 
-          flexGrow: 1, 
-          justifyContent: 'flex-end' 
-        }} 
+          paddingBottom:
+            keyboardHeight > 0
+              ? keyboardHeight + 80
+              : showMemePicker
+              ? 300
+              : insets.bottom + 80,
+          flexGrow: 1,
+          justifyContent: 'flex-end',
+        }}
         keyboardShouldPersistTaps="handled"
-        renderItem={({ item }) => {
+
+        
+              renderItem={({ item }) => {
           const isPeer = item.senderId === userId;
+          const content = item.content ?? '';
+          const isMeme = content.startsWith('[MEME]|');
+          const memeParts = isMeme ? content.split('|') : [];
+
           return (
-            <View className={`p-3 my-1 rounded-2xl ${isPeer ? 'bg-gray-100 self-start' : 'bg-blue-600 self-end'}`}>
-              {item.messageType === 'image' || (item.attachment && !item.voiceDuration) ? (
-                <ChatImageMessage uri={item.attachment || item.content || ''} />
+            <View
+              className={`my-1 rounded-2xl ${
+                isMeme
+                  ? 'p-1 bg-transparent'
+                  : `p-3 ${isPeer ? 'bg-gray-100' : 'bg-blue-600'}`
+              } ${isPeer ? 'self-start' : 'self-end'}`}
+            >
+              {isMeme ? (
+                <View
+                  style={{ backgroundColor: memeParts[4] || '#FEF3C7' }}
+                  className="p-3.5 rounded-2xl items-center min-w-[165px] border border-black/5"
+                >
+                  <Text className="text-4xl mb-1.5">{memeParts[1]}</Text>
+                  <Text
+                    style={{ color: memeParts[5] || '#92400E' }}
+                    className="text-xs font-extrabold text-center"
+                  >
+                    {memeParts[2]}
+                  </Text>
+                  <Text
+                    style={{ color: memeParts[5] || '#92400E' }}
+                    className="text-sm font-black text-center mt-0.5"
+                  >
+                    {memeParts[3]}
+                  </Text>
+                </View>
+              ) : item.messageType === 'image' || (item.attachment && !item.voiceDuration) ? (
+                <ChatImageMessage uri={item.attachment || content} />
               ) : item.messageType === 'voice' || item.voiceDuration ? (
-                <ChatAudioMessage 
-                  fileUrl={item.attachment || item.content || ''} 
-                  duration={item.voiceDuration || 0} 
-                  isPeer={isPeer} 
+                <ChatAudioMessage
+                  fileUrl={item.attachment || content}
+                  duration={item.voiceDuration || 0}
+                  isPeer={isPeer}
                 />
               ) : (
                 <Text className={isPeer ? 'text-gray-900 text-sm' : 'text-white text-sm'}>
-                  {item.content}
+                  {content}
                 </Text>
               )}
             </View>
@@ -218,55 +273,112 @@ export default function ChatScreen() {
       />
 
       {isPeerTyping && (
-        <Animated.View style={{ bottom: insets.bottom + 75, transform: [{ translateY }] }} className="absolute left-4 px-4 py-1 z-10">
+        <Animated.View
+          style={{
+            bottom: showMemePicker ? insets.bottom + 295 : insets.bottom + 75,
+            transform: [{ translateY }],
+          }}
+          className="absolute left-4 px-4 py-1 z-10"
+        >
           <Text className="text-xs text-gray-400 font-medium italic">Typing...</Text>
         </Animated.View>
       )}
 
-      <Animated.View 
+      <Animated.View
         style={{
-          position: 'absolute', left: 0, right: 0, bottom: 0,
-          paddingBottom: Math.max(insets.bottom, 16), paddingHorizontal: 16,
-          backgroundColor: '#FFFFFF', transform: [{ translateY }]
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          paddingBottom: Math.max(insets.bottom, 16),
+          backgroundColor: '#FFFFFF',
+          transform: [{ translateY }],
         }}
       >
-        <View className="flex-row items-center gap-2 border-t border-gray-100 pt-3 bg-white">
+              {/* Reaction Meme Picker Drawer */}
+        <MemePickerSheet
+          visible={showMemePicker}
+          onSelectMeme={handleSendMeme}
+          onClose={() => setShowMemePicker(false)}
+        />
+
+        <View className="flex-row items-end gap-2 border-t border-gray-100 px-4 pt-2.5">
           {isRecording ? (
-            <View className="flex-1 bg-red-50 h-11 px-4 rounded-xl flex-row items-center justify-between">
-              <View className="flex-row items-center gap-2">
-                <Ionicons name="mic" size={20} color="#EF4444" />
-                <Text className="text-red-500 font-medium text-sm">{formatDuration(recordingDuration)}</Text>
-              </View>
-              <View className="flex-row items-center gap-4">
-                <TouchableOpacity onPress={cancelRecording}>
-                  <Text className="text-gray-400 font-medium text-sm">Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={stopRecordingAndSend} className="bg-red-500 p-2 rounded-full">
-                  <Ionicons name="send" size={16} color="#FFFFFF" />
-                </TouchableOpacity>
-              </View>
+            <View className="flex-1 flex-row items-center justify-between bg-red-50 px-4 py-2.5 rounded-full">
+              <TouchableOpacity onPress={cancelRecording}>
+                <Ionicons name="trash-outline" size={20} color="#EF4444" />
+              </TouchableOpacity>
+              <Text className="text-red-600 font-bold text-sm">
+                Recording {formatDuration(recordingDuration)}
+              </Text>
+              <TouchableOpacity
+                onPress={stopRecordingAndSend}
+                className="bg-red-600 p-2 rounded-full"
+              >
+                <Ionicons name="send" size={16} color="#FFFFFF" />
+              </TouchableOpacity>
             </View>
           ) : (
             <>
-              <TouchableOpacity onPress={handlePickImage} className="p-2">
-                <Ionicons name="image-outline" size={24} color="#9CA3AF" />
+              {/* Meme Picker Toggle Button (Left) */}
+              <TouchableOpacity
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setShowMemePicker((prev) => !prev);
+                }}
+                className={`p-2.5 rounded-full ${
+                  showMemePicker ? 'bg-blue-100' : 'bg-gray-100'
+                }`}
+              >
+                <Ionicons
+                  name="happy-outline"
+                  size={20}
+                  color={showMemePicker ? '#2563EB' : '#4B5563'}
+                />
               </TouchableOpacity>
-              <TouchableOpacity onPress={startRecording} className="p-2">
-                <Ionicons name="mic-outline" size={24} color="#9CA3AF" />
-              </TouchableOpacity>
+
+              {/* Text Input (Center) */}
               <TextInput
                 value={text}
                 onChangeText={handleTextChange}
+                onFocus={() => setShowMemePicker(false)}
                 placeholder="Type a message..."
                 placeholderTextColor="#9CA3AF"
-                className="flex-1 bg-gray-50 h-11 px-4 rounded-xl text-gray-900 text-sm border border-gray-100"
-                multiline={false}
+                multiline
+                className="flex-1 bg-gray-100 rounded-2xl px-4 py-2.5 text-sm text-gray-900 max-h-24"
               />
-                          {text.trim().length > 0 && (
-                <TouchableOpacity onPress={handleSend} className="bg-blue-600 p-2 rounded-full justify-center items-center h-10 w-10">
-                  <Ionicons name="send" size={18} color="#FFFFFF" />
+
+              {/* Attach & Send / Voice Note Buttons (Right) */}
+              <View className="flex-row items-center gap-1.5">
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowMemePicker(false);
+                    handlePickImage();
+                  }}
+                  className="p-2.5 bg-gray-100 rounded-full"
+                >
+                  <Ionicons name="attach-outline" size={20} color="#4B5563" />
                 </TouchableOpacity>
-              )}
+
+                {text.trim().length > 0 ? (
+                  <TouchableOpacity
+                    onPress={handleSend}
+                    className="p-2.5 bg-blue-600 rounded-full"
+                  >
+                    <Ionicons name="send" size={18} color="#FFFFFF" />
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowMemePicker(false);
+                      startRecording();
+                    }}
+                    className="p-2.5 bg-gray-100 rounded-full"
+                  >
+                    <Ionicons name="mic-outline" size={20} color="#4B5563" />
+                  </TouchableOpacity>
+                )}
+              </View>
             </>
           )}
         </View>
