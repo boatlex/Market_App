@@ -12,6 +12,44 @@ import nodemailer from "nodemailer";
 const signToken = (userId, role) =>
   jwt.sign({ userId, role }, ENV.JWT_SECRET, { expiresIn: '7d' });
 
+const generateAndEmailOTP = async (user) => {
+  const new_otp = generate(4, {
+    upperCaseAlphabets: false,
+    lowerCaseAlphabets: false,
+    specialChars: false,
+  });
+
+  user.otp = new_otp;
+  user.otp_expiry_time = Date.now() + 10 * 60 * 1000;
+  await user.save({ validateModifiedOnly: true });
+
+  const transporter = nodemailer.createTransport({
+    service: "Gmail",
+    auth: {
+      user: ENV.EMAIL_USER,
+      pass: ENV.EMAIL_PASS,
+    },
+  });
+
+  await transporter.sendMail({
+    to: user.email,
+    from: ENV.EMAIL_USER,
+    subject: "Market App - Your Verification OTP",
+    html: `
+      <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; border: 1px solid #eee;">
+        <h2 style="color: #333;">Market App Verification</h2>
+        <p>Hello ${user.firstName || "User"},</p>
+        <p>Your one-time password (OTP) verification code is:</p>
+        <div style="background-color: #f4f4f4; padding: 15px; font-size: 24px; font-weight: bold; letter-spacing: 4px; text-align: center; color: #007bff; border-radius: 4px; margin: 20px 0;">
+          ${new_otp}
+        </div>
+        <p style="color: #666; font-size: 12px;">This code expires in 10 minutes.</p>
+      </div>
+    `,
+  });
+};
+
+
 export const registerUser = async (req, res, next) => {
   try {
     const { firstName, lastName, email, password, confirmPassword } = req.body;
@@ -24,40 +62,52 @@ export const registerUser = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Passwords do not match." });
     }
 
-    
     if (password.length < 8) {
       return res.status(400).json({ success: false, message: "Password must be at least 8 characters long." });
     }
 
     const strictPasswordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[\W_]).{8,}$/;
     if (!strictPasswordRegex.test(password)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Password must contain letters, numbers, and at least one special character." 
+      return res.status(400).json({
+        success: false,
+        message: "Password must contain letters, numbers, and at least one special character.",
       });
     }
 
     const cleanEmail = email.toLowerCase();
     const existingUser = await User.findOne({ email: cleanEmail });
-    if (existingUser) {
+
+    if (existingUser && existingUser.verified) {
       return res.status(400).json({ success: false, message: "Email is already registered." });
     }
 
+    // Update unverified user via .save() so validation and password hashing hooks run
+    if (existingUser && !existingUser.verified) {
+      existingUser.firstName = firstName;
+      existingUser.lastName = lastName;
+      existingUser.password = password;
+      await existingUser.save();
+
+      req.userId = existingUser._id;
+      return next();
+    }
+
+    // Create and save new user before passing to OTP middleware
     const newUser = new User({
       firstName,
       lastName,
       email: cleanEmail,
-      password 
+      password,
     });
 
     await newUser.save();
-    return res.status(201).json({ success: true, message: "Manual user created successfully!" });
+    req.userId = newUser._id;
+    return next();
 
   } catch (error) {
     next(error);
   }
 };
-
 
 export const loginUserClerk = async (req, res, next) => {
   try {
@@ -66,40 +116,76 @@ export const loginUserClerk = async (req, res, next) => {
     if (!userId) {
       return res.status(401).json({ success: false, message: "Unauthorized. Missing token." });
     }
-    const existingUser = await User.findOne({ clerkId: userId });
-    if (existingUser) {
-      return res.status(200).json({ success: true, user: existingUser, message: "User Already Exists!" });
+
+    const formatUser = (u) => ({
+      id: u._id,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      email: u.email,
+      role: u.role,
+      profilePicture: u.profilePicture || "",
+    });
+
+    // 1. Check if Clerk user already exists
+    let user = await User.findOne({ clerkId: userId });
+    if (user) {
+      return res.status(200).json({
+        success: true,
+        user: formatUser(user),
+        message: "User Already Exists!",
+      });
     }
 
     const clerkUser = await clerkClient.users.getUser(userId);
+    const cleanEmail = (clerkUser.emailAddresses[0]?.emailAddress || "").trim().toLowerCase();
 
-    let assignedRole = "user";
-    const userEmail = clerkUser.emailAddresses[0]?.emailAddress || "";
-
-    if (ENV.ADMIN_EMAIL === userEmail.toLowerCase()) { 
-      assignedRole = "admin";
+    if (!cleanEmail) {
+      return res.status(400).json({ success: false, message: "Clerk account has no email address." });
     }
 
-    const userData = {
-      clerkId: userId,
-      email: userEmail,
-      firstName: clerkUser.firstName || "Anonymous", 
-      lastName: clerkUser.lastName || "User",       
-      profilePicture: clerkUser.imageUrl || "",    
-      role: assignedRole,
-      verified: true
-    };
+    const isAdmin = ENV.ADMIN_EMAIL === cleanEmail;
 
-    const user = await User.create(userData);
+    // 2. Link Clerk ID if a manual account with this email already exists
+    user = await User.findOne({ email: cleanEmail });
+    if (user) {
+      user.clerkId = userId;
+      user.verified = true;
+      user.otp = undefined;
+      user.otp_expiry_time = undefined;
+      if (!user.profilePicture && clerkUser.imageUrl) {
+        user.profilePicture = clerkUser.imageUrl;
+      }
+      if (isAdmin && user.role !== "admin") {
+        user.role = "admin";
+      }
+
+      await user.save({ validateModifiedOnly: true });
+
+      return res.status(200).json({
+        success: true,
+        user: formatUser(user),
+        message: "Account linked with Clerk successfully!",
+      });
+    }
+
+    // 3. Otherwise create a brand-new user
+    user = await User.create({
+      clerkId: userId,
+      email: cleanEmail,
+      firstName: clerkUser.firstName || "Anonymous",
+      lastName: clerkUser.lastName || "User",
+      profilePicture: clerkUser.imageUrl || "",
+      role: isAdmin ? "admin" : "user",
+      verified: true,
+    });
 
     return res.status(201).json({
       success: true,
-      user,
-      message: "User Created Successfully"
+      user: formatUser(user),
+      message: "User Created Successfully",
     });
-
   } catch (error) {
-    console.error("Error in syncUser controller:", error);
+    console.error("Error in loginUserClerk controller:", error);
     next(error);
   }
 };
@@ -107,11 +193,13 @@ export const loginUserClerk = async (req, res, next) => {
 export const loginUserManual = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    
-    // Ensure email is cleanly formatted
-    const cleanEmail = email ? email.trim().toLowerCase() : "";
-    
-    // Find user
+
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: "Email and password are required." });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+
     const user = await User.findOne({ email: cleanEmail });
     if (!user) {
       return res.status(400).json({ success: false, message: "Invalid email or password." });
@@ -120,40 +208,55 @@ export const loginUserManual = async (req, res, next) => {
     if (!user.password) {
       return res.status(400).json({
         success: false,
-        message: "This account uses Google/Social login. Please sign in via Google or Apple."
+        message: "This account uses Google/Social login. Please sign in via Google or Apple.",
       });
     }
 
-    // Verify Password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ success: false, message: "Invalid email or password." });
     }
 
+    // if (!user.verified) {
+    //   return res.status(403).json({
+    //     success: false,
+    //     message: "Please verify your email before logging in.",
+    //   });
+    // }
+    if (!user.verified) {
+      await generateAndEmailOTP(user);
+
+      return res.status(403).json({
+        success: false,
+        requiresVerification: true,
+        email: user.email,
+        message: "Email not verified. A new OTP has been sent to your email.",
+      });
+    }
+
+
     let currentRole = user.role;
-    
-    // Safely promote admin without triggering document save race conditions
+
     if (ENV.ADMIN_EMAIL === cleanEmail && user.role !== "admin") {
       currentRole = "admin";
       await User.updateOne({ _id: user._id }, { $set: { role: "admin" } });
     }
 
     const token = signToken(user._id, currentRole);
-      
+
     return res.status(200).json({
       success: true,
       message: "Logged in successfully!",
-      token, 
+      token,
       user: {
         id: user._id,
-        firstName: user.firstName, 
+        firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
         role: currentRole,
-        profilePicture: user.profilePicture || ""
-      }
+        profilePicture: user.profilePicture || "",
+      },
     });
-
   } catch (error) {
     next(error);
   }
@@ -224,7 +327,6 @@ export const forgotPassword = async (req, res, next) => {
   }
 };
 
-
 export const resetPassword = async (req, res, next) => {
   try {
     const { token, newPassword, confirmNewPassword } = req.body;
@@ -265,8 +367,8 @@ export const resetPassword = async (req, res, next) => {
     }
 
     // 5. Update the password
-    // Your pre-save hook handles hashing automatically, so pass it plainly!
-    user.password = newPassword; 
+    user.password = newPassword;
+    user.verified =true 
     
     // Clear out the token fields so they cannot be reused
     user.resetPasswordToken = undefined;
@@ -289,30 +391,39 @@ export const protectRoute = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
-      
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.split(" ")[1];
+
       try {
         const decoded = jwt.verify(token, ENV.JWT_SECRET);
+        const userId = decoded.userId || decoded.id;
 
-        const user = await User.findById(decoded.userId); 
+        const user = await User.findById(userId).select(
+          "-password -otp -resetPasswordToken -resetPasswordExpires"
+        );
+
         if (!user) {
-          return res.status(404).json({ success: false, message: "User profile not found." });
+          return res.status(401).json({ success: false, message: "Session invalid. User no longer exists." });
+        }
+
+        if (!user.verified) {
+          return res.status(403).json({ success: false, message: "Please verify your email to continue." });
         }
 
         req.user = user;
         return next();
-
       } catch (jwtError) {
         console.log("Standard JWT verification skipped/failed, checking Clerk auth...");
       }
     }
 
-    const clerkAuth = typeof getAuth === 'function' ? getAuth(req) : {};
+    const clerkAuth = typeof getAuth === "function" ? getAuth(req) : {};
     const verifiedClerkId = clerkAuth?.userId || req.auth?.userId;
 
     if (verifiedClerkId) {
-      const clerkUser = await User.findOne({ clerkId: verifiedClerkId });
+      const clerkUser = await User.findOne({ clerkId: verifiedClerkId }).select(
+        "-password -otp -resetPasswordToken -resetPasswordExpires"
+      );
 
       if (clerkUser) {
         req.user = clerkUser;
@@ -321,7 +432,6 @@ export const protectRoute = async (req, res, next) => {
     }
 
     return res.status(401).json({ success: false, message: "Authentication denied. Invalid or expired session." });
-
   } catch (error) {
     console.error("Auth Middleware Error:", error);
     return res.status(500).json({ success: false, message: "Server auth processing failure." });
@@ -336,58 +446,19 @@ export const sendOTP = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Email field is required." });
     }
 
-    const new_otp = generate(6, {
-      upperCaseAlphabets: false,
-      lowerCaseAlphabets: false,
-      specialChars: false
-    });
-
-    const otp_expiry_time = Date.now() + 10 * 60 * 1000; 
-
-    const user = await User.findOneAndUpdate(
-      { email: email.toLowerCase().trim() },
-      { otp: new_otp, otp_expiry_time },
-      { new: true, runValidators: true } 
-    );
-
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
     if (!user) {
       return res.status(404).json({ success: false, message: "User account profile not found." });
     }
 
-    
-    const transporter = nodemailer.createTransport({
-      service: 'Gmail',
-      auth: {
-        user: ENV.EMAIL_USER,
-        pass: ENV.EMAIL_PASS,
-      },
-    });
-
-    const mailOptions = {
-      to: user.email,
-      from: ENV.EMAIL_USER,
-      subject: 'Market App - Your New OTP',
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; border: 1px solid #eee;">
-          <h2 style="color: #333;">Market App Verification</h2>
-          <p>Hello ${user.firstName || 'User'},</p>
-          <p>Your one-time password (OTP) verification code is:</p>
-          <div style="background-color: #f4f4f4; padding: 15px; font-size: 24px; font-weight: bold; letter-spacing: 4px; text-align: center; color: #007bff; border-radius: 4px; margin: 20px 0;">
-            ${new_otp}
-          </div>
-          <p style="color: #666; font-size: 12px;">This code is private and will expire in 10 minutes. If you didn't request this code, please secure your account immediately.</p>
-        </div>
-      `
-    };
-
-    await transporter.sendMail(mailOptions);
+    await generateAndEmailOTP(user);
 
     return res.status(200).json({ success: true, message: "OTP sent successfully!" });
-
   } catch (error) {
     next(error);
   }
 };
+
 
 
 export const verifyOTP = async (req, res, next) => {
@@ -395,10 +466,10 @@ export const verifyOTP = async (req, res, next) => {
     const { email, otp } = req.body;
 
     if (!email || !otp) {
-        return res.status(400).json({ success: false, message: "Email and OTP are both required fields." });
+      return res.status(400).json({ success: false, message: "Email and OTP are both required fields." });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
 
     if (!user) {
       const error = new Error("Account with this email does not exist");
@@ -412,7 +483,7 @@ export const verifyOTP = async (req, res, next) => {
       return next(error);
     }
 
-    if (otp !== user.otp) {
+    if (String(otp).trim() !== user.otp) {
       const error = new Error("OTP is incorrect");
       error.status = 400;
       return next(error);
@@ -424,26 +495,36 @@ export const verifyOTP = async (req, res, next) => {
       return next(error);
     }
 
-    // Clear verification fields safely out of database space upon success
     user.verified = true;
     user.otp = undefined;
     user.otp_expiry_time = undefined;
+
+    if (ENV.ADMIN_EMAIL === user.email && user.role !== "admin") {
+      user.role = "admin";
+    }
 
     await user.save({ validateModifiedOnly: true });
 
     const token = signToken(user._id, user.role);
 
     return res.status(200).json({
-      success: true, // Standardized object keys formatting parameter layout
+      success: true,
       message: "OTP verified successfully!",
       token,
-      userId: user._id,
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        profilePicture: user.profilePicture || "",
+      },
     });
-
   } catch (error) {
     next(error);
   }
 };
+
 export const changePassword = async (req, res, next) => {
   try {
     const userId = req.user._id;

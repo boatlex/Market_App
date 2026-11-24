@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import bcrypt from "bcrypt"; // 👈 CRITICAL: This import was missing!
+import bcrypt from "bcrypt"; 
 
 const userSchema = new mongoose.Schema({
     firstName: {
@@ -29,6 +29,7 @@ const userSchema = new mongoose.Schema({
         validate: {
             validator: function (value) {
                 if (this.clerkId && !value) return true;
+                if (!this.isModified("password")) return true;
 
                 return /^(?=.*[A-Za-z])(?=.*\d)(?=.*[\W_]).{8,}$/.test(value);
             },
