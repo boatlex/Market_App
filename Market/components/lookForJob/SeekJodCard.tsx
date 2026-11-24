@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, TouchableOpacity, View, Dimensions } from "react-native";
+import { Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from 'expo-image';
 import { JobSeekerProfile } from '../../types';
@@ -7,17 +7,24 @@ import { JobSeekerProfile } from '../../types';
 interface SeekCardProps {
   item: JobSeekerProfile;
   onPress: () => void;
+  cardWidth?: number;
 }
 
-const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 40) / 2;
+export const SeekJobCard = ({ item, onPress, cardWidth }: SeekCardProps) => {
+  const { width: screenWidth } = useWindowDimensions();
 
-export const SeekJobCard = ({ item, onPress }: SeekCardProps) => {
+  const numColumns = screenWidth >= 1280 ? 5 : screenWidth >= 1024 ? 4 : screenWidth >= 768 ? 3 : 2;
+  const horizontalPadding = 32;
+  const totalGap = (numColumns - 1) * 12;
+  const computedWidth = cardWidth ?? (screenWidth - horizontalPadding - totalGap) / numColumns;
+  const imageSize = Math.max(computedWidth - 24, 100); // Square image accounting for p-3 (24px)
+
   const fallbackImage = "https://placehold.co";
 
-  const displayImage = item.profilePicture
-    || (typeof item.user === 'object' && (item.user as any)?.profilePicture)
-    || fallbackImage;
+  const rawImage =
+    item.profilePicture ||
+    (typeof item.user === 'object' && (item.user as any)?.profilePicture);
+  const displayImage = rawImage && rawImage.trim().length > 0 ? rawImage : fallbackImage;
 
   const getDisplayName = () => {
     if (typeof item.user === 'object' && item.user) {
@@ -39,19 +46,22 @@ export const SeekJobCard = ({ item, onPress }: SeekCardProps) => {
   const preferredTypesLabel =
     item.preferredJobTypes && item.preferredJobTypes.length > 0
       ? item.preferredJobTypes.length > 1
-        ? `${item.preferredJobTypes} +${item.preferredJobTypes.length - 1}`
-        : item.preferredJobTypes
+        ? `${item.preferredJobTypes[0]} +${item.preferredJobTypes.length - 1}`
+        : item.preferredJobTypes[0]
       : "Any Type";
 
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.85}
-      style={{ width: CARD_WIDTH }}
+      style={{ width: computedWidth }}
       className="bg-white border border-gray-100 rounded-2xl p-3 mb-4 shadow-sm flex-col justify-between"
     >
       {/* Header Frame - Candidate Profile Image Avatar */}
-      <View className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-50 mb-3">
+      <View
+        style={{ width: '100%', height: imageSize }}
+        className="relative rounded-xl overflow-hidden bg-gray-50 mb-3"
+      >
         <Image
           source={{ uri: displayImage }}
           style={{ width: '100%', height: '100%' }}
@@ -72,13 +82,13 @@ export const SeekJobCard = ({ item, onPress }: SeekCardProps) => {
         </View>
 
         {/* Floating Work Mode pill (top-right) */}
-        {item.workMode ? (
+        {Boolean(item.workMode) && (
           <View className="absolute top-1.5 right-1.5 bg-black/65 px-2 py-0.5 rounded-md">
             <Text className="text-[8px] text-white font-bold">
               {item.workMode}
             </Text>
           </View>
-        ) : null}
+        )}
       </View>
 
       {/* Core Candidate Metadata Panel */}
@@ -93,29 +103,29 @@ export const SeekJobCard = ({ item, onPress }: SeekCardProps) => {
           </Text>
 
           {/* Category & Subcategory (seekJobType) Badges */}
-          {(item.category || item.seekJobType) ? (
+          {Boolean(item.category || item.seekJobType) && (
             <View className="flex-row flex-wrap gap-1 mb-2">
-              {item.category ? (
+              {Boolean(item.category) && (
                 <View className="bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded">
                   <Text className="text-blue-700 text-[9px] font-bold capitalize" numberOfLines={1}>
                     {item.category}
                   </Text>
                 </View>
-              ) : null}
+              )}
 
-              {item.seekJobType ? (
+              {Boolean(item.seekJobType) && (
                 <View className="bg-purple-50 border border-purple-100 px-1.5 py-0.5 rounded">
                   <Text className="text-purple-700 text-[9px] font-bold capitalize" numberOfLines={1}>
                     {item.seekJobType}
                   </Text>
                 </View>
-              ) : null}
+              )}
             </View>
-          ) : null}
+          )}
         </View>
 
         {/* Bottom Financial & Preferred Job Types Parameters */}
-        <View className="pt-2 border-t border-gray-50 flex-col space-y-1">
+        <View className="pt-2 border-t border-gray-50 flex-col gap-1">
           <Text className="text-blue-600 font-extrabold text-xs" numberOfLines={1}>
             {displaySalary}
             {item.expectedSalary?.min ? <Text className="text-[8px] text-gray-400 font-medium"> min</Text> : null}

@@ -24,7 +24,8 @@ export default function CrossPlatformImageView({
     setCurrentIndex(imageIndex);
   }, [imageIndex, visible]);
 
-  const totalImages = images.length;
+ const totalImages = images?.length ?? 0;
+
   const hasMultiple = totalImages > 1;
 
   const handlePrev = () => {

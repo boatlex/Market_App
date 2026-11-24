@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal, ScrollView } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal, ScrollView, useWindowDimensions, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import SafeScreen from '../../components/SafeScreen';
@@ -10,6 +10,7 @@ import { FormDropdown } from '../../components/FormDropdown';
 import SeekJobCard from '../../components/lookForJob/SeekJodCard';
 import { useAuth } from '../../contexts/authContext';
 import { JOB_CATEGORIES } from '../../constants/createJobs';
+import FlatListPickerModal from '../../components/FlatListPickerModal';
 import {
   GHANA_REGIONS,
   GHANA_DISTRICTS_BY_REGION,
@@ -18,55 +19,11 @@ import {
 } from '../../constants/seekJob';
 import { JobSeekerProfile } from '../../types';
 
-const FlatListSelectionModal = ({
-  visible,
-  title,
-  data,
-  onSelect,
-  onClose,
-}: {
-  visible: boolean;
-  title: string;
-  data: readonly string[] | string[];
-  onSelect: (value: string) => void;
-  onClose: () => void;
-}) => (
-  <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-    <View className="flex-1 bg-black/40 justify-end">
-      <View className="bg-white rounded-t-3xl h-[65%] shadow-xl">
-        <View className="flex-row justify-between items-center px-5 py-4 border-b border-gray-100">
-          <Text className="text-lg font-bold text-gray-900">{title}</Text>
-          <TouchableOpacity onPress={onClose} className="p-1 bg-gray-100 rounded-full">
-            <Ionicons name="close" size={20} color="#4B5563" />
-          </TouchableOpacity>
-        </View>
-        <FlatList
-          data={data as string[]}
-          keyExtractor={(item) => item}
-          className="flex-1"
-          nestedScrollEnabled={true}
-          contentContainerStyle={{ paddingBottom: 40 }}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              className="px-6 py-4 border-b border-gray-50 flex-row justify-between items-center active:bg-blue-50/40"
-              onPress={() => {
-                onSelect(item);
-                onClose();
-              }}
-            >
-              <Text className="text-base text-gray-700 font-medium">{item}</Text>
-              <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-            </TouchableOpacity>
-          )}
-        />
-      </View>
-    </View>
-  </Modal>
-);
 
 const JobSeekerScreen = () => {
   const router = useRouter();
   const params = useLocalSearchParams<{ category?: string; subCategory?: string }>();
+  const { width: screenWidth } = useWindowDimensions();
   const initialQuery = params.subCategory || params.category || "";
 
   const { user } = useAuth();
@@ -92,6 +49,16 @@ const JobSeekerScreen = () => {
   });
 
   const [tempFilters, setTempFilters] = useState<SearchCandidatesFilters>({ ...activeFilters });
+
+
+
+
+  // Inside JobSeekerScreen:
+  const numColumns = screenWidth >= 1280 ? 5 : screenWidth >= 1024 ? 4 : screenWidth >= 768 ? 3 : 2;
+  const horizontalPadding = 32; // 16px left + 16px right
+  const cardGap = 12;
+  const cardWidth = (screenWidth - horizontalPadding - (numColumns - 1) * cardGap) / numColumns;
+
 
   // Sync incoming route params from HomeScreen SubCategoryModal
   useEffect(() => {
@@ -146,15 +113,15 @@ const JobSeekerScreen = () => {
 
     return () => clearTimeout(delayDebounceFn);
   }, [searchInput]);
-const handleFilterInputChange = (field: keyof SearchCandidatesFilters, value: string) => {
-  setTempFilters((prev) => {
-    const updated = { ...prev, [field]: value };
-    if (field === "region") {
-      updated.district = "";
-    }
-    return updated;
-  });
-};
+  const handleFilterInputChange = (field: keyof SearchCandidatesFilters, value: string) => {
+    setTempFilters((prev) => {
+      const updated = { ...prev, [field]: value };
+      if (field === "region") {
+        updated.district = "";
+      }
+      return updated;
+    });
+  };
 
 
   const handleApplyFilters = () => {
@@ -183,7 +150,7 @@ const handleFilterInputChange = (field: keyof SearchCandidatesFilters, value: st
     ? GHANA_DISTRICTS_BY_REGION[tempFilters.region as keyof typeof GHANA_DISTRICTS_BY_REGION] || []
     : [];
 
-  
+
   return (
     <SafeScreen>
       <View className="flex-1 bg-gray-50">
@@ -281,17 +248,19 @@ const handleFilterInputChange = (field: keyof SearchCandidatesFilters, value: st
           </View>
         ) : (
           <FlatList
+            key={`seeker-grid-${numColumns}`}
             data={candidateProfiles}
             keyExtractor={(item: JobSeekerProfile) => item._id}
+            numColumns={numColumns}
+            columnWrapperStyle={{ justifyContent: 'flex-start', gap: cardGap }}
             contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 60 }}
-            showsVerticalScrollIndicator={false}
-            numColumns={2}
-            columnWrapperStyle={{ justifyContent: 'space-between' }}
-            refreshing={isLoading}
+            showsVerticalScrollIndicator={Platform.OS === 'web'}
             onRefresh={currentRefetch}
+            refreshing={isLoading}
             renderItem={({ item }) => (
               <SeekJobCard
                 item={item}
+                cardWidth={cardWidth}
                 onPress={() => {
                   const secureSeekerId = item.user && typeof item.user === 'object'
                     ? (item.user as any)._id || (item.user as any).id
@@ -387,7 +356,7 @@ const handleFilterInputChange = (field: keyof SearchCandidatesFilters, value: st
         </Modal>
 
         {/* SELECTION PICKERS */}
-        <FlatListSelectionModal
+        <FlatListPickerModal
           visible={showCategoryModal}
           title="Select Category"
           data={JOB_CATEGORIES} // Import from your constants/seekJob or constants/jobs
@@ -395,7 +364,7 @@ const handleFilterInputChange = (field: keyof SearchCandidatesFilters, value: st
           onClose={() => setShowCategoryModal(false)}
         />
 
-        <FlatListSelectionModal
+        <FlatListPickerModal
           visible={showJobTypeModal}
           title="Select Job Type"
           data={JOB_TYPES} // 👈 Use JOB_TYPES directly instead of availableJobTypes
@@ -403,7 +372,7 @@ const handleFilterInputChange = (field: keyof SearchCandidatesFilters, value: st
           onClose={() => setShowJobTypeModal(false)}
         />
 
-        <FlatListSelectionModal
+        <FlatListPickerModal
           visible={showRegionModal}
           title="Choose Region"
           data={GHANA_REGIONS}
@@ -411,7 +380,7 @@ const handleFilterInputChange = (field: keyof SearchCandidatesFilters, value: st
           onSelect={(item) => handleFilterInputChange("region", item)}
         />
 
-        <FlatListSelectionModal
+        <FlatListPickerModal
           visible={showDistrictModal}
           title="Choose District"
           data={availableDistricts}
@@ -419,7 +388,7 @@ const handleFilterInputChange = (field: keyof SearchCandidatesFilters, value: st
           onSelect={(item) => handleFilterInputChange("district", item)}
         />
 
-        <FlatListSelectionModal
+        <FlatListPickerModal
           visible={showWorkModeModal}
           title="Choose Work Mode"
           data={WORK_MODE}

@@ -9,7 +9,7 @@ import LoadingUi from '../../components/LoadingUi'
 import SafeScreen from '../../components/SafeScreen'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
-import ImageView from '../../components/CrossPlatformImageView.native';
+import ImageView from '../../components/CrossPlatformImageView';
 import { useAuth } from '../../contexts/authContext';
 import { getSocket } from '../../sockets/sockets'
 import { useReportModalStore } from '../../stores/useReportModalStore'
@@ -17,11 +17,13 @@ import ProductComments from '../../components/comments/ProductComments'
 import OfferDialog from '../../components/dialogues/OfferDialogue'
 import ItemReviewsSection from '../../components/reviews/ItemsReviewsSection'
 import RelatedProductCard from '../../components/product/RelatedProductCard'
+import { useWindowDimensions } from 'react-native'
 
-const { width } = Dimensions.get("window")
+// const { width } = Dimensions.get("window")
 
 const ProductDetailsScreen = () => {
   const { id, sellerID } = useLocalSearchParams<{ id: string; sellerID: string }>();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const socket = getSocket()
 
   const { data: product, isError, isLoading } = useProduct(id)
@@ -40,6 +42,14 @@ const ProductDetailsScreen = () => {
   const [relatedViewMode, setRelatedViewMode] = useState<'grid' | 'list'>('grid');
 
   const parsedSellerId = Array.isArray(sellerID) ? sellerID[0] : sellerID;
+
+    
+  const galleryWidth = Math.max(windowWidth - 16, 200);
+  const galleryHeight =
+    Platform.OS === 'web' && windowWidth >= 768
+      ? Math.min(Math.max(Math.round(windowWidth * 0.42), 420), Math.round(windowHeight * 0.65), 620)
+      : 400;
+
 
   const currentUserId = user?._id || user?.id;
   const productSellerId =
@@ -138,7 +148,14 @@ const ProductDetailsScreen = () => {
 
     const priceText = product?.price ? ` (GHS ${Number(product.price).toLocaleString()})` : '';
     const message = `Hello, I'm interested in your listing "${product?.name}"${priceText} on the marketplace. Is it still available?`;
-    const whatsappUrl = `https://wa.me{cleanPhone}?text=${encodeURIComponent(message)}`;
+    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+
+    if (Platform.OS === 'web') {
+      Linking.openURL(whatsappUrl);
+      return;
+    }
+
+
 
     Linking.canOpenURL(whatsappUrl)
       .then((supported) => {
@@ -232,9 +249,10 @@ const ProductDetailsScreen = () => {
   return (
     <SafeScreen>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+         enabled={Platform.OS !== 'web'}
         className="flex-1 bg-white"
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         {/* Absolute Header Overlay */}
         <View className='absolute top-12 right-0 left-0 z-10 px-6 pb-4 flex-row items-center justify-between'>
@@ -248,37 +266,39 @@ const ProductDetailsScreen = () => {
         </View>
 
         <ScrollView
-          className='flex-1 bg-white'
-          contentContainerStyle={{ paddingBottom: 140 }}
-          showsVerticalScrollIndicator={false}
+          style={{ flex: 1 }}
+          className="flex-1"
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 140 }}
+          showsVerticalScrollIndicator={Platform.OS === 'web'}
+          keyboardShouldPersistTaps="handled"
         >
           {/* Image Gallery */}
           <View className='relative bg-gray-100 m-2' >
             {validImages.length > 0 ? (
               <>
-                <ScrollView
+                  <ScrollView
                   horizontal
                   pagingEnabled
-                  showsHorizontalScrollIndicator={false}
+                  showsHorizontalScrollIndicator={Platform.OS === 'web'}
                   onScroll={(e) => {
-                    const index = Math.round(e.nativeEvent.contentOffset.x / width)
-                    setSelectedImageIndex(index)
+                    const index = Math.round(e.nativeEvent.contentOffset.x / galleryWidth);
+                    setSelectedImageIndex(index);
                   }}
                   scrollEventThrottle={16}
                 >
                   {validImages.map((image: string, index: number) => (
-                    <TouchableOpacity
+                   <TouchableOpacity
                       key={index}
                       activeOpacity={0.9}
-                      style={{ width }}
+                      style={{ width: galleryWidth, height: galleryHeight }}
                       onPress={() => {
                         setSelectedImageIndex(index);
                         setIsZoomVisible(true);
                       }}
                     >
-                      <Image
-                        source={image}
-                        style={{ width, height: 400 }}
+                        <Image
+                        source={{ uri: image }}
+                        style={{ width: galleryWidth, height: galleryHeight }}
                         contentFit='cover'
                       />
                     </TouchableOpacity>
@@ -295,7 +315,7 @@ const ProductDetailsScreen = () => {
                 />
               </>
             ) : (
-              <View style={{ width, height: 400 }} className="items-center justify-center bg-gray-200">
+              <View style={{ width: galleryWidth, height: galleryHeight }} className="items-center justify-center bg-gray-200">
                 <Ionicons name="image-outline" size={64} color="#9CA3AF" />
               </View>
             )}
@@ -505,7 +525,7 @@ const ProductDetailsScreen = () => {
               </View>
 
               {/* Related Product Cards */}
-              <View className="flex-row flex-wrap justify-between">
+              <View className="flex-row flex-wrap gap-3">
                 {relatedProducts.map((relatedItem: any) => (
                   <RelatedProductCard
                     key={relatedItem._id}
@@ -525,7 +545,7 @@ const ProductDetailsScreen = () => {
 
         </ScrollView>
 
-               {/* Floating Action Button Footer for External Actions */}
+        {/* Floating Action Button Footer for External Actions */}
         {!owner && (
           <View className="absolute bottom-0 right-0 left-0 bg-white/95 border-t border-gray-100 px-4 pt-4 pb-20 flex-row items-center gap-2.5">
             <TouchableOpacity

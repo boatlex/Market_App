@@ -15,7 +15,7 @@ export const RelatedServiceCard = ({ item, onPress, viewMode }: RelatedServiceCa
 
   const fallbackImage = "https://placehold.co";
   const displayImage =
-    Array.isArray(item.portfolioImages) && item.portfolioImages.length > 0
+    Array.isArray(item.portfolioImages) && item.portfolioImages.length > 0 && item.portfolioImages[0]
       ? item.portfolioImages[0]
       : fallbackImage;
 
@@ -34,8 +34,9 @@ export const RelatedServiceCard = ({ item, onPress, viewMode }: RelatedServiceCa
     >
       {/* 1. Image Banner & Availability Pill */}
       <View
+        style={isList ? { width: 96, height: 96 } : { width: '100%', aspectRatio: 16 / 9 }}
         className={`relative rounded-xl overflow-hidden bg-gray-100 ${
-          isList ? 'w-24 h-24' : 'w-full aspect-video mb-2.5'
+          isList ? '' : 'mb-2.5'
         }`}
       >
         <Image

@@ -9,11 +9,12 @@ import {
     Platform,
     TouchableWithoutFeedback,
     Keyboard,
-    Alert
+    Alert,
+    ScrollView
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import SafeScreen from '../../components/SafeScreen';
-import { useAuth } from '../../contexts/authContext'; 
+import { useAuth } from '../../contexts/authContext';
 
 const VerifyOTPScreen = () => {
     const router = useRouter();
@@ -23,7 +24,7 @@ const VerifyOTPScreen = () => {
     const [otp, setOtp] = useState(['', '', '', '']);
 
     // References for shifting focus automatically across inputs
-    const inputs = useRef<Array<TextInput | null>>([]);
+    const inputs = useRef<Array<React.ComponentRef<typeof TextInput> | null>>([]);
 
     const { verifyOTPMutation } = useAuth();
 
@@ -77,18 +78,22 @@ const VerifyOTPScreen = () => {
 
         Keyboard.dismiss();
 
-        verifyOTPMutation.mutate({
-            email: email.toLowerCase().trim(),
-            otp: fullOtpString
-        }, {
-            onSuccess: (data) => {  
-                Alert.alert('Success', data.message || 'OTP verified successfully!');
+        verifyOTPMutation.mutate(
+            {
+                email: email.toLowerCase().trim(),
+                otp: fullOtpString
             },
-            onError: (error: any) => {
-                const backendMessage = error.response?.data?.message || 'OTP verification failed. Please check the code and try again.';
-                Alert.alert('Verification Failed', backendMessage);
+            {
+                onSuccess: (data) => {
+                    Alert.alert('Success', data.message || 'OTP verified successfully!');
+                },
+                onError: (error: any) => {
+                    const backendMessage =
+                        error.response?.data?.message || 'OTP verification failed. Please check the code and try again.';
+                    Alert.alert('Verification Failed', backendMessage);
+                }
             }
-        });
+        );
     };
 
     const isPending = verifyOTPMutation.isPending;
@@ -97,61 +102,71 @@ const VerifyOTPScreen = () => {
         <SafeScreen>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                enabled={Platform.OS !== 'web'}
                 className="flex-1 bg-white"
             >
-                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                    <View className="flex-1 justify-center px-6">
+                <ScrollView
+                    className="flex-1"
+                    contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingVertical: 32 }}
+                    showsVerticalScrollIndicator={Platform.OS === 'web'}
+                    keyboardShouldPersistTaps="handled"
+                >
+                    <TouchableWithoutFeedback onPress={Keyboard.dismiss} disabled={Platform.OS === 'web'}>
+                        <View className="w-full md:max-w-md md:mx-auto px-6">
 
-                        <Text className="text-3xl font-bold text-slate-800 mb-2">
-                            Verify OTP
-                        </Text>
-
-                        <Text className="text-base text-slate-500 mb-8 leading-6">
-                            Enter the 4-digit authentication code sent to <Text className="font-semibold text-slate-700">{email || 'your email'}</Text>
-                        </Text>
-
-                        {/* 4-Digit Input Matrix Wrapper */}
-                        <View className="flex-row justify-between mb-8 px-4">
-                            {otp.map((digit, index) => (
-                                <TextInput
-                                    key={index}
-                                    ref={(ref) => { inputs.current[index] = ref; }}
-                                    className="w-14 h-14 border-2 border-slate-200 rounded-xl text-center text-xl font-bold bg-slate-50 text-slate-800 focus:border-blue-500"
-                                    maxLength={1}
-                                    keyboardType="number-pad"
-                                    value={digit}
-                                    onChangeText={(text) => handleOtpChange(text, index)}
-                                    onKeyPress={(e) => handleKeyPress(e, index)}
-                                    editable={!isPending}
-                                />
-                            ))}
-                        </View>
-
-                        {/* Verification Trigger Button */}
-                        <TouchableOpacity
-                            className={`h-12 rounded-lg justify-center items-center mb-5 ${
-                                isPending ? 'bg-blue-300' : 'bg-blue-600 active:bg-blue-700'
-                            }`}
-                            onPress={handleVerification}
-                            disabled={isPending}
-                        >
-                            {isPending ? (
-                                <ActivityIndicator color="#fff" />
-                            ) : (
-                                <Text className="text-white text-base font-semibold">
-                                    Verify Code
-                                </Text>
-                            )}
-                        </TouchableOpacity>
-
-                        <TouchableOpacity onPress={() => router.back()} disabled={isPending}>
-                            <Text className="text-blue-600 text-center text-sm font-medium">
-                                Back
+                            <Text className="text-3xl font-bold text-slate-800 mb-2">
+                                Verify OTP
                             </Text>
-                        </TouchableOpacity>
 
-                    </View>
-                </TouchableWithoutFeedback>
+                            <Text className="text-base text-slate-500 mb-8 leading-6">
+                                Enter the 4-digit authentication code sent to{' '}
+                                <Text className="font-semibold text-slate-700">{email || 'your email'}</Text>
+                            </Text>
+
+                            {/* 4-Digit Input Matrix Wrapper */}
+                            <View className="flex-row justify-between mb-8 px-4">
+                                {otp.map((digit, index) => (
+                                    <TextInput
+                                        key={index}
+                                        ref={(ref) => { inputs.current[index] = ref; }}
+                                        className="w-14 h-14 border-2 border-slate-200 rounded-xl text-center text-xl font-bold bg-slate-50 text-slate-800 focus:border-blue-500"
+                                        maxLength={4}
+                                        keyboardType="number-pad"
+                                        textContentType="oneTimeCode"
+                                        value={digit}
+                                        onChangeText={(text) => handleOtpChange(text, index)}
+                                        onKeyPress={(e) => handleKeyPress(e, index)}
+                                        editable={!isPending}
+                                    />
+                                ))}
+                            </View>
+
+                            {/* Verification Trigger Button */}
+                            <TouchableOpacity
+                                className={`h-12 rounded-lg justify-center items-center mb-5 ${
+                                    isPending ? 'bg-blue-300' : 'bg-blue-600 active:bg-blue-700'
+                                }`}
+                                onPress={handleVerification}
+                                disabled={isPending}
+                            >
+                                {isPending ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <Text className="text-white text-base font-semibold">
+                                        Verify Code
+                                    </Text>
+                                )}
+                            </TouchableOpacity>
+
+                            <TouchableOpacity onPress={() => router.back()} disabled={isPending}>
+                                <Text className="text-blue-600 text-center text-sm font-medium">
+                                    Back
+                                </Text>
+                            </TouchableOpacity>
+
+                        </View>
+                    </TouchableWithoutFeedback>
+                </ScrollView>
             </KeyboardAvoidingView>
         </SafeScreen>
     );

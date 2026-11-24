@@ -24,15 +24,33 @@ const Login = () => {
       return
     }
 
-    loginMutation.mutate({ email, password }, {
-      onSuccess: (data) => {
-        Alert.alert("Welcome!", data.message || "Logged in successfully!")
-      },
-      onError: (error: any) => {
-        const backendMessage = error.response?.data?.message || "Invalid Email or Password."
-        Alert.alert("Login Failed", backendMessage)
+      loginMutation.mutate(
+      { email, password },
+      {
+        onSuccess: (data) => {
+          Alert.alert("Welcome!", data.message || "Logged in successfully!");
+        },
+        onError: (error: any) => {
+          const status = error.response?.status;
+          const data = error.response?.data;
+
+          if (status === 403 && data?.requiresVerification) {
+            Alert.alert(
+              "Verification Required",
+              data.message || "A verification code has been sent to your email."
+            );
+            router.push({
+              pathname: "/verify-otp", 
+              params: { email: data.email || email },
+            });
+            return;
+          }
+
+          const backendMessage = data?.message || "Invalid Email or Password.";
+          Alert.alert("Login Failed", backendMessage);
+        },
       }
-    })
+    );
   }
 
   return (

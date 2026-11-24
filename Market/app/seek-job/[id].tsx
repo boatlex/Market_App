@@ -1,4 +1,4 @@
-import { View, Text, Alert, TouchableOpacity, ScrollView, Dimensions, Linking } from 'react-native';
+import { View, Text, Alert, TouchableOpacity, ScrollView, Dimensions, Linking, Platform } from 'react-native';
 import React, { useState, useMemo } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useGetJobSeekerById } from '../../hooks/useGetJobSeekerById';
@@ -7,7 +7,7 @@ import LoadingUi from '../../components/LoadingUi';
 import SafeScreen from '../../components/SafeScreen';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import ImageView from '../../components/CrossPlatformImageView.native';
+import ImageView from '../../components/CrossPlatformImageView';
 import { useAuth } from '../../contexts/authContext';
 import { useReportModalStore } from '../../stores/useReportModalStore';
 import ItemReviewsSection from '../../components/reviews/ItemsReviewsSection';
@@ -152,7 +152,12 @@ const SeekJobDetailsScreen = () => {
     }
 
     const message = `Hello ${displayName}, I saw your job seeker profile (${product.professionalHeadline || product.category || 'Candidate'}) and would like to discuss a job opportunity.`;
-    const whatsappUrl = `https://wa.me{cleanPhone}?text=${encodeURIComponent(message)}`;
+    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+
+       if (Platform.OS === 'web') {
+      Linking.openURL(whatsappUrl);
+      return;
+    }
 
     Linking.canOpenURL(whatsappUrl)
       .then((supported) => {
@@ -243,9 +248,10 @@ const SeekJobDetailsScreen = () => {
       </View>
 
       <ScrollView
-        className='flex-1 bg-white'
-        contentContainerStyle={{ paddingBottom: 160 }}
-        showsVerticalScrollIndicator={false}
+        style={{ flex: 1 }}
+        className="flex-1 bg-white"
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 160 }}
+        showsVerticalScrollIndicator={Platform.OS === 'web'}
       >
         {/* Profile Image View */}
         <View className='relative bg-gray-100 m-2 items-center justify-center'>
@@ -253,7 +259,7 @@ const SeekJobDetailsScreen = () => {
             <>
               <TouchableOpacity
                 activeOpacity={0.9}
-                style={{ width: '100%' }}
+                className="w-full h-[400px] items-center justify-center bg-gray-200 rounded-xl"
                 onPress={() => setIsZoomVisible(true)}
               >
                 <Image

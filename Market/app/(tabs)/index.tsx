@@ -1,5 +1,5 @@
 import React, { useState, ComponentProps, useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, useWindowDimensions, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, Href } from 'expo-router';
 import SafeScreen from '../../components/SafeScreen';
@@ -52,6 +52,10 @@ const HomeScreen = () => {
 
   const { results, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } =
     useProducts(activeFilters);
+
+  const { width: screenWidth } = useWindowDimensions();
+  const numColumns = screenWidth >= 1280 ? 5 : screenWidth >= 1024 ? 4 : screenWidth >= 768 ? 3 : 2;
+
 
   const handleInputChange = (field: keyof ProductFilters, value: string) => {
     setTempFilters((prev) => {
@@ -123,7 +127,7 @@ const HomeScreen = () => {
               />
             </View>
 
-            {activeFilters.region && (
+            {Boolean(activeFilters.region) && (
               <TouchableOpacity
                 onPress={() => {
                   const cleared = { ...activeFilters, region: "", district: "" };
@@ -165,11 +169,12 @@ const HomeScreen = () => {
         ) : (
           <FlatList
             data={results}
+            key={`product-grid-${numColumns}`}
             keyExtractor={(item: any, index) => item._id || `product-grid-key-${index}`}
             contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 }}
-            showsVerticalScrollIndicator={false}
-            numColumns={2}
-            columnWrapperStyle={{ justifyContent: 'space-between' }}
+            showsVerticalScrollIndicator={Platform.OS === 'web'}
+            numColumns={numColumns}
+            columnWrapperStyle={{ justifyContent: 'flex-start', gap: 12 }}
             ListHeaderComponent={() => (
               <View className="bg-white rounded-2xl p-3 mb-4 shadow-sm border border-gray-100">
                 <View className="flex-row justify-between items-center mb-4 px-1">
@@ -178,7 +183,7 @@ const HomeScreen = () => {
                       ? `${activeFilters.category} • ${activeFilters.productType}`
                       : activeFilters.category || "Browse Categories"}
                   </Text>
-                  {(activeFilters.category || activeFilters.productType) && (
+                  {Boolean(activeFilters.category || activeFilters.productType) && (
                     <TouchableOpacity
                       onPress={() => {
                         setActiveFilters((prev) => ({ ...prev, category: "", productType: "" }));
@@ -237,7 +242,7 @@ const HomeScreen = () => {
                 onPress={() => router.push(`/product/${item._id}` as Href)}
               />
             )}
-                       onEndReached={() => {
+            onEndReached={() => {
               if (hasNextPage && !isFetchingNextPage) fetchNextPage();
             }}
             onEndReachedThreshold={0.5}

@@ -88,34 +88,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   });
 
-  // verifyOTPMutation
+   // verifyOTPMutation
   const verifyOTPMutation = useMutation({
     mutationFn: async (otpData: { email: string; otp: string }) => {
       const response = await api.post('/auths/verify-otp', otpData);
-      return response.data; 
+      return response.data;
     },
     onSuccess: async (data) => {
       await AsyncStorage.setItem('manual_token', data.token);
-
-      const activeSessionUser: User = {
-        _id: data.userId,
-        firstName: "", 
-        lastName: "",
-        email: "", 
-        role: "user",
-        profilePicture: "",
-        wishList:[],
-        verified: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      
-      await AsyncStorage.setItem('user_session', JSON.stringify(activeSessionUser));
+      await AsyncStorage.setItem('user_session', JSON.stringify(data.user));
 
       setAuthToken(data.token);
-      setUser(activeSessionUser);
-    }
+      setUser(data.user);
+    },
   });
+
 
   // Handles syncing both dynamic Clerk token and OAuth user to state and disk storage
   const setOAuthUser = async (oauthUser: User | null, oauthToken: string | null) => {

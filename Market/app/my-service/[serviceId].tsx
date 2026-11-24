@@ -1,4 +1,13 @@
-import { View, Text, Alert, TouchableOpacity, Dimensions, Linking, ActivityIndicator, TextInput, Modal, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import {
+  View,
+  Text,
+  Alert,
+  TouchableOpacity,
+  Linking,
+  ScrollView,
+  Platform,
+  useWindowDimensions,
+} from 'react-native';
 import React, { useMemo, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useGetServiceProviderById } from '../../hooks/useGetServiceProviderById';
@@ -8,10 +17,9 @@ import LoadingUi from '../../components/LoadingUi';
 import SafeScreen from '../../components/SafeScreen';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import ImageView from '../../components/CrossPlatformImageView.native';
+import ImageView from '../../components/CrossPlatformImageView';
 import { useAuth } from '../../contexts/authContext';
 import { useReportModalStore } from '../../stores/useReportModalStore';
-import { ScrollView } from 'react-native-gesture-handler';
 import { useSearchServiceProviders } from '../../hooks/useSearchServiceProviders';
 import { ProviderReviewsList } from '../../components/reviews/serviceProviderReviewList';
 import { useServiceProviderReviews } from '../../hooks/useServiceProviderReviews';
@@ -19,10 +27,9 @@ import RelatedServiceCard from '../../components/createService/RelatedServiceCar
 import { ServiceProvider } from '../../types';
 import { WriteReviewModal } from '../../components/reviews/WriteReviewModal';
 
-const { width } = Dimensions.get("window");
-
 const ServiceDetailsScreen = () => {
   const { serviceId } = useLocalSearchParams<{ serviceId: string }>();
+  const { width: windowWidth,  height: windowHeigh } = useWindowDimensions();
 
   const { data: response, isError, isLoading } = useGetServiceProviderById(serviceId || "");
   const { data: providersData } = useSearchServiceProviders({ page: 1, limit: 30 });
@@ -34,12 +41,18 @@ const ServiceDetailsScreen = () => {
   const { addReview, isAddingReview } = useServiceProviderReviews(serviceId || "");
   const [isReviewModalVisible, setIsReviewModalVisible] = useState(false);
 
-
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isZoomVisible, setIsZoomVisible] = useState(false);
   const [relatedViewMode, setRelatedViewMode] = useState<'grid' | 'list'>('grid');
 
   const provider = response?.success ? response.data : null;
+
+ const contentWidth = windowWidth;
+
+ const carouselHeight =
+    Platform.OS === 'web' && windowWidth >= 768
+      ? Math.min(Math.max(Math.round(windowWidth * 0.42), 420), Math.round(windowHeigh * 0.65), 620)
+      : 350;
 
   const isOwner = useMemo(() => {
     if (!user || !provider) return false;
@@ -76,12 +89,12 @@ const ServiceDetailsScreen = () => {
         const getScore = (item: ServiceProvider) => {
           const catMatch =
             Boolean(normalizedCategory) &&
-              String(item.category || '').trim().toLowerCase() === normalizedCategory
+            String(item.category || '').trim().toLowerCase() === normalizedCategory
               ? 2
               : 0;
           const regMatch =
             Boolean(normalizedRegion) &&
-              String(item.region || '').trim().toLowerCase() === normalizedRegion
+            String(item.region || '').trim().toLowerCase() === normalizedRegion
               ? 1
               : 0;
           return catMatch + regMatch;
@@ -93,22 +106,43 @@ const ServiceDetailsScreen = () => {
   }, [providersData, provider]);
 
   const handleCallProvider = () => {
-    if (!user) { router.push("/(auth)"); return; }
+    if (!user) {
+      router.push("/(auth)");
+      return;
+    }
     if (!provider?.phoneNumber) return Alert.alert("Error", "Business number unavailable.");
     Linking.openURL(`tel:${provider.phoneNumber}`);
   };
 
   const handleWhatsAppProvider = () => {
-    if (!user) { router.push("/(auth)"); return; }
+    if (!user) {
+      router.push("/(auth)");
+      return;
+    }
+
     const targetNumber = provider?.whatsappNumber || provider?.phoneNumber;
-    if (!targetNumber) return Alert.alert("Error", "No valid contact number found.");
-    const formattedNumber = targetNumber.startsWith('0') ? `233${targetNumber.substring(1)}` : targetNumber;
+    if (!targetNumber) {
+      return Alert.alert("Error", "No valid contact number found.");
+    }
+
+    const cleanPhone = targetNumber.replace(/\D/g, "");
+    const formattedNumber = cleanPhone.startsWith("0")
+      ? `233${cleanPhone.substring(1)}`
+      : cleanPhone;
+
     const message = `Hello ${provider?.businessName}, I found your listing on the Ghana Marketplace App...`;
-    Linking.openURL(`whatsapp://send?phone=${formattedNumber}&text=${encodeURIComponent(message)}`);
+    const whatsappUrl = `https://wa.me/${formattedNumber}?text=${encodeURIComponent(message)}`;
+
+    Linking.openURL(whatsappUrl).catch(() => {
+      Alert.alert("Error", "Unable to open WhatsApp.");
+    });
   };
 
   const handleChatProvider = () => {
-    if (!user) { router.push("/(auth)"); return; }
+    if (!user) {
+      router.push("/(auth)");
+      return;
+    }
     const providerUserId = typeof provider?.user === 'object' ? provider?.user?._id : provider?.user;
     if (!providerUserId) return Alert.alert("Error", "Cannot initialize chat with this provider.");
 
@@ -116,16 +150,17 @@ const ServiceDetailsScreen = () => {
       pathname: '/chat',
       params: {
         userId: providerUserId,
-      }
+      },
     });
   };
 
   const handleOpenReviewModal = () => {
-    if (!user) { Alert.alert("Authentication Required", "Please sign in to leave a review."); return; }
+    if (!user) {
+      Alert.alert("Authentication Required", "Please sign in to leave a review.");
+      return;
+    }
     setIsReviewModalVisible(true);
   };
-
-
 
   const handleSubmitReview = ({ rating, comment }: { rating: number; comment?: string }) => {
     if (rating === 0) return;
@@ -138,7 +173,6 @@ const ServiceDetailsScreen = () => {
       }
     );
   };
-
 
   const handleProfilePurge = () => {
     Alert.alert(
@@ -157,8 +191,8 @@ const ServiceDetailsScreen = () => {
             } catch (err) {
               Alert.alert("Error", "Could not remove listing profile.");
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
@@ -167,27 +201,41 @@ const ServiceDetailsScreen = () => {
   if (isError || !provider) return <ErrorUi />;
 
   const validImages = provider.portfolioImages || [];
-  const displaySalary = provider.pricing?.rate ? `GHS ${Number(provider.pricing.rate).toLocaleString()}` : "Negotiable";
+  const displaySalary = provider.pricing?.rate
+    ? `GHS ${Number(provider.pricing.rate).toLocaleString()}`
+    : "Negotiable";
 
   const renderDetailsHeader = () => (
     <View className="bg-white">
       {/* Carousel Portfolio Section */}
-      <View style={{ height: 350 }} className="relative bg-gray-100">
+      <View style={{ height: carouselHeight }} className="relative bg-gray-100">
         {validImages.length > 0 ? (
           <>
             <ScrollView
               horizontal
               pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onScroll={(e) => setSelectedImageIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
+              showsHorizontalScrollIndicator={Platform.OS === 'web'}
+              onScroll={(e) =>
+                setSelectedImageIndex(Math.round(e.nativeEvent.contentOffset.x / contentWidth))
+              }
               scrollEventThrottle={16}
             >
               {validImages.map((image: string, index: number) => (
-                <TouchableOpacity key={index} activeOpacity={0.9} style={{ width }} onPress={() => setIsZoomVisible(true)}>
-                  <Image source={{ uri: image }} style={{ width, height: 350 }} contentFit="cover" />
+                <TouchableOpacity
+                  key={index}
+                  activeOpacity={0.9}
+                  style={{ width: contentWidth }}
+                  onPress={() => setIsZoomVisible(true)}
+                >
+                  <Image
+                    source={{ uri: image }}
+                    style={{ width: contentWidth, height: 350 }}
+                    contentFit="cover"
+                  />
                 </TouchableOpacity>
               ))}
             </ScrollView>
+
             <ImageView
               images={validImages.map((img: string) => ({ uri: img }))}
               imageIndex={selectedImageIndex}
@@ -195,8 +243,8 @@ const ServiceDetailsScreen = () => {
               onRequestClose={() => setIsZoomVisible(false)}
             />
           </>
-        ) : (
-          <View style={{ width }} className="h-full items-center justify-center bg-gray-100">
+                ) : (
+          <View style={{ width: contentWidth }} className="h-full items-center justify-center bg-gray-100">
             <Ionicons name="construct-outline" size={56} color="#9CA3AF" />
           </View>
         )}
@@ -220,7 +268,7 @@ const ServiceDetailsScreen = () => {
               {provider.availabilityStatus || 'Available'}
             </Text>
           </View>
-          {provider.category && (
+          {Boolean(provider.category) && (
             <View className="bg-blue-50 px-3 py-1 rounded-full">
               <Text className="text-blue-600 text-xs font-bold">{provider.category}</Text>
             </View>
@@ -236,7 +284,6 @@ const ServiceDetailsScreen = () => {
               <Text className="text-red-600 text-xs font-semibold">Report</Text>
               <Ionicons name="flag-outline" size={16} color="#DC2626" />
             </TouchableOpacity>
-
           )}
         </View>
 
@@ -250,7 +297,7 @@ const ServiceDetailsScreen = () => {
           ) : null}
         </Text>
 
-        {(provider.region || provider.district || provider.location) && (
+        {Boolean(provider.region || provider.district || provider.location) && (
           <View className="flex-row items-center gap-1.5 mb-5">
             <Ionicons name="location-outline" size={16} color="#6B7280" />
             <Text className="text-gray-600 font-medium text-sm">
@@ -259,7 +306,7 @@ const ServiceDetailsScreen = () => {
           </View>
         )}
 
-        {(provider as any).description && (
+        {Boolean((provider as any).description) && (
           <View className="mb-6">
             <Text className="text-gray-900 font-bold text-base mb-1.5">About Service</Text>
             <Text className="text-gray-600 text-sm leading-relaxed">
@@ -283,7 +330,7 @@ const ServiceDetailsScreen = () => {
             className="bg-orange-50 border border-orange-200 py-3.5 rounded-xl flex-row items-center justify-center gap-2 mb-2"
           >
             <Ionicons name="star-outline" size={18} color="#EA580C" />
-            <Text className="text-orange-600 font-bold text-sm">Write  Review</Text>
+            <Text className="text-orange-600 font-bold text-sm">Write Review</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -353,54 +400,50 @@ const ServiceDetailsScreen = () => {
 
   return (
     <SafeScreen>
-      <ProviderReviewsList
-        providerId={serviceId || ""}
-        currentUserId={user?._id || user?.id}
-        ListHeaderComponent={renderDetailsHeader}
-        ListFooterComponent={renderRelatedServices()}
-      />
+      <View className="flex-1 bg-white w-full">
+        <ProviderReviewsList
+          providerId={serviceId || ""}
+          currentUserId={user?._id || user?.id}
+          ListHeaderComponent={renderDetailsHeader}
+          ListFooterComponent={renderRelatedServices()}
+        />
 
-      {/* Sticky Contact Action Dock */}
-      {!isOwner && (
-        <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-5 py-4  pb-20 flex-row items-center gap-3">
-          <TouchableOpacity
-            onPress={handleCallProvider}
-            className="flex-1 bg-blue-600 py-3.5 rounded-xl flex-row items-center justify-center gap-2"
-          >
-            <Ionicons name="call" size={18} color="#FFFFFF" />
-            <Text className="text-white font-bold text-sm">Call</Text>
-          </TouchableOpacity>
+        {/* Sticky Contact Action Dock */}
+        {!isOwner && (
+          <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-5 py-4 pb-20 md:pb-4 flex-row items-center gap-3">
+            <TouchableOpacity
+              onPress={handleCallProvider}
+              className="flex-1 bg-blue-600 py-3.5 rounded-xl flex-row items-center justify-center gap-2 shadow-sm"
+            >
+              <Ionicons name="call" size={18} color="#FFFFFF" />
+              <Text className="text-white font-bold text-sm">Call</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={handleWhatsAppProvider}
-            className="flex-1 bg-green-600 py-3.5 rounded-xl flex-row items-center justify-center gap-2"
-          >
-            <Ionicons name="logo-whatsapp" size={18} color="#FFFFFF" />
-            <Text className="text-white font-bold text-sm">WhatsApp</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleWhatsAppProvider}
+              className="flex-1 bg-green-600 py-3.5 rounded-xl flex-row items-center justify-center gap-2 shadow-sm"
+            >
+              <Ionicons name="logo-whatsapp" size={18} color="#FFFFFF" />
+              <Text className="text-white font-bold text-sm">WhatsApp</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={handleChatProvider}
-            className="bg-gray-100 p-3.5 rounded-xl items-center justify-center"
-          >
-            <Ionicons name="chatbubble-ellipses-outline" size={20} color="#111827" />
-          </TouchableOpacity>
-        </View>
-      )}
-
-
-
-      {/* 📋 LEAVE A REVIEW DIALOG MODAL */}
+            <TouchableOpacity
+              onPress={handleChatProvider}
+              className="flex-1 bg-gray-900 py-3.5 rounded-xl flex-row items-center justify-center gap-2 shadow-sm"
+            >
+              <Ionicons name="chatbubble-ellipses" size={18} color="#FFFFFF" />
+              <Text className="text-white font-bold text-sm">Chat</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
 
       <WriteReviewModal
         visible={isReviewModalVisible}
         onClose={() => setIsReviewModalVisible(false)}
         onSubmit={handleSubmitReview}
         isSubmitting={isAddingReview}
-        businessName={provider.businessName}
       />
-
-
     </SafeScreen>
   );
 };
