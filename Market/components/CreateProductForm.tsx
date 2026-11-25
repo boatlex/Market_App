@@ -288,7 +288,7 @@ const CreateProductForm = ({
                 behavior={Platform.OS === "ios" ? "padding" : undefined}
                 className="flex-1 bg-white"
             >
-                                <ProductFormFields
+                    <ProductFormFields
                     formData={formData}
                     handleInputChange={handleInputChange}
                     images={images}

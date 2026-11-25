@@ -19,7 +19,7 @@ import {
 const JobsScreen = () => {
   const router = useRouter();
   const params = useLocalSearchParams<{ category?: string; subCategory?: string }>();
- const { width: screenWidth } = useWindowDimensions();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [showRegionModal, setShowRegionModal] = useState(false);
   const [showDistrictModal, setShowDistrictModal] = useState(false);
@@ -39,8 +39,8 @@ const JobsScreen = () => {
   const [tempFilters, setTempFilters] = useState<GetJobsFilters>({ ...activeFilters });
 
 
- 
-const numColumns = screenWidth >= 1280 ? 5 : screenWidth >= 1024 ? 4 : screenWidth >= 768 ? 3 : 2;
+
+  const numColumns = screenWidth >= 1280 ? 5 : screenWidth >= 1024 ? 4 : screenWidth >= 768 ? 3 : 2;
 
   useEffect(() => {
     const incomingFilters: GetJobsFilters = {
@@ -94,12 +94,25 @@ const numColumns = screenWidth >= 1280 ? 5 : screenWidth >= 1024 ? 4 : screenWid
     : [];
 
   return (
-    <SafeScreen>
-      <View className="flex-1 bg-gray-50">
+
+    <SafeScreen >
+      <View className="flex-1 bg-gray-50 overflow-hidden"
+        style={
+          Platform.OS === 'web'
+            ? { height: screenHeight - 140, maxHeight: screenHeight - 140 }
+            : { flex: 1 }
+        }
+      >
         {/* TOP HEADER */}
         <View className="w-full border-b border-gray-100 bg-white px-4 py-4 flex-row justify-between items-center shadow-sm">
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/(tabs)' as any); 
+              }
+            }}
             activeOpacity={0.7}
             className="p-1 active:bg-gray-100 rounded-full"
           >
@@ -174,6 +187,11 @@ const numColumns = screenWidth >= 1280 ? 5 : screenWidth >= 1024 ? 4 : screenWid
         ) : (
           <FlatList
             key={`jobs-grid-${numColumns}`}
+             style={
+                Platform.OS === 'web'
+                  ? { height: screenHeight - 140, maxHeight: screenHeight - 140 }
+                  : { flex: 1 }
+              }
             data={jobListings}
             keyExtractor={(item: JobItem) => item._id}
             numColumns={numColumns}
@@ -183,21 +201,21 @@ const numColumns = screenWidth >= 1280 ? 5 : screenWidth >= 1024 ? 4 : screenWid
             refreshing={isLoading}
             onRefresh={refetch}
             renderItem={({ item }) => (
-                <JobCard
-                    item={item}
-                    onPress={() => {
-                    const secureEmployerId = item.employer && typeof item.employer === 'object'
+              <JobCard
+                item={item}
+                onPress={() => {
+                  const secureEmployerId = item.employer && typeof item.employer === 'object'
                     ? (item.employer as any)._id || (item.employer as any).id
-                        : item.employer
-                        router.push({
-                                pathname: '/my-job/[id]' as any,
-                                params: {
-                                    id: item._id,
-                                    employerId: String(secureEmployerId) 
-                                    }
-                                    });
-                                }}
-                 />
+                    : item.employer
+                  router.push({
+                    pathname: '/my-job/[id]' as any,
+                    params: {
+                      id: item._id,
+                      employerId: String(secureEmployerId)
+                    }
+                  });
+                }}
+              />
             )}
             ListEmptyComponent={
               <View className="items-center justify-center pt-20">
@@ -221,7 +239,7 @@ const numColumns = screenWidth >= 1280 ? 5 : screenWidth >= 1024 ? 4 : screenWid
                 </TouchableOpacity>
               </View>
 
-                <ScrollView showsVerticalScrollIndicator={false} className="mb-4">
+              <ScrollView showsVerticalScrollIndicator={Platform.OS === 'web'} className="mb-4">
                 <FormDropdown
                   label="Category"
                   placeholder="All Job Categories"
@@ -272,37 +290,46 @@ const numColumns = screenWidth >= 1280 ? 5 : screenWidth >= 1024 ? 4 : screenWid
         </Modal>
 
         {/* SELECTION PICKERS */}
-        <FlatListPickerModal
-          visible={showRegionModal}
-          title="Choose Region"
-          data={GHANA_REGIONS}
-          onClose={() => setShowRegionModal(false)}
-          onSelect={(item) => handleFilterInputChange("region", item)}
-        />
+        {showRegionModal && (
+          <FlatListPickerModal
+            visible={showRegionModal}
+            title="Choose Region"
+            data={GHANA_REGIONS}
+            onClose={() => setShowRegionModal(false)}
+            onSelect={(item) => handleFilterInputChange("region", item)}
+          />
+        )}
 
-        <FlatListPickerModal
-          visible={showDistrictModal}
-          title="Choose District"
-          data={availableDistricts}
-          onClose={() => setShowDistrictModal(false)}
-          onSelect={(item) => handleFilterInputChange("district", item)}
-        />
+        {showDistrictModal && (
+          <FlatListPickerModal
+            visible={showDistrictModal}
+            title="Choose District"
+            data={availableDistricts}
+            onClose={() => setShowDistrictModal(false)}
+            onSelect={(item) => handleFilterInputChange("district", item)}
+          />
+        )}
 
-        <FlatListPickerModal
-          visible={showCategoryModal}
-          title="Choose Category"
-          data={JOB_CATEGORIES}
-          onClose={() => setShowCategoryModal(false)}
-          onSelect={(item) => handleFilterInputChange("category", item)}
-        />
+        {showCategoryModal && (
+          <FlatListPickerModal
+            visible={showCategoryModal}
+            title="Choose Category"
+            data={JOB_CATEGORIES}
+            onClose={() => setShowCategoryModal(false)}
+            onSelect={(item) => handleFilterInputChange("category", item)}
+          />
+        )}
 
-        <FlatListPickerModal
-          visible={showWorkModeModal}
-          title="Choose Work Mode"
-          data={WORK_MODE}
-          onClose={() => setShowWorkModeModal(false)}
-          onSelect={(item) => handleFilterInputChange("workMode", item)}
-        />
+        {showWorkModeModal && (
+          <FlatListPickerModal
+            visible={showWorkModeModal}
+            title="Choose Work Mode"
+            data={WORK_MODE}
+            onClose={() => setShowWorkModeModal(false)}
+            onSelect={(item) => handleFilterInputChange("workMode", item)}
+          />
+        )}
+
       </View>
     </SafeScreen>
   );

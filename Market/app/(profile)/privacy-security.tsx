@@ -6,7 +6,7 @@ import {
   Switch,
   TouchableOpacity,
   Modal,
-  Alert,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,6 +29,46 @@ const DEFAULT_PREFS: PrivacyPreferences = {
   allowDirectMessages: true,
 };
 
+interface PrivacyToggleRowProps {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  subtitle: string;
+  value: boolean;
+  onToggle: () => void;
+  isLast?: boolean;
+}
+
+const PrivacyToggleRow = ({
+  icon,
+  title,
+  subtitle,
+  value,
+  onToggle,
+  isLast = false,
+}: PrivacyToggleRowProps) => (
+  <View
+    className={`flex-row items-center justify-between py-3.5 ${
+      !isLast ? 'border-b border-gray-100' : ''
+    }`}
+  >
+    <View className="flex-row items-center gap-3 flex-1 pr-4">
+      <View className="w-9 h-9 rounded-full bg-gray-100 items-center justify-center shrink-0">
+        <Ionicons name={icon} size={18} color="#374151" />
+      </View>
+      <View className="flex-1">
+        <Text className="text-sm font-semibold text-gray-900">{title}</Text>
+        <Text className="text-xs text-gray-500 mt-0.5 leading-4">{subtitle}</Text>
+      </View>
+    </View>
+    <Switch
+      value={value}
+      onValueChange={onToggle}
+      trackColor={{ false: '#D1D5DB', true: '#93C5FD' }}
+      thumbColor={value ? '#2563EB' : '#F3F4F6'}
+    />
+  </View>
+);
+
 const PrivacyScreen = () => {
   const { user } = useAuth();
   const router = useRouter();
@@ -36,7 +76,6 @@ const PrivacyScreen = () => {
   const [prefs, setPrefs] = useState<PrivacyPreferences>(DEFAULT_PREFS);
   const [infoModal, setInfoModal] = useState<'safety' | 'privacy' | 'terms' | null>(null);
 
-  // Load saved privacy preferences on mount
   useEffect(() => {
     const loadPrefs = async () => {
       try {
@@ -61,268 +100,250 @@ const PrivacyScreen = () => {
     }
   };
 
+  const getModalTitle = () => {
+    if (infoModal === 'safety') return 'Marketplace Safety Guidelines';
+    if (infoModal === 'privacy') return 'Privacy Policy';
+    if (infoModal === 'terms') return 'Terms of Service';
+    return '';
+  };
+
   return (
     <SafeScreen>
-      <Header title="Privacy & Security" />
-
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: 80 }}
-        showsVerticalScrollIndicator={false}
+      <View
+        className="flex-1 bg-gray-50 overflow-hidden"
+        style={Platform.OS === 'web' ? { height: '100vh' as any } : undefined}
       >
-        {/* 1. Security Overview & Password Shortcut */}
-        <View className="bg-white mx-4 rounded-3xl p-5 shadow-sm mb-5">
-          <Text className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
-            Account Security
-          </Text>
+        <Header title="Privacy & Security" fallbackRoute="/(profile)/settings" />
 
-          <View className="flex-row items-center justify-between py-2.5 border-b border-gray-100">
-            <View className="flex-row items-center gap-3">
-              <View className="w-9 h-9 rounded-full bg-emerald-50 items-center justify-center">
-                <Ionicons name="shield-checkmark" size={18} color="#10B981" />
+        {/* Full-Width ScrollView so Desktop Scrollbar Sits Flush on Right Edge */}
+        <ScrollView
+          className="flex-1 w-full"
+          showsVerticalScrollIndicator={Platform.OS === 'web'}
+          contentContainerStyle={{
+            flexGrow: 1,
+            alignItems: 'center',
+            paddingTop: 16,
+            paddingBottom: 80,
+          }}
+        >
+          {/* Centered Desktop Column */}
+          <View className="w-full max-w-2xl self-center">
+            {/* 1. Security Overview & Password Shortcut */}
+            <View className="bg-white mx-4 rounded-3xl p-5 shadow-sm mb-5">
+              <Text className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
+                Account Security
+              </Text>
+
+              <View className="flex-row items-center justify-between py-2.5 border-b border-gray-100">
+                <View className="flex-row items-center gap-3 flex-1 pr-2">
+                  <View className="w-9 h-9 rounded-full bg-emerald-50 items-center justify-center">
+                    <Ionicons name="shield-checkmark" size={18} color="#10B981" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm font-semibold text-gray-900">
+                      Account Protection
+                    </Text>
+                    <Text className="text-xs text-gray-500">
+                      {user?.verified ? 'Verified account active' : 'Email verification pending'}
+                    </Text>
+                  </View>
+                </View>
+                <View
+                  className={`px-2.5 py-1 rounded-full ${
+                    user?.verified ? 'bg-emerald-50' : 'bg-amber-50'
+                  }`}
+                >
+                  <Text
+                    className={`text-[11px] font-bold ${
+                      user?.verified ? 'text-emerald-700' : 'text-amber-700'
+                    }`}
+                  >
+                    {user?.verified ? 'Protected' : 'Unverified'}
+                  </Text>
+                </View>
               </View>
-              <View>
-                <Text className="text-sm font-semibold text-gray-900">
-                  Account Protection
-                </Text>
-                <Text className="text-xs text-gray-500">
-                  {user?.verified ? 'Verified account active' : 'Email verification pending'}
-                </Text>
-              </View>
-            </View>
-            <View
-              className={`px-2.5 py-1 rounded-full ${
-                user?.verified ? 'bg-emerald-50' : 'bg-amber-50'
-              }`}
-            >
-              <Text
-                className={`text-[11px] font-bold ${
-                  user?.verified ? 'text-emerald-700' : 'text-amber-700'
-                }`}
+
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => router.push('/(profile)/account-settings')}
+                className="flex-row items-center justify-between pt-3.5"
               >
-                {user?.verified ? 'Protected' : 'Unverified'}
-              </Text>
-            </View>
-          </View>
-
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => router.push('/(profile)/account-settings')}
-            className="flex-row items-center justify-between pt-3.5"
-          >
-            <View className="flex-row items-center gap-3">
-              <View className="w-9 h-9 rounded-full bg-blue-50 items-center justify-center">
-                <Ionicons name="key-outline" size={18} color="#2563EB" />
-              </View>
-              <View>
-                <Text className="text-sm font-semibold text-gray-900">
-                  Change Password
-                </Text>
-                <Text className="text-xs text-gray-500">
-                  Update your login credentials
-                </Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#6B7280" />
-          </TouchableOpacity>
-        </View>
-
-        {/* 2. Privacy Controls */}
-        <View className="bg-white mx-4 rounded-3xl p-5 shadow-sm mb-5">
-          <Text className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
-            Marketplace Privacy
-          </Text>
-
-          <PrivacyToggleRow
-            icon="call-outline"
-            title="Display Phone Number"
-            subtitle="Allow buyers & employers to view your phone number on posts"
-            value={prefs.showPhoneNumber}
-            onToggle={() => togglePref('showPhoneNumber')}
-          />
-
-          <PrivacyToggleRow
-            icon="radio-button-on-outline"
-            title="Show Online Status"
-            subtitle="Let other members see when you are active in messages"
-            value={prefs.showOnlineStatus}
-            onToggle={() => togglePref('showOnlineStatus')}
-          />
-
-          <PrivacyToggleRow
-            icon="chatbubbles-outline"
-            title="Allow Direct Messages"
-            subtitle="Receive inquiries about your products, services & profile"
-            value={prefs.allowDirectMessages}
-            onToggle={() => togglePref('allowDirectMessages')}
-            isLast
-          />
-        </View>
-
-        {/* 3. Trust, Safety & Policies */}
-        <View className="bg-white mx-4 rounded-3xl p-2 shadow-sm mb-6">
-          <Text className="text-xs font-bold uppercase tracking-wider text-gray-400 mt-3 ml-3 mb-1">
-            Safety & Legal
-          </Text>
-
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => setInfoModal('safety')}
-            className="flex-row items-center justify-between p-4 border-b border-gray-100"
-          >
-            <View className="flex-row items-center gap-3">
-              <Ionicons name="alert-circle-outline" size={22} color="#F59E0B" />
-              <Text className="text-sm font-semibold text-gray-900">
-                Marketplace Safety Guidelines
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#6B7280" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => setInfoModal('privacy')}
-            className="flex-row items-center justify-between p-4 border-b border-gray-100"
-          >
-            <View className="flex-row items-center gap-3">
-              <Ionicons name="document-lock-outline" size={22} color="#2563EB" />
-              <Text className="text-sm font-semibold text-gray-900">
-                Privacy Policy
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#6B7280" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => setInfoModal('terms')}
-            className="flex-row items-center justify-between p-4"
-          >
-            <View className="flex-row items-center gap-3">
-              <Ionicons name="reader-outline" size={22} color="#374151" />
-              <Text className="text-sm font-semibold text-gray-900">
-                Terms of Service
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#6B7280" />
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-
-      {/* Info Modal for Safety Tips / Privacy Policy / Terms */}
-      <Modal
-        visible={infoModal !== null}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setInfoModal(null)}
-      >
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white rounded-t-3xl p-6 pb-10 max-h-[80%]">
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-lg font-bold text-gray-900">
-                {infoModal === 'safety'
-                  ? 'Marketplace Safety Tips'
-                  : infoModal === 'privacy'
-                  ? 'Privacy Policy'
-                  : 'Terms of Service'}
-              </Text>
-              <TouchableOpacity onPress={() => setInfoModal(null)}>
-                <Ionicons name="close" size={24} color="#6B7280" />
+                <View className="flex-row items-center gap-3 flex-1 pr-2">
+                  <View className="w-9 h-9 rounded-full bg-blue-50 items-center justify-center">
+                    <Ionicons name="key-outline" size={18} color="#2563EB" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm font-semibold text-gray-900">
+                      Change Password
+                    </Text>
+                    <Text className="text-xs text-gray-500">
+                      Update your login credentials
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#6B7280" />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {infoModal === 'safety' && (
-                <View className="gap-3">
-                  <SafetyTip
-                    title="Meet in Public Places"
-                    body="Always inspect products and complete handovers in busy, well-lit public locations."
-                  />
-                  <SafetyTip
-                    title="Inspect Before Paying"
-                    body="Never send Mobile Money deposits or advance fees before inspecting an item or verifying a service provider."
-                  />
-                  <SafetyTip
-                    title="Keep Conversations In-App"
-                    body="Chat inside the app so our moderation team can assist if you ever need to file a report."
-                  />
-                  <SafetyTip
-                    title="Report Suspicious Listings"
-                    body="Use the Report button on any listing, job, or profile that asks for upfront application fees or behaves suspiciously."
-                  />
+            {/* 2. Privacy Controls */}
+            <View className="bg-white mx-4 rounded-3xl p-5 shadow-sm mb-5">
+              <Text className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
+                Marketplace Privacy
+              </Text>
+
+              <PrivacyToggleRow
+                icon="call-outline"
+                title="Display Phone Number"
+                subtitle="Allow buyers & employers to view your phone number on posts"
+                value={prefs.showPhoneNumber}
+                onToggle={() => togglePref('showPhoneNumber')}
+              />
+
+              <PrivacyToggleRow
+                icon="radio-button-on-outline"
+                title="Show Online Status"
+                subtitle="Let other members see when you are active in messages"
+                value={prefs.showOnlineStatus}
+                onToggle={() => togglePref('showOnlineStatus')}
+              />
+
+              <PrivacyToggleRow
+                icon="chatbubbles-outline"
+                title="Allow Direct Messages"
+                subtitle="Receive inquiries about your products, services & profile"
+                value={prefs.allowDirectMessages}
+                onToggle={() => togglePref('allowDirectMessages')}
+                isLast
+              />
+            </View>
+
+            {/* 3. Trust, Safety & Policies */}
+            <View className="bg-white mx-4 rounded-3xl p-2 shadow-sm mb-6">
+              <Text className="text-xs font-bold uppercase tracking-wider text-gray-400 mt-3 ml-3 mb-1">
+                Safety & Legal
+              </Text>
+
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setInfoModal('safety')}
+                className="flex-row items-center justify-between p-4 border-b border-gray-100"
+              >
+                <View className="flex-row items-center gap-3">
+                  <Ionicons name="alert-circle-outline" size={22} color="#F59E0B" />
+                  <Text className="text-sm font-semibold text-gray-900">
+                    Marketplace Safety Guidelines
+                  </Text>
                 </View>
-              )}
-              {infoModal === 'privacy' && (
-                <Text className="text-sm text-gray-600 leading-6">
-                  We collect only the account, location (region & district), and listing details needed to connect buyers, sellers, service providers, and job seekers across Ghana. Your password is encrypted, and you can permanently erase your account and all uploaded media at any time from Settings.
-                </Text>
-              )}
+                <Ionicons name="chevron-forward" size={18} color="#6B7280" />
+              </TouchableOpacity>
 
-              {infoModal === 'terms' && (
-                <Text className="text-sm text-gray-600 leading-6">
-                  By using this marketplace, you agree to post accurate listings, respect other members, and refrain from fraudulent or prohibited items. Accounts that violate community guidelines may have listings removed or access suspended.
-                </Text>
-              )}
-            </ScrollView>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setInfoModal('privacy')}
+                className="flex-row items-center justify-between p-4 border-b border-gray-100"
+              >
+                <View className="flex-row items-center gap-3">
+                  <Ionicons name="document-lock-outline" size={22} color="#2563EB" />
+                  <Text className="text-sm font-semibold text-gray-900">
+                    Privacy Policy
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#6B7280" />
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => setInfoModal(null)}
-              className="mt-6 bg-blue-600 py-3.5 rounded-xl items-center"
-            >
-              <Text className="text-white font-bold text-sm">Got It</Text>
-            </TouchableOpacity>
+                            <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setInfoModal('terms')}
+                className="flex-row items-center justify-between p-4"
+              >
+                <View className="flex-row items-center gap-3">
+                  <Ionicons name="reader-outline" size={22} color="#374151" />
+                  <Text className="text-sm font-semibold text-gray-900">
+                    Terms of Service
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </Modal>
+        </ScrollView>
+
+        {/* Centered Info Modal for Safety Tips / Privacy Policy / Terms */}
+        <Modal
+          visible={infoModal !== null}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setInfoModal(null)}
+        >
+          <View className="flex-1 bg-black/50 justify-end md:justify-center md:p-6">
+            <View className="w-full max-w-2xl self-center bg-white rounded-t-3xl md:rounded-3xl p-6 pb-8 max-h-[80%] shadow-xl">
+              <View className="flex-row justify-between items-center pb-3 mb-4 border-b border-gray-100">
+                <Text className="text-lg font-bold text-gray-900 flex-1 pr-3">
+                  {getModalTitle()}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setInfoModal(null)}
+                  className="p-1.5 bg-gray-100 rounded-full"
+                >
+                  <Ionicons name="close" size={20} color="#374151" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView
+                showsVerticalScrollIndicator={Platform.OS === 'web'}
+                style={Platform.OS === 'web' ? { maxHeight: 420 } : undefined}
+                contentContainerStyle={{ paddingBottom: 16 }}
+              >
+                {infoModal === 'safety' && (
+                  <View className="space-y-3">
+                    <Text className="text-sm text-gray-700 leading-5">
+                      • Meet buyers, sellers, and service providers in well-lit public places during daytime hours.
+                    </Text>
+                    <Text className="text-sm text-gray-700 leading-5">
+                      • Inspect items thoroughly before making mobile money or cash payments. Avoid paying deposits before seeing goods or verifying credentials.
+                    </Text>
+                    <Text className="text-sm text-gray-700 leading-5">
+                      • Never share your password, Mobile Money PIN, or one-time verification codes with anyone.
+                    </Text>
+                  </View>
+                )}
+
+                {infoModal === 'privacy' && (
+                  <View className="space-y-3">
+                    <Text className="text-sm text-gray-700 leading-5">
+                      We collect only the profile details, contact information, and listing media you provide to connect buyers, sellers, employers, and service providers across Ghana.
+                    </Text>
+                    <Text className="text-sm text-gray-700 leading-5">
+                      You can manage visibility preferences at any time from this screen or permanently erase your account and listings from Settings.
+                    </Text>
+                  </View>
+                )}
+
+                {infoModal === 'terms' && (
+                  <View className="space-y-3">
+                    <Text className="text-sm text-gray-700 leading-5">
+                      By publishing products, job vacancies, job seeker profiles, or service listings, you confirm that all descriptions, prices, and qualifications are accurate and lawful.
+                    </Text>
+                    <Text className="text-sm text-gray-700 leading-5">
+                      Fraudulent listings, spam, or abusive conduct will result in immediate account suspension.
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
+
+              <TouchableOpacity
+                onPress={() => setInfoModal(null)}
+                activeOpacity={0.85}
+                className="w-full bg-blue-600 py-3.5 rounded-xl items-center mt-4"
+              >
+                <Text className="text-white font-bold text-sm">Got It</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      </View>
     </SafeScreen>
   );
 };
-
-function PrivacyToggleRow({
-  icon,
-  title,
-  subtitle,
-  value,
-  onToggle,
-  isLast = false,
-}: {
-  icon: any;
-  title: string;
-  subtitle: string;
-  value: boolean;
-  onToggle: () => void;
-  isLast?: boolean;
-}) {
-  return (
-    <View
-      className={`flex-row items-center justify-between py-3 ${
-        !isLast ? 'border-b border-gray-100' : ''
-      }`}
-    >
-      <View className="flex-row items-center gap-3 flex-1 pr-3">
-        <Ionicons name={icon} size={20} color="#4B5563" />
-        <View className="flex-1">
-          <Text className="text-sm font-semibold text-gray-900">{title}</Text>
-          <Text className="text-xs text-gray-500 mt-0.5">{subtitle}</Text>
-        </View>
-      </View>
-      <Switch
-        value={value}
-        onValueChange={onToggle}
-        trackColor={{ false: '#D1D5DB', true: '#93C5FD' }}
-        thumbColor={value ? '#2563EB' : '#F3F4F6'}
-      />
-    </View>
-  );
-}
-
-function SafetyTip({ title, body }: { title: string; body: string }) {
-  return (
-    <View className="bg-amber-50/70 border border-amber-100 rounded-2xl p-3.5">
-      <Text className="text-sm font-bold text-gray-900 mb-1">{title}</Text>
-      <Text className="text-xs text-gray-600 leading-5">{body}</Text>
-    </View>
-  );
-}
 
 export default PrivacyScreen;

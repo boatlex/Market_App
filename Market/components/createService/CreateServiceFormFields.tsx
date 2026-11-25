@@ -50,7 +50,7 @@ export const CreateServiceFormFields = ({
                         Company Banner / Job Image {totalImageCount}
                     </Text>
 
-                    {/* 🔑 FIXED: Added 'flex-wrap w-full' container constraints to prevent layout squishing */}
+                    {/* 🔑  Added 'flex-wrap w-full' container constraints to prevent layout squishing */}
                     <View className="flex-row flex-wrap w-full items-center gap-y-3">
 
                         {/* 1. CAMERA BUTTON */}

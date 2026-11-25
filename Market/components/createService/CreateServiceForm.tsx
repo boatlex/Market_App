@@ -1,18 +1,26 @@
-import { View, Modal, KeyboardAvoidingView, Platform, Alert, Text, TouchableOpacity, FlatList, ActivityIndicator, ScrollView } from 'react-native'
-import React, { useEffect, useState } from 'react'
-import { useRouter } from 'expo-router'
-import { useUpsertServiceProvider } from '../../hooks/useUpsertServiceProvider'
+import {
+    View,
+    KeyboardAvoidingView,
+    Platform,
+    Alert,
+    Text,
+    TouchableOpacity,
+    ActivityIndicator,
+    ScrollView,
+    Keyboard,
+} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
+import { useUpsertServiceProvider } from '../../hooks/useUpsertServiceProvider';
 import { CreateServiceFormFields } from '../createService/CreateServiceFormFields'
-import { Ionicons } from '@expo/vector-icons'
-import FlatListPickerModal from '../FlatListPickerModal'
-
+import { Ionicons } from '@expo/vector-icons';
+import FlatListPickerModal from '../FlatListPickerModal';
 import {
     GHANA_DISTRICTS_BY_REGION,
     GHANA_REGIONS,
-    SERVICE_CATEGORIES
-} from '../../constants/createServices'
-import SafeScreen from '../SafeScreen'
-import { ServiceProvider, PricingBasis, AvailabilityStatus } from '../../types'
+    SERVICE_CATEGORIES,
+} from '../../constants/createServices';
+import { PricingBasis, AvailabilityStatus } from '../../types';
 
 export interface SelectedFileMeta {
     uri: string;
@@ -42,7 +50,7 @@ const CreateServiceForm = ({
     setPortfolioImages,
     pickImages,
     takePhoto,
-    removePortfolioImage
+    removePortfolioImage,
 }: CreateServiceFormProps) => {
     const isEditing = !!editingService;
     const router = useRouter();
@@ -55,50 +63,75 @@ const CreateServiceForm = ({
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
     const [showBasisModal, setShowBasisModal] = useState(false);
-    const [validationErrors, setValidationErrors] = useState<string[]>([])
+    const [validationErrors, setValidationErrors] = useState<string[]>([]);
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
 
     // Form state structure matching your clean schema types model
     const [formData, setFormData] = useState({
-        businessName: "",
-        category: "",
-        serviceType: "",
-        description: "",
+        businessName: '',
+        category: '',
+        serviceType: '',
+        description: '',
         pricing: {
             rate: 0,
             basis: 'per hour' as PricingBasis,
-            currency: 'GHS'
+            currency: 'GHS',
         },
-        phoneNumber: "",
-        whatsappNumber: "",
-        region: "",
-        district: "",
-        location: "",
-        availabilityStatus: 'Available' as AvailabilityStatus
+        phoneNumber: '',
+        whatsappNumber: '',
+        region: '',
+        district: '',
+        location: '',
+        availabilityStatus: 'Available' as AvailabilityStatus,
     });
+
+    useEffect(() => {
+        const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+        const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+        const showSub = Keyboard.addListener(showEvent, (e) => {
+            setKeyboardHeight(e.endCoordinates.height);
+        });
+        const hideSub = Keyboard.addListener(hideEvent, () => {
+            setKeyboardHeight(0);
+        });
+
+        return () => {
+            showSub.remove();
+            hideSub.remove();
+        };
+    }, []);
 
     useEffect(() => {
         if (editingService) {
             setFormData({
-                businessName: editingService.businessName || "",
-                category: editingService.category || "",
-                serviceType: editingService.serviceType || "",
-                description: editingService.description || "",
+                businessName: editingService.businessName || '',
+                category: editingService.category || '',
+                serviceType: editingService.serviceType || '',
+                description: editingService.description || '',
                 pricing: {
                     rate: editingService.pricing?.rate ? Number(editingService.pricing.rate) : 0,
-                    basis: (editingService.pricing?.basis || "per hour") as PricingBasis,
-                    currency: editingService.pricing?.currency || "GHS"
+                    basis: (editingService.pricing?.basis || 'per hour') as PricingBasis,
+                    currency: editingService.pricing?.currency || 'GHS',
                 },
-                phoneNumber: editingService.phoneNumber || "",
-                whatsappNumber: editingService.whatsappNumber || "",
-                region: editingService.region || "",
-                district: editingService.district || "",
-                location: editingService.location || "",
-                availabilityStatus: (editingService.availabilityStatus || "Available") as AvailabilityStatus
+                phoneNumber: editingService.phoneNumber || '',
+                whatsappNumber: editingService.whatsappNumber || '',
+                region: editingService.region || '',
+                district: editingService.district || '',
+                location: editingService.location || '',
+                availabilityStatus: (editingService.availabilityStatus || 'Available') as AvailabilityStatus,
             });
 
-            setPortfolioImages(editingService.portfolioImages ? editingService.portfolioImages.map((url: string, i: number) => ({
-                uri: url, isRemote: true, type: 'image/jpeg', name: `portfolio_${i}.jpg`
-            })) : []);
+            setPortfolioImages(
+                editingService.portfolioImages
+                    ? editingService.portfolioImages.map((url: string, i: number) => ({
+                          uri: url,
+                          isRemote: true,
+                          type: 'image/jpeg',
+                          name: `portfolio_${i}.jpg`,
+                      }))
+                    : []
+            );
         } else {
             resetForm();
         }
@@ -106,21 +139,21 @@ const CreateServiceForm = ({
 
     const resetForm = () => {
         setFormData({
-            businessName: "",
-            category: "",
-            serviceType: "",
-            description: "",
+            businessName: '',
+            category: '',
+            serviceType: '',
+            description: '',
             pricing: {
                 rate: 0,
                 basis: 'per hour',
-                currency: 'GHS'
+                currency: 'GHS',
             },
-            phoneNumber: "",
-            whatsappNumber: "",
-            region: "",
-            district: "",
-            location: "",
-            availabilityStatus: 'Available'
+            phoneNumber: '',
+            whatsappNumber: '',
+            region: '',
+            district: '',
+            location: '',
+            availabilityStatus: 'Available',
         });
         setPortfolioImages([]);
         setValidationErrors([]);
@@ -130,7 +163,13 @@ const CreateServiceForm = ({
         setShowModal(false);
         setEditingService(null);
         resetForm();
-        if (router.canGoBack()) {
+
+        const canGoBack =
+            Platform.OS === 'web'
+                ? typeof window !== 'undefined' && window.history.length > 1 && router.canGoBack()
+                : router.canGoBack();
+
+        if (canGoBack) {
             router.back();
         } else {
             router.replace('/my-activity' as any);
@@ -138,22 +177,18 @@ const CreateServiceForm = ({
     };
 
     const handleInputChange = (field: string, value: any) => {
-        setFormData(prev => {
+        setFormData((prev) => {
             const updated = { ...prev, [field]: value };
-            if (field === "region") {
-                updated.district = "";
+            if (field === 'region') {
+                updated.district = '';
             }
             return updated;
         });
     };
 
-
-
     const handleSubmit = async () => {
-
         const activeErrors: string[] = [];
 
-        // Check individual model properties sequentially
         if (!formData.businessName) activeErrors.push('businessName');
         if (!formData.serviceType) activeErrors.push('serviceType');
         if (!formData.description) activeErrors.push('description');
@@ -166,21 +201,20 @@ const CreateServiceForm = ({
             activeErrors.push('rate');
         }
 
-        // Save identified errors down to state to trigger red layouts
         setValidationErrors(activeErrors);
 
         if (activeErrors.length > 0) {
-            Alert.alert("Missing Information", "Please correct the highlighted fields before submitting.");
+            Alert.alert('Missing Information', 'Please correct the highlighted fields before submitting.');
             return;
         }
 
-        const localPicks = portfolioImages.filter(img => !img.isRemote);
+        const localPicks = portfolioImages.filter((img) => !img.isRemote);
 
         try {
             await mutateAsync({
                 serviceId: editingService?._id || undefined,
                 businessName: formData.businessName,
-                category: formData.category || "Services",
+                category: formData.category || 'Services',
                 serviceType: formData.serviceType,
                 description: formData.description,
                 rate: Number(formData.pricing.rate) || 0,
@@ -192,148 +226,169 @@ const CreateServiceForm = ({
                 district: formData.district,
                 location: formData.location,
                 availabilityStatus: formData.availabilityStatus,
-                portfolioImageFiles: localPicks.length > 0 ? localPicks.map(img => ({
-                    uri: img.uri,
-                    name: img.name || 'upload.jpg',
-                    type: img.type || 'image/jpeg'
-                })) : null
+                portfolioImageFiles:
+                    localPicks.length > 0
+                        ? localPicks.map((img) => ({
+                              uri: img.uri,
+                              name: img.name || 'upload.jpg',
+                              type: img.type || 'image/jpeg',
+                          }))
+                        : null,
             } as any);
 
-            Alert.alert("Success 🎉", "Service provider profile saved successfully.");
+            Alert.alert('Success 🎉', 'Service provider profile saved successfully.');
             setShowModal(false);
             setEditingService(null);
             resetForm();
             setValidationErrors([]);
             router.replace('/my-activity' as any);
-
         } catch (error: any) {
-            console.error("Failed to submit profile listing:", error);
-            Alert.alert("Submission Error", error.message || "Could not complete your request at this time.");
+            console.error('Failed to submit profile listing:', error);
+            Alert.alert('Submission Error', error.message || 'Could not complete your request at this time.');
         }
     };
 
+    const availableDistricts = formData.region
+        ? GHANA_DISTRICTS_BY_REGION[formData.region as keyof typeof GHANA_DISTRICTS_BY_REGION] || []
+        : [];
 
     return (
-        <Modal visible={showModal} animationType="fade" onRequestClose={handleCloseModal}>
-            <SafeScreen>
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-white">
-
-                    <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-100">
-                        <TouchableOpacity onPress={handleCloseModal} className="p-1">
-                            <Ionicons name="arrow-back" size={24} color="#111827" />
+        <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            className="flex-1 bg-white overflow-hidden"
+            style={Platform.OS === 'web' ? { height: '100vh' as any } : undefined}
+        >
+            {/* Full-width ScrollView so desktop scrollbar sits flush on the right edge */}
+            <ScrollView
+                className="flex-1 px-5 py-4 bg-white"
+                showsVerticalScrollIndicator={Platform.OS === 'web'}
+                keyboardShouldPersistTaps="handled"
+                automaticallyAdjustKeyboardInsets={true}
+                contentContainerStyle={{
+                    paddingBottom: keyboardHeight > 0 ? keyboardHeight + 120 : 120,
+                }}
+            >
+                <View className="w-full max-w-2xl self-center flex-1 pt-2">
+                    {/* Inline Action Bar Header */}
+                    <View className="flex-row items-center justify-between pb-3 mb-4 border-b border-gray-100">
+                        <View className="flex-1 pr-3">
+                            <Text className="text-gray-900 font-extrabold text-xl">
+                                {isEditing ? 'Modify Service' : 'Service Specifications'}
+                            </Text>
+                            <Text className="text-gray-400 text-xs mt-0.5 font-medium">
+                                Please provide exact business & pricing details
+                            </Text>
+                        </View>
+                        <TouchableOpacity
+                            onPress={handleCloseModal}
+                            activeOpacity={0.7}
+                            className="shrink-0 bg-gray-100 px-3 py-1.5 rounded-full flex-row items-center"
+                        >
+                            <Ionicons name="close-outline" size={16} color="#4B5563" />
+                            <Text className="text-gray-600 font-semibold text-xs ml-0.5">Cancel</Text>
                         </TouchableOpacity>
-                        <Text className="text-gray-950 font-black text-base">
-                            {isEditing ? 'Modify Service Profile' : 'Create Trade Listing'}
-                        </Text>
-                        <View className="w-6" />
                     </View>
 
-                    <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
-                        <CreateServiceFormFields
-                            formData={formData}
-                            handleInputChange={handleInputChange}
-                            errors={validationErrors}
-                            images={portfolioImages}
-                            pickImages={pickImages}
-                            takePhoto={takePhoto}
-                            removeImage={removePortfolioImage}
-                            openRegionPicker={() => setShowRegionModal(true)}
-                            openDistrictPicker={() => {
-                                if (!formData.region) {
-                                    Alert.alert("Region Required", "Please select a region before choosing a district.");
-                                    return;
-                                }
-                                setShowDistrictModal(true);
-                            }}
-                            openCategoryPicker={() => setShowCategoryModal(true)}
-                            openWorkModePicker={() => setShowAvailabilityModal(true)}
-                            openBasisPicker={() => setShowBasisModal(true)} // 🔑 Triggers separate basis modal context switcher channel
-                        />
+                    {/* Form Fields */}
+                    <CreateServiceFormFields
+                        formData={formData}
+                        handleInputChange={handleInputChange}
+                        images={portfolioImages}
+                        pickImages={pickImages}
+                        takePhoto={takePhoto}
+                        removeImage={removePortfolioImage}
+                        openCategoryPicker={() => setShowCategoryModal(true)}
+                        openBasisPicker={() => setShowBasisModal(true)}
+                        openWorkModePicker={() => setShowAvailabilityModal(true)}
+                        openRegionPicker={() => setShowRegionModal(true)}
+                        openDistrictPicker={() => {
+                            if (!formData.region) {
+                                Alert.alert(
+                                    'Select Region First',
+                                    'Please choose your region before selecting a district.'
+                                );
+                                return;
+                            }
+                            setShowDistrictModal(true);
+                        }}
+                        errors={validationErrors}
+                    />
 
-                        {/* Submit Action Pipeline Button */}
-                        <TouchableOpacity
-                            onPress={handleSubmit}
-                            disabled={isPending}
-                            className={`w-full py-4 rounded-2xl items-center justify-center mt-6 ${isPending ? 'bg-gray-400' : 'bg-gray-950'
-                                }`}
-                        >
-                            {isPending ? (
-                                <ActivityIndicator size="small" color="#FFFFFF" />
-                            ) : (
-                                <Text className="text-white font-black text-sm">
-                                    {isEditing ? 'Save Modifications' : 'Publish Business Profile'}
-                                </Text>
-                            )}
-                        </TouchableOpacity>
-                    </ScrollView>
+                    {/* Submit Button */}
+                    <TouchableOpacity
+                        onPress={handleSubmit}
+                        disabled={isPending}
+                        activeOpacity={0.85}
+                        className={`w-full py-4 rounded-xl items-center mt-4 ${
+                            isPending ? 'bg-blue-400' : 'bg-blue-600'
+                        }`}
+                    >
+                        {isPending ? (
+                            <ActivityIndicator color="#FFFFFF" />
+                        ) : (
+                            <Text className="text-white font-bold text-base">
+                                {isEditing ? 'Update Service Profile' : 'Publish Service Profile'}
+                            </Text>
+                        )}
+                    </TouchableOpacity>
+                </View>
+            </ScrollView>
 
-                </KeyboardAvoidingView>
-            </SafeScreen>
+            {/* Selection Modals (Centered on Desktop with Scrollbars) */}
+            <FlatListPickerModal
+                visible={showCategoryModal}
+                title="Select Service Specialty / Category"
+                data={SERVICE_CATEGORIES}
+                selectedValue={formData.serviceType}
+                onSelect={(val) => {
+                    handleInputChange('serviceType', val);
+                    handleInputChange('category', val);
+                }}
+                onClose={() => setShowCategoryModal(false)}
+            />
 
+            <FlatListPickerModal
+                visible={showBasisModal}
+                title="Select Pricing Basis"
+                data={['per hour', 'per day', 'fixed', 'starting at', 'contact for quote']}
+                selectedValue={formData.pricing.basis}
+                onSelect={(val) =>
+                    setFormData((prev) => ({
+                        ...prev,
+                        pricing: { ...prev.pricing, basis: val as PricingBasis },
+                    }))
+                }
+                onClose={() => setShowBasisModal(false)}
+            />
 
-            {/* 1. Region Selector Sheet */}
-            {showBasisModal && (
-                <FlatListPickerModal
-                    visible={showRegionModal}
-                    title="Select Region"
-                    data={GHANA_REGIONS}
-                    onSelect={(item) => handleInputChange("region", item)}
-                    onClose={() => setShowRegionModal(false)}
-                />)}
+            <FlatListPickerModal
+                visible={showAvailabilityModal}
+                title="Select Availability Status"
+                data={['Available', 'Busy', 'Unavailable']}
+                selectedValue={formData.availabilityStatus}
+                onSelect={(val) => handleInputChange('availabilityStatus', val)}
+                onClose={() => setShowAvailabilityModal(false)}
+            />
 
+            <FlatListPickerModal
+                visible={showRegionModal}
+                title="Select Region"
+                data={GHANA_REGIONS}
+                selectedValue={formData.region}
+                onSelect={(val) => handleInputChange('region', val)}
+                onClose={() => setShowRegionModal(false)}
+            />
 
-            {/* 2. District Selector Sheet */}
-            {showDistrictModal && (
-                <FlatListPickerModal
-                    visible={showDistrictModal}
-                    title="Select District"
-                    data={formData.region ? GHANA_DISTRICTS_BY_REGION[formData.region as keyof typeof GHANA_DISTRICTS_BY_REGION] || [] : []}
-                    onSelect={(item) => handleInputChange("district", item)}
-                    onClose={() => setShowDistrictModal(false)}
-                />
-            )}
-
-
-            {/* 3. Specialty Trade/Category Picker Sheet */}
-            {showCategoryModal && (
-                <FlatListPickerModal
-                    visible={showCategoryModal}
-                    title="Select Service Category"
-                    data={SERVICE_CATEGORIES}
-                    onSelect={(item) => {
-                        handleInputChange("serviceType", item);
-                        handleInputChange("category", "Services");
-                    }}
-                    onClose={() => setShowCategoryModal(false)}
-                />
-            )}
-
-
-            {/* 4. Availability Enums Tracker Sheet */}
-            {showAvailabilityModal && (
-                <FlatListPickerModal
-                    visible={showAvailabilityModal}
-                    title="Select Availability"
-                    data={['Available', 'Busy', 'Away']}
-                    onSelect={(item) => handleInputChange("availabilityStatus", item as AvailabilityStatus)}
-                    onClose={() => setShowAvailabilityModal(false)}
-                />
-            )}
-
-
-            {/* 5: Isolated Pricing Basis Picker Sheet */}
-            {showBasisModal && (
-                <FlatListPickerModal
-                    visible={showBasisModal}
-                    title="Select Pricing Basis"
-                    data={['per hour', 'per day', 'per week', 'per month', 'quarterly', 'fixed project', 'contact for quote']}
-                    onSelect={(item) => handleInputChange("pricing", { ...formData.pricing, basis: item as PricingBasis })}
-                    onClose={() => setShowBasisModal(false)}
-                />
-            )}
-        </Modal>
+            <FlatListPickerModal
+                visible={showDistrictModal}
+                title="Select District"
+                data={availableDistricts}
+                selectedValue={formData.district}
+                onSelect={(val) => handleInputChange('district', val)}
+                onClose={() => setShowDistrictModal(false)}
+            />
+        </KeyboardAvoidingView>
     );
 };
 
 export default CreateServiceForm;
-

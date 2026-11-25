@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Alert } from 'react-native';
+import { Alert, View, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import * as DocumentPicker from 'expo-document-picker'; 
-import { useLocalSearchParams } from 'expo-router'; 
+import * as DocumentPicker from 'expo-document-picker';
+import { useLocalSearchParams } from 'expo-router';
 import SafeScreen from '../../components/SafeScreen';
 import Header from '../../components/Header';
 import SeekJobForm from '../../components/lookForJob/SeekJobForm';
 
-//  interface matching  hook variables
 export interface SelectedFileMeta {
     uri: string;
     type: string;
@@ -16,41 +15,41 @@ export interface SelectedFileMeta {
 }
 
 const SeekJobAdScreen = () => {
-    const params = useLocalSearchParams(); 
-    const [showModal, setShowModal] = useState(true); 
+    const params = useLocalSearchParams();
+    const [showModal, setShowModal] = useState(true);
     const [editingSeekJob, setEditingSeekJob] = useState<any | null>(null);
     const [images, setImages] = useState<SelectedFileMeta[]>([]);
-    const [resumeFile, setResumeFile] = useState<SelectedFileMeta | null>(null); 
-useEffect(() => {
-    if (params?.seekJobData) {
-        try {
-            const parsedJob = JSON.parse(params.seekJobData as string);
-            setEditingSeekJob(parsedJob);
-            setShowModal(true);
+    const [resumeFile, setResumeFile] = useState<SelectedFileMeta | null>(null);
 
-            if (parsedJob.profilePicture) {
-                setImages([{
-                    uri: parsedJob.profilePicture,
-                    type: 'image/jpeg',
-                    name: 'profile.jpg',
-                    isRemote: true,
-                }]);
-            }
+    useEffect(() => {
+        if (params?.seekJobData) {
+            try {
+                const parsedJob = JSON.parse(params.seekJobData as string);
+                setEditingSeekJob(parsedJob);
+                setShowModal(true);
 
-            if (parsedJob.resumeUrl) {
-                setResumeFile({
-                    uri: parsedJob.resumeUrl,
-                    type: 'application/pdf',
-                    name: 'Attached Resume.pdf',
-                    isRemote: true,
-                });
+                if (parsedJob.profilePicture) {
+                    setImages([{
+                        uri: parsedJob.profilePicture,
+                        type: 'image/jpeg',
+                        name: 'profile.jpg',
+                        isRemote: true,
+                    }]);
+                }
+
+                if (parsedJob.resumeUrl) {
+                    setResumeFile({
+                        uri: parsedJob.resumeUrl,
+                        type: 'application/pdf',
+                        name: 'Attached Resume.pdf',
+                        isRemote: true,
+                    });
+                }
+            } catch (error) {
+                console.error("Failed to parse job entity parameters:", error);
             }
-        } catch (error) {
-            console.error("Failed to parse job entity parameters:", error);
         }
-    }
-}, [params?.seekJobData]);
-
+    }, [params?.seekJobData]);
 
     const takePhoto = async () => {
         if (images.length >= 1) {
@@ -95,7 +94,7 @@ useEffect(() => {
 
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ['images'],
-            allowsMultipleSelection: false, 
+            allowsMultipleSelection: false,
             quality: 0.8,
         });
 
@@ -111,7 +110,6 @@ useEffect(() => {
         }
     };
 
-    //  Native PDF document extractor logic pipeline
     const pickResume = async () => {
         try {
             const result = await DocumentPicker.getDocumentAsync({
@@ -144,31 +142,35 @@ useEffect(() => {
         setImages(prev => prev.filter((_, index) => index !== indexToRemove));
     };
 
-    // Function to clear out selected resume
     const removeResume = () => {
         setResumeFile(null);
     };
 
-    return (
+       return (
         <SafeScreen>
-            <Header title={editingSeekJob ? 'Edit Profile' : 'Create Profile'} />
+            <View
+                className="flex-1 bg-white overflow-hidden"
+                style={Platform.OS === 'web' ? { height: '100vh' as any } : undefined}
+            >
+                <Header title={editingSeekJob ? 'Edit Profile' : 'Create Profile'} />
 
-            <SeekJobForm
-                showModal={showModal}
-                setShowModal={setShowModal}
-                editingJob={editingSeekJob}
-                setEditingJob={setEditingSeekJob}
-                images={images}
-                setImages={setImages}
-                pickImages={pickImages}
-                takePhoto={takePhoto} 
-                removeImage={removeImage}
-                resumeFile={resumeFile}
-                pickResume={pickResume}
-                removeResume={removeResume}
-            />
+                <SeekJobForm
+                    showModal={showModal}
+                    setShowModal={setShowModal}
+                    editingJob={editingSeekJob}
+                    setEditingJob={setEditingSeekJob}
+                    images={images}
+                    setImages={setImages}
+                    pickImages={pickImages}
+                    takePhoto={takePhoto}
+                    removeImage={removeImage}
+                    resumeFile={resumeFile}
+                    pickResume={pickResume}
+                    removeResume={removeResume}
+                />
+            </View>
         </SafeScreen>
     );
-};
+}
 
-export default SeekJobAdScreen;
+export default SeekJobAdScreen

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal, ScrollView } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal, ScrollView, Platform, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import SafeScreen from '../../components/SafeScreen';
@@ -7,6 +7,7 @@ import { useSearchServiceProviders, SearchProvidersParams } from '../../hooks/us
 import { FormInput } from '../../components/FormInput';
 import { CreateServiceCard } from '../../components/createService/CreateServiceCard';
 import { FormDropdown } from '../../components/FormDropdown';
+import FlatListPickerModal from '../../components/FlatListPickerModal';
 import {
   GHANA_REGIONS,
   GHANA_DISTRICTS_BY_REGION,
@@ -14,55 +15,12 @@ import {
   SUB_CATEGORIES_BY_CATEGORY,
 } from '../../constants/createServices';
 
-const FlatListPickerModal = ({
-  visible,
-  title,
-  data,
-  onSelect,
-  onClose,
-}: {
-  visible: boolean;
-  title: string;
-  data: readonly string[] | string[];
-  onSelect: (item: string) => void;
-  onClose: () => void;
-}) => (
-  <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
-    <View className="flex-1 justify-end bg-black/50">
-      <View className="bg-white rounded-t-3xl h-[65%] pb-6">
-        <View className="flex-row justify-between items-center px-6 py-4 border-b border-gray-100">
-          <Text className="text-gray-900 font-black text-base">{title}</Text>
-          <TouchableOpacity onPress={onClose} className="p-1 bg-gray-100 rounded-full">
-            <Ionicons name="close" size={18} color="#4B5563" />
-          </TouchableOpacity>
-        </View>
-        <FlatList
-          data={data as string[]}
-          keyExtractor={(item) => item}
-          className="flex-1"
-          nestedScrollEnabled={true}
-          contentContainerStyle={{ paddingBottom: 40 }}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              className="px-6 py-4 border-b border-gray-50 active:bg-blue-50"
-              onPress={() => {
-                onSelect(item);
-                onClose();
-              }}
-            >
-              <Text className="text-gray-800 font-semibold text-sm">{item}</Text>
-            </TouchableOpacity>
-          )}
-          showsVerticalScrollIndicator={true}
-        />
-      </View>
-    </View>
-  </Modal>
-);
 
 export const AllServiceScreen = () => {
   const router = useRouter();
   const params = useLocalSearchParams<{ category?: string; subCategory?: string }>();
+
+const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [showRegionModal, setShowRegionModal] = useState(false);
@@ -81,6 +39,8 @@ export const AllServiceScreen = () => {
   });
 
   const [tempFilters, setTempFilters] = useState<SearchProvidersParams>({ ...activeFilters });
+  const numColumns = screenWidth >= 1280 ? 5 : screenWidth >= 1024 ? 4 : screenWidth >= 768 ? 3 : 2;
+
 
   useEffect(() => {
     const incomingFilters: SearchProvidersParams = {
@@ -142,27 +102,41 @@ export const AllServiceScreen = () => {
     return `${activeFilters.region}${shortDistrict}`;
   }, [activeFilters.region, activeFilters.district]);
 
-  return (
+    return (
     <SafeScreen>
-      <View className="flex-1 bg-gray-50">
+      <View
+        className="flex-1 bg-gray-50 overflow-hidden"
+        style={Platform.OS === 'web' ? { height: '100vh' as any } : undefined}
+      >
         {/* TOP APP BAR */}
         <View className="w-full border-b border-gray-100 bg-white px-4 py-4 flex-row justify-between items-center shadow-sm">
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => {
+              const canGoBack =
+                Platform.OS === 'web'
+                  ? typeof window !== 'undefined' && window.history.length > 1 && router.canGoBack()
+                  : router.canGoBack();
+
+              if (canGoBack) {
+                router.back();
+              } else {
+                router.replace('/(tabs)' as any);
+              }
+            }}
             activeOpacity={0.7}
-            className="p-1 active:bg-gray-100 rounded-full"
+            className="p-1 rounded-full"
           >
             <Ionicons name="arrow-back" size={26} color="#1F2937" />
           </TouchableOpacity>
 
           <View className="flex-1 items-center justify-center px-2">
             <Text className="font-extrabold text-lg text-gray-900 text-center" numberOfLines={1}>
-              {`${results.length <= 1 ? "Posted Service" : "Posted Services"} (${results.length})`}
+              {`${results.length <= 1 ? 'Posted Service' : 'Posted Services'} (${results.length})`}
             </Text>
           </View>
 
           <TouchableOpacity
-            onPress={() => router.push("/post-service")}
+            onPress={() => router.push('/post-service')}
             activeOpacity={0.8}
             className="bg-blue-600 px-3 py-2 rounded-xl flex-row items-center justify-center shadow-sm shadow-blue-500/20 active:bg-blue-700"
           >
@@ -209,7 +183,7 @@ export const AllServiceScreen = () => {
         </View>
 
         {/* ACTIVE CATEGORY / SUBCATEGORY BANNER */}
-        {(activeFilters.category || activeFilters.serviceType) && (
+        {Boolean(activeFilters.category || activeFilters.serviceType) && (
           <View className="flex-row items-center justify-between bg-blue-50 px-4 py-2 border-b border-blue-100">
             <Text className="text-xs font-bold text-blue-800 flex-1 mr-2" numberOfLines={1}>
               {activeFilters.serviceType
@@ -218,7 +192,7 @@ export const AllServiceScreen = () => {
             </Text>
             <TouchableOpacity
               onPress={() => {
-                const cleared = { ...activeFilters, category: "", serviceType: "", page: 1 };
+                const cleared = { ...activeFilters, category: '', serviceType: '', page: 1 };
                 setActiveFilters(cleared);
                 setTempFilters(cleared);
               }}
@@ -228,39 +202,49 @@ export const AllServiceScreen = () => {
           </View>
         )}
 
-        {/* PROVIDER GRID LIST */}
+        {/* PROVIDER GRID LIST WITH DESKTOP SCROLLBAR */}
         {isLoading ? (
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator color="#2563EB" size="large" />
           </View>
         ) : (
           <FlatList
+            key={`services-grid-${numColumns}`}
+            className="flex-1 w-full"
+            style={
+              Platform.OS === 'web'
+                ? { height: screenHeight - 150, maxHeight: screenHeight - 150 }
+                : { flex: 1 }
+            }
             data={results}
             keyExtractor={(item: any, index) => item._id || `service-${index}`}
-            numColumns={2}
-            columnWrapperStyle={{ justifyContent: 'space-between' }}
-            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 }}
-            showsVerticalScrollIndicator={false}
-
+            numColumns={numColumns}
+            columnWrapperStyle={
+              numColumns === 2
+                ? { justifyContent: 'space-between' }
+                : { justifyContent: 'flex-start', gap: 12 }
+            }
+            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 60 }}
+            showsVerticalScrollIndicator={true}
             renderItem={({ item }) => (
               <CreateServiceCard
                 item={item}
-                    onPress={() => {
-                  const serviceProviderId = item.user && typeof item.user === 'object'
-                    ? (item.user as any)._id || (item.user as any).id
-                    : item.user;
+                onPress={() => {
+                  const serviceProviderId =
+                    item.user && typeof item.user === 'object'
+                      ? (item.user as any)._id || (item.user as any).id
+                      : item.user;
 
                   router.push({
-                    pathname: "/my-service/[serviceId]",
+                    pathname: '/my-service/[serviceId]',
                     params: {
                       serviceId: item._id,
-                      employerId: String(serviceProviderId)
-                    }
+                      employerId: String(serviceProviderId),
+                    },
                   });
                 }}
               />
             )}
-
             ListEmptyComponent={
               <View className="items-center justify-center pt-20">
                 <Ionicons name="briefcase-outline" size={48} color="#9CA3AF" />
@@ -272,49 +256,57 @@ export const AllServiceScreen = () => {
           />
         )}
 
-        {/* ADVANCED FILTER BOTTOM SHEET */}
-        <Modal visible={showFilterSheet} animationType="slide" transparent={true} onRequestClose={() => setShowFilterSheet(false)}>
-          <View className="flex-1 justify-end bg-black/50">
-            <View className="bg-white rounded-t-3xl p-5 max-h-[85%]">
+        {/* ADVANCED FILTER BOTTOM SHEET (Centered on Desktop) */}
+        <Modal
+          visible={showFilterSheet}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowFilterSheet(false)}
+        >
+          <View className="flex-1 justify-end md:justify-center md:p-6 bg-black/50">
+            <View className="w-full max-w-2xl self-center bg-white rounded-t-3xl md:rounded-3xl p-5 max-h-[85%] shadow-xl">
               <View className="flex-row justify-between items-center mb-4">
                 <Text className="text-lg font-extrabold text-gray-900">Filter Services</Text>
-                <TouchableOpacity onPress={() => setShowFilterSheet(false)} className="p-1 bg-gray-100 rounded-full">
+                <TouchableOpacity
+                  onPress={() => setShowFilterSheet(false)}
+                  className="p-1.5 bg-gray-100 rounded-full"
+                >
                   <Ionicons name="close" size={20} color="#111827" />
                 </TouchableOpacity>
               </View>
 
-              <ScrollView showsVerticalScrollIndicator={false} className="mb-4">
+              <ScrollView showsVerticalScrollIndicator={true} className="mb-4">
                 <FormDropdown
                   label="Category"
                   placeholder="All Categories"
-                  value={tempFilters.category || ""}
+                  value={tempFilters.category || ''}
                   onPress={() => setShowCategoryModal(true)}
                 />
 
-                {tempFilters.category ? (
+                {Boolean(tempFilters.category) && (
                   <FormDropdown
                     label="Specialty / Service Type"
                     placeholder="All Specialties"
-                    value={tempFilters.serviceType || ""}
+                    value={tempFilters.serviceType || ''}
                     onPress={() => setShowSubCategoryModal(true)}
                   />
-                ) : null}
+                )}
 
                 <FormDropdown
                   label="Region"
                   placeholder="All Ghana"
-                  value={tempFilters.region || ""}
+                  value={tempFilters.region || ''}
                   onPress={() => setShowRegionModal(true)}
                 />
 
-                {tempFilters.region ? (
+                {Boolean(tempFilters.region) && (
                   <FormDropdown
                     label="District"
                     placeholder="All Districts"
-                    value={tempFilters.district || ""}
+                    value={tempFilters.district || ''}
                     onPress={() => setShowDistrictModal(true)}
                   />
-                ) : null}
+                )}
               </ScrollView>
 
               <View className="flex-row gap-3 pt-2 border-t border-gray-100">
@@ -337,45 +329,35 @@ export const AllServiceScreen = () => {
 
         {/* PICKER MODALS */}
         <FlatListPickerModal
-          visible={showRegionModal}
-          title="Choose Region"
-          data={GHANA_REGIONS}
-          onClose={() => setShowRegionModal(false)}
-          onSelect={(item) => {
-            handleInputChange("region", item);
-            if (!showFilterSheet) {
-              setActiveFilters((prev) => ({ ...prev, region: item, district: "", page: 1 }));
-            }
-          }}
-        />
-
-        <FlatListPickerModal
-          visible={showDistrictModal}
-          title="Choose District"
-          data={activeDistricts}
-          onClose={() => setShowDistrictModal(false)}
-          onSelect={(item) => {
-            handleInputChange("district", item);
-            if (!showFilterSheet) {
-              setActiveFilters((prev) => ({ ...prev, district: item, page: 1 }));
-            }
-          }}
-        />
-
-        <FlatListPickerModal
           visible={showCategoryModal}
-          title="Choose Service Category"
+          title="Select Category"
           data={SERVICE_CATEGORIES}
+          onSelect={(val) => handleInputChange('category', val)}
           onClose={() => setShowCategoryModal(false)}
-          onSelect={(item) => handleInputChange("category", item)}
         />
 
         <FlatListPickerModal
           visible={showSubCategoryModal}
-          title="Choose Specialty"
+          title="Select Specialty"
           data={activeSubCategories}
+          onSelect={(val) => handleInputChange('serviceType', val)}
           onClose={() => setShowSubCategoryModal(false)}
-          onSelect={(item) => handleInputChange("serviceType", item)}
+        />
+
+               <FlatListPickerModal
+          visible={showRegionModal}
+          title="Select Region"
+          data={GHANA_REGIONS}
+          onSelect={(val) => handleInputChange('region', val)}
+          onClose={() => setShowRegionModal(false)}
+        />
+
+        <FlatListPickerModal
+          visible={showDistrictModal}
+          title="Select District"
+          data={activeDistricts}
+          onSelect={(val) => handleInputChange('district', val)}
+          onClose={() => setShowDistrictModal(false)}
         />
       </View>
     </SafeScreen>
@@ -383,4 +365,3 @@ export const AllServiceScreen = () => {
 };
 
 export default AllServiceScreen;
-

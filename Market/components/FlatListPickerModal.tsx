@@ -43,7 +43,6 @@ export const FlatListPickerModal: React.FC<FlatListPickerModalProps> = ({
     }
   }, [visible]);
 
-  // Safely normalize data whether items are strings or { label, value } objects
   const normalizedData = useMemo(() => {
     if (!Array.isArray(data)) return [];
     return data
@@ -76,14 +75,18 @@ export const FlatListPickerModal: React.FC<FlatListPickerModalProps> = ({
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="absolute inset-0 z-50 justify-end bg-black/50"
+      className="absolute inset-0 z-50 justify-end md:justify-center md:p-6 bg-black/50"
     >
-      {/* Tap darkened backdrop to close */}
-      <Pressable className="flex-1" onPress={handleClose} />
+      {/* Full-screen backdrop so clicking anywhere outside closes modal */}
+      <Pressable className="absolute inset-0" onPress={handleClose} />
 
-      <View className="bg-white rounded-t-3xl max-h-[80%] pb-12 shadow-xl">
+      {/* Bottom sheet on mobile, centered dialog on laptop/desktop */}
+      <View
+        className="w-full max-w-2xl self-center bg-white rounded-t-3xl md:rounded-3xl pb-8 md:pb-4 shadow-xl overflow-hidden"
+        style={{ maxHeight: '80%' }}
+      >
         {/* Header */}
-        <View className="flex-row justify-between items-center px-6 py-4 border-b pb-22 border-gray-100">
+        <View className="flex-row justify-between items-center px-6 py-4 border-b border-gray-100">
           <Text className="text-gray-900 font-extrabold text-lg">{title}</Text>
           <TouchableOpacity
             onPress={handleClose}
@@ -120,12 +123,14 @@ export const FlatListPickerModal: React.FC<FlatListPickerModalProps> = ({
           </View>
         )}
 
-        {/* Filtered Options List */}
+        {/* Filtered Options List with Desktop Scrollbar */}
         <FlatList
           data={filteredData}
           keyExtractor={(item, index) => `${item}-${index}`}
+          className="flex-1 w-full"
+          style={Platform.OS === 'web' ? { maxHeight: 420 } : undefined}
           keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={Platform.OS === 'web'}
           contentContainerStyle={{ paddingBottom: 24 }}
           ListEmptyComponent={
             <View className="py-10 items-center justify-center px-6">

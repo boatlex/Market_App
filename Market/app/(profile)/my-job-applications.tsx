@@ -156,9 +156,25 @@ const JobSeekerScreen = () => {
       <View className="flex-1 bg-gray-50">
         {/* TOP HEADER */}
         <View className="w-full border-b border-gray-100 bg-white px-4 py-4 flex-row justify-between items-center shadow-sm">
-          <TouchableOpacity onPress={() => router.back()} className="p-1 rounded-full">
+          <TouchableOpacity
+            onPress={() => {
+              const canGoBack =
+                Platform.OS === 'web'
+                  ? typeof window !== 'undefined' && window.history.length > 1 && router.canGoBack()
+                  : router.canGoBack();
+
+              if (canGoBack) {
+                router.back();
+              } else {
+                router.replace('/(tabs)' as any); 
+              }
+            }}
+            activeOpacity={0.7}
+            className="p-1 rounded-full"
+          >
             <Ionicons name="arrow-back" size={26} color="#1F2937" />
           </TouchableOpacity>
+
 
           <View className="flex-1 items-center justify-center px-2">
             <Text className="font-extrabold text-lg text-gray-900 text-center" numberOfLines={1}>

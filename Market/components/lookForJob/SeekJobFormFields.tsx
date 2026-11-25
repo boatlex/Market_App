@@ -109,7 +109,7 @@ export const SeekJobFormFields = ({
 
 
     return (
-        <View className="flex-1 pt-2">
+        <View className="w-full max-w-2xl self-center flex-1 pt-2">
             {/* 1. Profile Picture Management */}
             <Text className="text-gray-700 text-sm font-bold mb-2">Profile Avatar / Portrait Photo</Text>
             <View className="mb-5 flex-row items-center gap-4">

@@ -127,7 +127,7 @@ export const AddEducationModal: React.FC<AddEducationModalProps> = ({
         }, 120);
     };
 
-    return (
+      return (
         <Modal
             visible={visible}
             animationType="slide"
@@ -135,18 +135,20 @@ export const AddEducationModal: React.FC<AddEducationModalProps> = ({
             statusBarTranslucent={true}
             onRequestClose={handleClose}
         >
-            <View className="flex-1 justify-end bg-black/50">
-                {/* Tap backdrop to dismiss keyboard */}
+            {/* Bottom-aligned on mobile, centered dialog on laptop/desktop */}
+            <View className="flex-1 justify-end md:justify-center md:p-6 bg-black/50">
+                {/* Tap backdrop to dismiss keyboard (mobile bottom-sheet spacer) */}
                 <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                    <View className="flex-1" />
+                    <View className="flex-1 md:hidden" />
                 </TouchableWithoutFeedback>
 
+                {/* Centered card with max-w-2xl on desktop and full width on mobile */}
                 <View
-                    className="bg-white rounded-t-3xl pt-5 px-5 shadow-lg"
+                    className="w-full max-w-2xl self-center bg-white rounded-t-3xl md:rounded-3xl pt-5 shadow-lg overflow-hidden"
                     style={{ maxHeight: '90%' }}
                 >
                     {/* Header */}
-                    <View className="flex-row items-center justify-between pb-4 border-b border-gray-100">
+                    <View className="flex-row items-center justify-between px-5 pb-4 border-b border-gray-100">
                         <Text className="text-lg font-bold text-gray-900">
                             {initialData ? 'Edit Education' : 'Add Education'}
                         </Text>
@@ -159,13 +161,15 @@ export const AddEducationModal: React.FC<AddEducationModalProps> = ({
                         </TouchableOpacity>
                     </View>
 
-                    {/* Scrollable Form Fields */}
+                    {/* Scrollable Form Fields with Desktop Scrollbar */}
                     <ScrollView
                         ref={scrollViewRef}
-                        showsVerticalScrollIndicator={false}
+                        className="w-full"
+                        showsVerticalScrollIndicator={Platform.OS === 'web'}
                         keyboardShouldPersistTaps="handled"
                         automaticallyAdjustKeyboardInsets={true}
                         contentContainerStyle={{
+                            paddingHorizontal: 20,
                             paddingTop: 16,
                             paddingBottom: keyboardHeight > 0 ? keyboardHeight + 40 : 40,
                         }}
@@ -229,7 +233,7 @@ export const AddEducationModal: React.FC<AddEducationModalProps> = ({
                         <TouchableOpacity
                             onPress={handleSave}
                             activeOpacity={0.85}
-                            className="bg-blue-600 py-3.5 rounded-xl items-center mt-5"
+                            className="w-full bg-blue-600 py-3.5 rounded-xl items-center mt-5"
                         >
                             <Text className="text-white font-bold text-base">
                                 {initialData ? 'Update Education' : 'Save Education'}
@@ -240,4 +244,4 @@ export const AddEducationModal: React.FC<AddEducationModalProps> = ({
             </View>
         </Modal>
     );
-};
+}

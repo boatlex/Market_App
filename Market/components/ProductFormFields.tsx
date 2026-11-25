@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator, TextInput, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FormInput } from './FormInput';
 import { FormDropdown } from './FormDropdown';
@@ -56,10 +56,11 @@ export const ProductFormFields = ({
         <ScrollView
             className={`flex-1 px-5 py-4 bg-white ${showDeliveryConfig || showDiscountConfig || showWarrantyConfig ? 'mb-28' : 'mb-20'}`}
             keyboardShouldPersistTaps='handled'
-            showsVerticalScrollIndicator={false}
+            showsVerticalScrollIndicator={Platform.OS==='web'}
+            contentContainerClassName="px-5 py-4 items-center"
         >
             {/* Removed layout-crashing 'auto-cols-max' grid class name */}
-            <View className='space-y-4 pb-28'>
+              <View className='w-full max-w-2xl self-center space-y-4 pb-28'>
 
                 {/* Inline Cancel / Title Action Bar Header */}
                 <View className="flex-row items-center justify-between pb-3 mb-2 border-b border-gray-100">
