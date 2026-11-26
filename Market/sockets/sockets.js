@@ -4,6 +4,8 @@ import { API_URL } from "../lib/api";
 
 let socket = null;
 
+// Automatically strips "/api" if your API_URL ends with "/api"
+const SOCKET_URL = API_URL.replace(/\/api\/?$/, '');
 export const connectSocket = async (explicitToken = null) => {
     const token = explicitToken || await AsyncStorage.getItem("manual_token");
     
@@ -23,7 +25,7 @@ export const connectSocket = async (explicitToken = null) => {
         socket.connect();
         return socket;
     }
-    socket = io("http://10.203.66.151:3000", { 
+    socket = io(SOCKET_URL, { 
     auth: { token },
     transports: ['websocket', 'polling'], 
     autoConnect: false,        

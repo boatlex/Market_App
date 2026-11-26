@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Platform,
   useWindowDimensions,
+  RefreshControl,
 } from 'react-native';
 import React from 'react';
 import SafeScreen from '../../components/SafeScreen';
@@ -26,6 +27,7 @@ const NotificationsScreen = () => {
     isError,
     refetch,
     hasUnread,
+    isRefetching,
     markAsRead,
     markAllAsRead,
     isMarkingAllAsRead,
@@ -74,9 +76,8 @@ const NotificationsScreen = () => {
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => handleNotificationPress(item)}
-          className={`flex-row items-start p-4 border-b border-gray-100 md:mx-4 md:first:mt-3 md:rounded-2xl ${
-            item.isRead ? 'bg-white' : 'bg-blue-50/40'
-          }`}
+          className={`flex-row items-start p-4 border-b border-gray-100 md:mx-4 md:first:mt-3 md:rounded-2xl ${item.isRead ? 'bg-white' : 'bg-blue-50/40'
+            }`}
         >
           {/* Dynamic Activity Icon or User Profile Circle */}
           <View
@@ -96,9 +97,8 @@ const NotificationsScreen = () => {
           {/* Text Details Area */}
           <View className="flex-1 mr-2">
             <Text
-              className={`text-sm text-gray-800 leading-5 ${
-                !item.isRead ? 'font-semibold' : 'font-normal'
-              }`}
+              className={`text-sm text-gray-800 leading-5 ${!item.isRead ? 'font-semibold' : 'font-normal'
+                }`}
             >
               {displayMessage}
             </Text>
@@ -188,8 +188,14 @@ const NotificationsScreen = () => {
             keyExtractor={(item) => item._id}
             renderItem={renderItem}
             showsVerticalScrollIndicator={Platform.OS === 'web'}
-            onRefresh={refetch}
-            refreshing={isLoading}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefetching && !isLoading}
+                onRefresh={refetch}
+                tintColor="#2563EB" // iOS spinner color
+                colors={['#2563EB']} // Android spinner color
+              />
+            }
             contentContainerStyle={{
               paddingTop: Platform.OS === 'web' ? 12 : 0,
               paddingBottom: Platform.OS === 'ios' ? 40 : 40,

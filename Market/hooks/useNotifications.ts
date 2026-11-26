@@ -14,7 +14,7 @@ const useNotifications = () => {
   const socket = getSocket(); 
 
   
-  const { data: notifications, isLoading, isError, refetch } = useQuery<Notification[]>({
+  const { data: notifications, isLoading,isRefetching, isError, refetch } = useQuery<Notification[]>({
     queryKey: ['notifications'],
     queryFn: async () => {
       const { data } = await api.get<NotificationsResponse>('/notifications');
@@ -79,6 +79,7 @@ const useNotifications = () => {
     isLoading,
     isError,
     refetch,
+    isRefetching,
     unreadCount,
     hasUnread,
     
