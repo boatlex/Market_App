@@ -75,9 +75,11 @@ const FollowersScreen = () => {
     }
   };
 
+  
   const handleUserPress = (targetId: string) => {
     router.push({
-      pathname: `/user/${targetId}` as any,
+      pathname: '/user/[id]',
+      params: { id: String(targetId) },
     });
   };
 

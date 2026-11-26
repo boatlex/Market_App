@@ -65,7 +65,7 @@ const ServiceDetailsScreen = () => {
   const isTogglingProvider = togglingUserId === providerUserId;
 
 
-  
+
   const contentWidth = windowWidth;
 
   const carouselHeight =
@@ -342,7 +342,8 @@ const ServiceDetailsScreen = () => {
               activeOpacity={0.75}
               onPress={() =>
                 router.push({
-                  pathname: `/user/${providerUserId}` as any,
+                  pathname: '/user/[id]',
+                  params: { id: String(providerUserId) as any },
                 })
               }
               className="flex-row items-center flex-1 pr-3"
@@ -386,8 +387,8 @@ const ServiceDetailsScreen = () => {
                 toggleFollow(providerUserId!);
               }}
               className={`px-4 py-2.5 rounded-xl border flex-row items-center gap-1.5 ${isFollowingProvider
-                  ? 'bg-white border-gray-300'
-                  : 'bg-blue-600 border-blue-600'
+                ? 'bg-white border-gray-300'
+                : 'bg-blue-600 border-blue-600'
                 }`}
             >
               {isTogglingProvider ? (

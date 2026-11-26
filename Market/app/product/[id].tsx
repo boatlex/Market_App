@@ -413,7 +413,8 @@ const isTogglingSeller = togglingUserId === targetSellerId;
                   activeOpacity={0.75}
                   onPress={() =>
                     router.push({
-                      pathname: `/user/${targetSellerId}` as any,
+                      pathname: '/user/[id]',
+                      params: { id: String(targetSellerId) },
                     })
                   }
                   className="flex-row items-center flex-1 pr-3"

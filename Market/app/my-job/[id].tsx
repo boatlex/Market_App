@@ -269,7 +269,8 @@ const JobDetailsScreen = () => {
                 activeOpacity={0.75}
                 onPress={() =>
                   router.push({
-                    pathname: `/user/${targetEmployerId}` as any,
+                    pathname: '/user/[id]',
+                    params: { id: String(targetEmployerId) as any },
                   })
                 }
                 className="flex-row items-center flex-1 pr-3"
@@ -313,8 +314,8 @@ const JobDetailsScreen = () => {
                   toggleFollow(targetEmployerId!);
                 }}
                 className={`px-4 py-2.5 rounded-xl border flex-row items-center gap-1.5 ${isFollowingEmployer
-                    ? 'bg-white border-gray-300'
-                    : 'bg-blue-600 border-blue-600'
+                  ? 'bg-white border-gray-300'
+                  : 'bg-blue-600 border-blue-600'
                   }`}
               >
                 {isTogglingEmployer ? (

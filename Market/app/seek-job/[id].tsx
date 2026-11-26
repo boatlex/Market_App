@@ -408,7 +408,7 @@ const SeekJobDetailsScreen = () => {
             </View>
           ) : null}
 
-                   {/* Skills */}
+          {/* Skills */}
           {Array.isArray(product.skills) && product.skills.length > 0 ? (
             <View className='mb-5'>
               <Text className='text-sm font-extrabold text-gray-900 mb-2'>Skills & Expertise</Text>
@@ -429,7 +429,8 @@ const SeekJobDetailsScreen = () => {
                 activeOpacity={0.75}
                 onPress={() =>
                   router.push({
-                    pathname: `/user/${targetCandidateUserId}` as any,
+                    pathname: '/user/[id]',
+                    params: { id: String(targetCandidateUserId) },
                   })
                 }
                 className="flex-row items-center flex-1 pr-3"
@@ -467,11 +468,10 @@ const SeekJobDetailsScreen = () => {
                   }
                   toggleFollow(targetCandidateUserId!);
                 }}
-                className={`px-4 py-2.5 rounded-xl border flex-row items-center gap-1.5 ${
-                  isFollowingCandidate
+                className={`px-4 py-2.5 rounded-xl border flex-row items-center gap-1.5 ${isFollowingCandidate
                     ? 'bg-white border-gray-300'
                     : 'bg-blue-600 border-blue-600'
-                }`}
+                  }`}
               >
                 {isTogglingCandidate ? (
                   <ActivityIndicator
@@ -486,9 +486,8 @@ const SeekJobDetailsScreen = () => {
                       color={isFollowingCandidate ? '#111827' : '#FFFFFF'}
                     />
                     <Text
-                      className={`text-xs font-bold ${
-                        isFollowingCandidate ? 'text-gray-900' : 'text-white'
-                      }`}
+                      className={`text-xs font-bold ${isFollowingCandidate ? 'text-gray-900' : 'text-white'
+                        }`}
                     >
                       {isFollowingCandidate ? 'Following' : 'Follow'}
                     </Text>

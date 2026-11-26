@@ -1,6 +1,9 @@
+import { Platform } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '../lib/api'; 
+import { api } from '../lib/api';
 import { Message } from '../types';
+
+export type { Message };
 
 interface MessagesResponse {
   success: boolean;
@@ -12,10 +15,9 @@ interface SendMessageResponse {
   message: Message;
 }
 
-// Clear payload typing defining parameter options supported by your messaging UI components
-interface SendMessagePayload {
-  content?: string;
+export interface SendMessagePayload {
   type: 'text' | 'image' | 'voice';
+  content?: string;
   fileUri?: string;
   fileName?: string;
   fileType?: string;
@@ -26,50 +28,67 @@ export const useMessages = (userToChatId: string) => {
   const queryClient = useQueryClient();
   const queryKey = ['messages', userToChatId];
 
+  const isValidTarget = Boolean(userToChatId) && userToChatId !== 'undefined';
+
   // 1. Fetch Conversations History
   const { data: messages, isLoading, isError, refetch } = useQuery<Message[]>({
     queryKey,
     queryFn: async () => {
       const { data } = await api.get<MessagesResponse>(`/messages/${userToChatId}`);
-      return data.messages;
+      return data.messages || [];
     },
-    enabled: !!userToChatId,
+    enabled: isValidTarget,
   });
 
   // 2. Multi-Format Messaging Dispatch Mutation Layer
   const sendMessageMutation = useMutation({
     mutationFn: async (payload: SendMessagePayload) => {
-      // ⚡ CHECK: Formulate a multi-part streams payload handler if an asset attachment exists
+      if (!isValidTarget) {
+        throw new Error('Recipient user ID is missing.');
+      }
+
       if (payload.type === 'image' || payload.type === 'voice') {
         const formData = new FormData();
-        
         formData.append('messageType', payload.type);
-        
+
         if (payload.content) {
           formData.append('content', payload.content);
         }
-        
+
         if (payload.duration) {
           formData.append('voiceDuration', String(payload.duration));
         }
 
         if (payload.fileUri) {
-          // Standard structural formatting mapping for native multipart file boundaries parsing
-          formData.append('attachment', {
-            uri: payload.fileUri,
-            name: payload.fileName || (payload.type === 'image' ? 'photo.jpg' : 'audio.m4a'),
-            type: payload.fileType || (payload.type === 'image' ? 'image/jpeg' : 'audio/m4a'),
-          } as any);
+          const fallbackName =
+            payload.fileName || (payload.type === 'image' ? 'photo.jpg' : 'audio.m4a');
+          const fallbackType =
+            payload.fileType || (payload.type === 'image' ? 'image/jpeg' : 'audio/m4a');
+
+          if (Platform.OS === 'web') {
+            // Convert blob:/data: URI into a real Blob so Multer parses req.file on web
+            const fileResponse = await fetch(payload.fileUri);
+            const fileBlob = await fileResponse.blob();
+            formData.append('attachment', fileBlob, fallbackName);
+          } else {
+            formData.append('attachment', {
+              uri: payload.fileUri,
+              name: fallbackName,
+              type: fallbackType,
+            } as any);
+          }
         }
 
         const { data } = await api.post<SendMessageResponse>(
-          `/messages/send/${userToChatId}`, 
+          `/messages/send/${userToChatId}`,
           formData,
-          {
-            headers: {
-              'Content-Type': 'multipart/form-data', // ⚡ Explicitly sets boundaries frame rule
-            },
-          }
+          Platform.OS === 'web'
+            ? undefined
+            : {
+                headers: {
+                  'Content-Type': 'multipart/form-data',
+                },
+              }
         );
         return data.message;
       }
@@ -78,7 +97,7 @@ export const useMessages = (userToChatId: string) => {
         `/messages/send/${userToChatId}`,
         {
           content: payload.content,
-          messageType: 'text'
+          messageType: 'text',
         }
       );
       return data.message;
@@ -90,6 +109,9 @@ export const useMessages = (userToChatId: string) => {
       });
 
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+    onError: (error: any) => {
+      console.error('Send message failed:', error?.response?.data || error?.message);
     },
   });
 
