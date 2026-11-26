@@ -15,6 +15,7 @@ import { useReportModalStore } from '../../stores/useReportModalStore'
 import ItemReviewsSection from '../../components/reviews/ItemsReviewsSection';
 import RelatedJobCard from '../../components/createJob/RelatedJobCard';
 import { useGetJobs } from '../../hooks/useGetJobs'
+import useFollow from '../../hooks/useFollow';
 
 
 const { width } = Dimensions.get("window")
@@ -39,6 +40,26 @@ const JobDetailsScreen = () => {
     Boolean(currentUserId) &&
     (String(currentUserId) === String(parsedEmployerId) ||
       String(currentUserId) === String(employerObjId));
+
+  const employerObj =
+    job?.employer && typeof job.employer === 'object' ? (job.employer as any) : null;
+  const targetEmployerId = employerObjId || parsedEmployerId;
+  const employerDisplayName =
+    job?.companyName ||
+    (employerObj?.firstName
+      ? `${employerObj.firstName} ${employerObj.lastName || ''}`.trim()
+      : 'Employer');
+
+  const {
+    toggleFollow,
+    togglingUserId,
+    isFollowingUser,
+    followersCount: employerFollowersCount,
+  } = useFollow(targetEmployerId);
+
+  const isFollowingEmployer = isFollowingUser(targetEmployerId);
+  const isTogglingEmployer = togglingUserId === targetEmployerId;
+
 
   const relatedJobs = useMemo(() => {
     if (!job) return [];
@@ -152,16 +173,16 @@ const JobDetailsScreen = () => {
         >
           <Ionicons name='arrow-back' size={24} color={"#FFFFFF"} />
         </TouchableOpacity>
-          {!owner && (
-              <TouchableOpacity
-          className='bg-black/50 w-12 h-12 rounded-full items-center justify-center'
-          onPress={handleToggleFavorite}
-          activeOpacity={0.7}
-        >
-          <Ionicons name={isFavorite ? 'bookmark' : 'bookmark-outline'} size={22} color={isFavorite ? "#3B82F6" : "#FFFFFF"} />
-        </TouchableOpacity>
-          )}
-      
+        {!owner && (
+          <TouchableOpacity
+            className='bg-black/50 w-12 h-12 rounded-full items-center justify-center'
+            onPress={handleToggleFavorite}
+            activeOpacity={0.7}
+          >
+            <Ionicons name={isFavorite ? 'bookmark' : 'bookmark-outline'} size={22} color={isFavorite ? "#3B82F6" : "#FFFFFF"} />
+          </TouchableOpacity>
+        )}
+
       </View>
 
       <ScrollView
@@ -239,6 +260,87 @@ const JobDetailsScreen = () => {
           {/* Job Nomenclature Headers */}
           <Text className='text-gray-900 text-2xl font-extrabold mb-1'>{job.title}</Text>
           <Text className='text-gray-500 text-base font-semibold mb-4'>{job.companyName}</Text>
+
+
+          {/* Employer Follow / Following Card (Renders for non-owners) */}
+          {!owner && Boolean(targetEmployerId) && (
+            <View className="flex-row items-center justify-between bg-gray-50 border border-gray-100 rounded-2xl p-3.5 my-4">
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() =>
+                  router.push({
+                    pathname: `/user/${targetEmployerId}` as any,
+                  })
+                }
+                className="flex-row items-center flex-1 pr-3"
+              >
+                <View className="w-11 h-11 rounded-full bg-gray-200 overflow-hidden items-center justify-center mr-3 shrink-0">
+                  {employerObj?.profilePicture ? (
+                    <Image
+                      source={{ uri: employerObj.profilePicture }}
+                      style={{ width: '100%', height: '100%' }}
+                      contentFit="cover"
+                    />
+                  ) : (
+                    <Ionicons name="business" size={20} color="#4B5563" />
+                  )}
+                </View>
+
+                <View className="flex-1">
+                  <View className="flex-row items-center gap-1">
+                    <Text className="text-sm font-bold text-gray-900" numberOfLines={1}>
+                      {employerDisplayName}
+                    </Text>
+                    {employerObj?.verified && (
+                      <Ionicons name="checkmark-circle" size={14} color="#2563EB" />
+                    )}
+                  </View>
+                  <Text className="text-xs text-gray-500 mt-0.5">
+                    {employerFollowersCount}{' '}
+                    {employerFollowersCount === 1 ? 'Follower' : 'Followers'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.8}
+                disabled={isTogglingEmployer}
+                onPress={() => {
+                  if (!user) {
+                    router.push('/(auth)');
+                    return;
+                  }
+                  toggleFollow(targetEmployerId!);
+                }}
+                className={`px-4 py-2.5 rounded-xl border flex-row items-center gap-1.5 ${isFollowingEmployer
+                    ? 'bg-white border-gray-300'
+                    : 'bg-blue-600 border-blue-600'
+                  }`}
+              >
+                {isTogglingEmployer ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={isFollowingEmployer ? '#111827' : '#FFFFFF'}
+                  />
+                ) : (
+                  <>
+                    <Ionicons
+                      name={isFollowingEmployer ? 'checkmark' : 'person-add-outline'}
+                      size={15}
+                      color={isFollowingEmployer ? '#111827' : '#FFFFFF'}
+                    />
+                    <Text
+                      className={`text-xs font-bold ${isFollowingEmployer ? 'text-gray-900' : 'text-white'
+                        }`}
+                    >
+                      {isFollowingEmployer ? 'Following' : 'Follow'}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+
 
           {/* Salary Parameter Formatting Blocks */}
           <View className='mb-5 p-4 bg-gray-50 rounded-2xl flex-row items-center justify-between border border-gray-100'>

@@ -11,7 +11,7 @@ interface UserProductsResponse {
 const useListings = () => {
   const queryClient = useQueryClient();
  
-  const { data, isLoading, isError, refetch } = useQuery<UserProductsResponse>({
+  const { data, isLoading, isError, isRefetching, refetch } = useQuery<UserProductsResponse>({
     queryKey: ['products', 'my-listings'],
     queryFn: async () => {
       const response = await api.get('/products/user');
@@ -40,6 +40,7 @@ const useListings = () => {
     isLoading,
     isError,
     refetch,
+    isRefetching,
     
     
     deleteProduct: deleteProductMutation.mutate,

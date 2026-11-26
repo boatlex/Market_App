@@ -27,6 +27,14 @@ const AccountSettingsScreen = () => {
 
   const isAdmin = user?.role === 'admin';
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(profile)/settings');
+    }
+  };
+
   const scrollToBottom = () => {
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -39,7 +47,7 @@ const AccountSettingsScreen = () => {
       <View className="px-5 pt-12 pb-4 bg-white border-b border-gray-100 flex-row items-center justify-between mb-3">
         <View className="flex-row items-center flex-1 pr-3">
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={handleBack}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             className="mr-3 p-1"
           >
@@ -75,18 +83,19 @@ const AccountSettingsScreen = () => {
           ref={scrollViewRef}
           className="flex-1"
           contentContainerStyle={{ paddingBottom: 160 }}
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={Platform.OS === 'web'}
           keyboardShouldPersistTaps="handled"
-          automaticallyAdjustKeyboardInsets
         >
-          <AccountOverviewCard user={user} />
+          <View className="w-full max-w-2xl self-center">
+            <AccountOverviewCard user={user} />
 
-          <PersonalInfoFormCard
-            initialFirstName={user?.firstName}
-            initialLastName={user?.lastName}
-          />
+            <PersonalInfoFormCard
+              initialFirstName={user?.firstName}
+              initialLastName={user?.lastName}
+            />
 
-          <ChangePasswordFormCard onInputFocus={scrollToBottom} />
+            <ChangePasswordFormCard onInputFocus={scrollToBottom} />
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
 

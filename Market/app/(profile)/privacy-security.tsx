@@ -12,10 +12,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import SafeScreen from '../../components/SafeScreen';
-import Header from '../../components/Header';
 import { useAuth } from '../../contexts/authContext';
+import useNotifications from '../../hooks/useNotifications';
+import ProfileMenuDrawer from '../../components/profile/ProfileMenuDrawer';
 
-const PRIVACY_STORAGE_KEY = 'user_privacy_preferences';
+const BASE_PRIVACY_STORAGE_KEY = 'user_privacy_preferences';
 
 interface PrivacyPreferences {
   showPhoneNumber: boolean;
@@ -72,40 +73,75 @@ const PrivacyToggleRow = ({
 const PrivacyScreen = () => {
   const { user } = useAuth();
   const router = useRouter();
+  const { unreadCount } = useNotifications();
+
+  const isAdmin = user?.role === 'admin';
+
+  const storageKey = user?._id
+    ? `${BASE_PRIVACY_STORAGE_KEY}_${user._id}`
+    : BASE_PRIVACY_STORAGE_KEY;
 
   const [prefs, setPrefs] = useState<PrivacyPreferences>(DEFAULT_PREFS);
   const [infoModal, setInfoModal] = useState<'safety' | 'privacy' | 'terms' | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(profile)/settings');
+    }
+  };
 
   useEffect(() => {
     const loadPrefs = async () => {
       try {
-        const saved = await AsyncStorage.getItem(PRIVACY_STORAGE_KEY);
+        const saved = await AsyncStorage.getItem(storageKey);
         if (saved) {
           setPrefs({ ...DEFAULT_PREFS, ...JSON.parse(saved) });
+        } else {
+          setPrefs(DEFAULT_PREFS);
         }
       } catch (error) {
         console.error('Failed to load privacy preferences:', error);
       }
     };
     loadPrefs();
-  }, []);
+  }, [storageKey]);
 
   const togglePref = async (key: keyof PrivacyPreferences) => {
     const updated = { ...prefs, [key]: !prefs[key] };
     setPrefs(updated);
     try {
-      await AsyncStorage.setItem(PRIVACY_STORAGE_KEY, JSON.stringify(updated));
+      await AsyncStorage.setItem(storageKey, JSON.stringify(updated));
     } catch (error) {
       console.error('Failed to save privacy preference:', error);
     }
   };
 
-  const getModalTitle = () => {
-    if (infoModal === 'safety') return 'Marketplace Safety Guidelines';
-    if (infoModal === 'privacy') return 'Privacy Policy';
-    if (infoModal === 'terms') return 'Terms of Service';
-    return '';
+  const getModalContent = () => {
+    if (infoModal === 'safety') {
+      return {
+        title: 'Marketplace Safety Guidelines',
+        body: '• Meet in well-lit, public locations when inspecting items in person.\n• Never send advance payments or deposits before verifying the product or service.\n• Keep conversations inside the app so our team can assist if a dispute arises.\n• Report suspicious listings or accounts immediately.',
+      };
+    }
+    if (infoModal === 'privacy') {
+      return {
+        title: 'Privacy Policy',
+        body: 'We only collect information required to run your marketplace account, facilitate buyer-seller communication, and keep the platform secure. Your contact details are only shared according to your Marketplace Privacy toggles.',
+      };
+    }
+    if (infoModal === 'terms') {
+      return {
+        title: 'Terms of Service',
+        body: 'By using this marketplace, you agree to list accurate items and services, respect other community members, and comply with all local laws. Fraudulent listings or harassment will result in immediate account suspension.',
+      };
+    }
+    return { title: '', body: '' };
   };
+
+  const modalContent = getModalContent();
 
   return (
     <SafeScreen>
@@ -113,7 +149,36 @@ const PrivacyScreen = () => {
         className="flex-1 bg-gray-50 overflow-hidden"
         style={Platform.OS === 'web' ? { height: '100vh' as any } : undefined}
       >
-        <Header title="Privacy & Security" fallbackRoute="/(profile)/settings" />
+        {/* Top Bar with Back & Menu Toggle Button */}
+        <View className="px-5 pt-12 pb-4 bg-white border-b border-gray-100 flex-row items-center justify-between">
+          <View className="flex-row items-center flex-1 pr-3">
+            <TouchableOpacity
+              onPress={handleBack}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              className="mr-3 p-1"
+            >
+              <Ionicons name="arrow-back" size={24} color="#111827" />
+            </TouchableOpacity>
+            <Text
+              className="text-xl font-bold text-gray-900"
+              numberOfLines={1}
+            >
+              Privacy & Security
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={() => setIsMenuOpen(true)}
+            activeOpacity={0.75}
+            style={{ width: 42, height: 42 }}
+            className="bg-gray-900 rounded-xl items-center justify-center relative"
+          >
+            <Ionicons name="menu" size={24} color="#FFFFFF" />
+            {unreadCount > 0 && (
+              <View className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500 border border-white" />
+            )}
+          </TouchableOpacity>
+        </View>
 
         {/* Full-Width ScrollView so Desktop Scrollbar Sits Flush on Right Edge */}
         <ScrollView
@@ -190,7 +255,6 @@ const PrivacyScreen = () => {
               <Text className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
                 Marketplace Privacy
               </Text>
-
               <PrivacyToggleRow
                 icon="call-outline"
                 title="Display Phone Number"
@@ -226,10 +290,12 @@ const PrivacyScreen = () => {
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => setInfoModal('safety')}
-                className="flex-row items-center justify-between p-4 border-b border-gray-100"
+                className="flex-row items-center justify-between p-3.5 border-b border-gray-100"
               >
-                <View className="flex-row items-center gap-3">
-                  <Ionicons name="alert-circle-outline" size={22} color="#F59E0B" />
+                <View className="flex-row items-center gap-3 flex-1 pr-2">
+                  <View className="w-9 h-9 rounded-full bg-amber-50 items-center justify-center">
+                    <Ionicons name="alert-circle-outline" size={18} color="#D97706" />
+                  </View>
                   <Text className="text-sm font-semibold text-gray-900">
                     Marketplace Safety Guidelines
                   </Text>
@@ -240,10 +306,12 @@ const PrivacyScreen = () => {
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => setInfoModal('privacy')}
-                className="flex-row items-center justify-between p-4 border-b border-gray-100"
+                className="flex-row items-center justify-between p-3.5 border-b border-gray-100"
               >
-                <View className="flex-row items-center gap-3">
-                  <Ionicons name="document-lock-outline" size={22} color="#2563EB" />
+                <View className="flex-row items-center gap-3 flex-1 pr-2">
+                  <View className="w-9 h-9 rounded-full bg-gray-100 items-center justify-center">
+                    <Ionicons name="document-text-outline" size={18} color="#374151" />
+                  </View>
                   <Text className="text-sm font-semibold text-gray-900">
                     Privacy Policy
                   </Text>
@@ -251,13 +319,15 @@ const PrivacyScreen = () => {
                 <Ionicons name="chevron-forward" size={18} color="#6B7280" />
               </TouchableOpacity>
 
-                            <TouchableOpacity
+              <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => setInfoModal('terms')}
-                className="flex-row items-center justify-between p-4"
+                className="flex-row items-center justify-between p-3.5"
               >
-                <View className="flex-row items-center gap-3">
-                  <Ionicons name="reader-outline" size={22} color="#374151" />
+                <View className="flex-row items-center gap-3 flex-1 pr-2">
+                  <View className="w-9 h-9 rounded-full bg-gray-100 items-center justify-center">
+                    <Ionicons name="reader-outline" size={18} color="#374151" />
+                  </View>
                   <Text className="text-sm font-semibold text-gray-900">
                     Terms of Service
                   </Text>
@@ -268,82 +338,54 @@ const PrivacyScreen = () => {
           </View>
         </ScrollView>
 
-        {/* Centered Info Modal for Safety Tips / Privacy Policy / Terms */}
+        {/* Info Policy Modal */}
         <Modal
-          visible={infoModal !== null}
-          animationType="slide"
+          visible={Boolean(infoModal)}
           transparent
+          animationType="fade"
           onRequestClose={() => setInfoModal(null)}
         >
-          <View className="flex-1 bg-black/50 justify-end md:justify-center md:p-6">
-            <View className="w-full max-w-2xl self-center bg-white rounded-t-3xl md:rounded-3xl p-6 pb-8 max-h-[80%] shadow-xl">
-              <View className="flex-row justify-between items-center pb-3 mb-4 border-b border-gray-100">
-                <Text className="text-lg font-bold text-gray-900 flex-1 pr-3">
-                  {getModalTitle()}
+          <View className="flex-1 bg-black/50 justify-center items-center px-5">
+            <View className="w-full max-w-md bg-white rounded-3xl p-6 shadow-lg">
+              <View className="flex-row items-center justify-between mb-3">
+                <Text className="text-lg font-bold text-gray-900 flex-1 pr-2">
+                  {modalContent.title}
                 </Text>
                 <TouchableOpacity
                   onPress={() => setInfoModal(null)}
-                  className="p-1.5 bg-gray-100 rounded-full"
+                  className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center"
                 >
-                  <Ionicons name="close" size={20} color="#374151" />
+                  <Ionicons name="close" size={18} color="#374151" />
                 </TouchableOpacity>
               </View>
 
-              <ScrollView
-                showsVerticalScrollIndicator={Platform.OS === 'web'}
-                style={Platform.OS === 'web' ? { maxHeight: 420 } : undefined}
-                contentContainerStyle={{ paddingBottom: 16 }}
-              >
-                {infoModal === 'safety' && (
-                  <View className="space-y-3">
-                    <Text className="text-sm text-gray-700 leading-5">
-                      • Meet buyers, sellers, and service providers in well-lit public places during daytime hours.
-                    </Text>
-                    <Text className="text-sm text-gray-700 leading-5">
-                      • Inspect items thoroughly before making mobile money or cash payments. Avoid paying deposits before seeing goods or verifying credentials.
-                    </Text>
-                    <Text className="text-sm text-gray-700 leading-5">
-                      • Never share your password, Mobile Money PIN, or one-time verification codes with anyone.
-                    </Text>
-                  </View>
-                )}
-
-                {infoModal === 'privacy' && (
-                  <View className="space-y-3">
-                    <Text className="text-sm text-gray-700 leading-5">
-                      We collect only the profile details, contact information, and listing media you provide to connect buyers, sellers, employers, and service providers across Ghana.
-                    </Text>
-                    <Text className="text-sm text-gray-700 leading-5">
-                      You can manage visibility preferences at any time from this screen or permanently erase your account and listings from Settings.
-                    </Text>
-                  </View>
-                )}
-
-                {infoModal === 'terms' && (
-                  <View className="space-y-3">
-                    <Text className="text-sm text-gray-700 leading-5">
-                      By publishing products, job vacancies, job seeker profiles, or service listings, you confirm that all descriptions, prices, and qualifications are accurate and lawful.
-                    </Text>
-                    <Text className="text-sm text-gray-700 leading-5">
-                      Fraudulent listings, spam, or abusive conduct will result in immediate account suspension.
-                    </Text>
-                  </View>
-                )}
-              </ScrollView>
+              <Text className="text-sm text-gray-600 leading-6 mb-5">
+                {modalContent.body}
+              </Text>
 
               <TouchableOpacity
+                activeOpacity={0.8}
                 onPress={() => setInfoModal(null)}
-                activeOpacity={0.85}
-                className="w-full bg-blue-600 py-3.5 rounded-xl items-center mt-4"
+                className="bg-gray-900 py-3 rounded-xl items-center"
               >
-                <Text className="text-white font-bold text-sm">Got It</Text>
+                <Text className="text-white text-sm font-bold">Got It</Text>
               </TouchableOpacity>
             </View>
           </View>
         </Modal>
+
+        {/* Column Slide-Out Menu Drawer */}
+        <ProfileMenuDrawer
+          visible={isMenuOpen}
+          onClose={() => setIsMenuOpen(false)}
+          isAdmin={isAdmin}
+          unreadCount={unreadCount}
+          side="right"
+        />
       </View>
     </SafeScreen>
   );
 };
 
 export default PrivacyScreen;
+

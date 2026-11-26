@@ -5,6 +5,7 @@ import { Href, useRouter } from 'expo-router';
 import SafeScreen from '../../components/SafeScreen';
 import { useAuth } from '../../contexts/authContext';
 import useNotifications from '../../hooks/useNotifications';
+import useFollow from '../../hooks/useFollow';
 import ProfileHeaderCard from '../../components/profile/ProfileHeaderCard';
 import AdminQuickAccessCard from '../../components/profile/AdminQuickAccessCard';
 import MarketPlaceOverviewCard from '../../components/profile/MarketPlaceOverViewCard';
@@ -15,6 +16,7 @@ export default function ProfileScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const { unreadCount } = useNotifications();
+  const { followersCount, followingCount } = useFollow();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const isAdmin = user?.role === 'admin';
@@ -38,10 +40,14 @@ export default function ProfileScreen() {
         className="flex-1 bg-gray-50 overflow-hidden"
         style={Platform.OS === 'web' ? { height: '100vh' as any } : undefined}
       >
-        {/* Full-Width Top Navigation Bar with Centered Desktop Content */}
+        {/* Full-Width Top Navigation Bar with justify-between */}
         <View className="w-full border-b border-surface bg-gray-400">
-          <View className="w-full max-w-3xl self-center px-6 pb-5 pt-12 md:pt-5 flex-row items-center justify-between">
-            <View className="flex-row items-center">
+          <View
+            style={{ justifyContent: 'space-between' }}
+            className="w-full max-w-3xl self-center px-6 pb-5 pt-12 md:pt-5 flex-row items-center justify-between"
+          >
+            {/* Left Group: Back Button & Title */}
+            <View className="flex-row items-center flex-1 pr-3">
               <TouchableOpacity
                 className="mr-4"
                 onPress={handleSafeBack}
@@ -49,10 +55,13 @@ export default function ProfileScreen() {
               >
                 <Ionicons name="arrow-back" size={28} color="#FFFFFF" />
               </TouchableOpacity>
-              <Text className="text-white font-bold text-2xl">Profile</Text>
+              <Text className="text-white font-bold text-2xl" numberOfLines={1}>
+                Profile
+              </Text>
             </View>
 
-            <View className="flex-row items-center gap-3">
+            {/* Right Group: Settings & Menu Toggle */}
+            <View className="flex-row items-center gap-3 shrink-0">
               <TouchableOpacity
                 onPress={() => router.push('/(profile)/settings' as Href)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -87,6 +96,46 @@ export default function ProfileScreen() {
           {/* Centered Profile Cards & Menu Grid */}
           <View className="w-full max-w-3xl self-center">
             <ProfileHeaderCard user={user} />
+
+            {/* Live Followers & Following Counter Bar */}
+            <View className="flex-row bg-white mx-4 mt-3 rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() =>
+                  router.push({
+                    pathname: '/(profile)/followers',
+                    params: { tab: 'followers' },
+                  } as Href)
+                }
+                className="flex-1 py-3.5 items-center border-r border-gray-100"
+              >
+                <Text className="text-lg font-bold text-gray-900">
+                  {followersCount}
+                </Text>
+                <Text className="text-xs font-medium text-gray-500">
+                  Followers
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() =>
+                  router.push({
+                    pathname: '/(profile)/followers',
+                    params: { tab: 'following' },
+                  } as Href)
+                }
+                className="flex-1 py-3.5 items-center"
+              >
+                <Text className="text-lg font-bold text-gray-900">
+                  {followingCount}
+                </Text>
+                <Text className="text-xs font-medium text-gray-500">
+                  Following
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             <AdminQuickAccessCard isAdmin={isAdmin} />
             <MarketPlaceOverviewCard />
             <ProfileMenuGrid isAdmin={isAdmin} unreadCount={unreadCount} />

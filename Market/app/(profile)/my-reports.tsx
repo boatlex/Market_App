@@ -7,11 +7,15 @@ import {
   ActivityIndicator,
   ScrollView,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import SafeScreen from '../../components/SafeScreen';
 import useReports from '../../hooks/useReports';
+import { useAuth } from '../../contexts/authContext';
+import useNotifications from '../../hooks/useNotifications';
+import ProfileMenuDrawer from '../../components/profile/ProfileMenuDrawer';
 import { Report, ReportStatus } from '../../types';
 
 const STATUS_FILTERS: { label: string; value?: ReportStatus }[] = [
@@ -36,9 +40,15 @@ const getStatusBadge = (status: ReportStatus) => {
 };
 
 export default function MyReportsScreen() {
+  const { user } = useAuth();
   const router = useRouter();
+  const { unreadCount } = useNotifications();
+
+  const isAdmin = user?.role === 'admin';
+
   const [page, setPage] = useState(1);
   const [selectedStatus, setSelectedStatus] = useState<ReportStatus | undefined>(undefined);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const {
     reports,
@@ -50,6 +60,14 @@ export default function MyReportsScreen() {
     limit: 10,
     status: selectedStatus,
   });
+
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(profile)/settings');
+    }
+  };
 
   const renderTargetName = (report: Report) => {
     const target = report.targetId;
@@ -68,142 +86,181 @@ export default function MyReportsScreen() {
     const badge = getStatusBadge(item.status);
 
     return (
-      <View className="bg-white rounded-2xl p-4 mb-3 border border-gray-200">
-        <View className="flex-row justify-between items-center mb-2">
-          <View className="bg-gray-100 px-2.5 py-1 rounded-md">
-            <Text className="text-[11px] font-bold text-gray-700">{item.targetType}</Text>
+      <View className="w-full max-w-2xl self-center">
+        <View className="bg-white rounded-2xl p-4 mb-3 border border-gray-200 shadow-sm">
+          <View className="flex-row justify-between items-center mb-2">
+            <View className="bg-gray-100 px-2.5 py-1 rounded-md">
+              <Text className="text-[11px] font-bold text-gray-700">{item.targetType}</Text>
+            </View>
+            <View className={`px-2.5 py-1 rounded-full ${badge.container}`}>
+              <Text className={`text-[11px] font-bold ${badge.text}`}>{badge.label}</Text>
+            </View>
           </View>
-          <View className={`px-2.5 py-1 rounded-full ${badge.container}`}>
-            <Text className={`text-[11px] font-bold ${badge.text}`}>{badge.label}</Text>
-          </View>
-        </View>
 
-        <Text className="text-sm font-bold text-gray-900 mb-0.5" numberOfLines={1}>
-          {renderTargetName(item)}
-        </Text>
-
-        <Text className="text-xs font-semibold text-gray-600 mb-1">
-          Reason: {item.reason.replace(/_/g, ' ').toUpperCase()}
-        </Text>
-
-        {item.description ? (
-          <Text className="text-xs text-gray-600 bg-gray-50 p-2.5 rounded-lg my-1.5">
-            {item.description}
+          <Text className="text-sm font-bold text-gray-900 mb-0.5" numberOfLines={1}>
+            {renderTargetName(item)}
           </Text>
-        ) : null}
 
-        <Text className="text-[11px] text-gray-400 mt-1">
-          Submitted on {new Date(item.createdAt).toLocaleDateString()}
-        </Text>
+          <Text className="text-xs font-semibold text-gray-600 mb-1">
+            Reason: {item.reason.replace(/_/g, ' ').toUpperCase()}
+          </Text>
+
+          {item.description ? (
+            <Text className="text-xs text-gray-600 bg-gray-50 p-2.5 rounded-lg my-1.5">
+              {item.description}
+            </Text>
+          ) : null}
+
+          <Text className="text-[11px] text-gray-400 mt-1">
+            Submitted on {new Date(item.createdAt).toLocaleDateString()}
+          </Text>
+        </View>
       </View>
     );
   };
 
   return (
     <SafeScreen>
-      {/* Header */}
-      <View className="px-5 pb-4 pt-12 bg-white border-b border-gray-200 flex-row items-center">
-        <TouchableOpacity className="mr-3" onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
-        </TouchableOpacity>
-        <Text className="text-xl font-bold text-gray-900">My Reports</Text>
-      </View>
+      <View
+        className="flex-1 bg-gray-50 overflow-hidden"
+        style={Platform.OS === 'web' ? { height: '100vh' as any } : undefined}
+      >
+        {/* Top Bar with Back & Menu Toggle Button */}
+        <View className="px-5 pt-12 pb-4 bg-white border-b border-gray-100 flex-row items-center justify-between">
+          <View className="flex-row items-center flex-1 pr-3">
+            <TouchableOpacity
+              onPress={handleBack}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              className="mr-3 p-1"
+            >
+              <Ionicons name="arrow-back" size={24} color="#111827" />
+            </TouchableOpacity>
+            <Text className="text-xl font-bold text-gray-900" numberOfLines={1}>
+              My Reports
+            </Text>
+          </View>
 
-      {/* Filter Chips */}
-      <View className="bg-white border-b border-gray-100 py-2.5">
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
-        >
-          {STATUS_FILTERS.map((filter) => {
-            const isActive = selectedStatus === filter.value;
-            return (
-              <TouchableOpacity
-                key={filter.label}
-                className={`px-3.5 py-1.5 rounded-full border ${
-                  isActive ? 'bg-gray-900 border-gray-900' : 'bg-white border-gray-200'
-                }`}
-                onPress={() => {
-                  setSelectedStatus(filter.value);
-                  setPage(1);
-                }}
-              >
-                <Text
-                  className={`text-xs font-semibold ${
-                    isActive ? 'text-white' : 'text-gray-600'
-                  }`}
-                >
-                  {filter.label}
+          <TouchableOpacity
+            onPress={() => setIsMenuOpen(true)}
+            activeOpacity={0.75}
+            style={{ width: 42, height: 42 }}
+            className="bg-gray-900 rounded-xl items-center justify-center relative"
+          >
+            <Ionicons name="menu" size={24} color="#FFFFFF" />
+            {unreadCount > 0 && (
+              <View className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500 border border-white" />
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Filter Chips */}
+        <View className="bg-white border-b border-gray-100 py-2.5">
+          <View className="w-full max-w-2xl self-center">
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+            >
+              {STATUS_FILTERS.map((filter) => {
+                const isActive = selectedStatus === filter.value;
+                return (
+                  <TouchableOpacity
+                    key={filter.label}
+                    className={`px-3.5 py-1.5 rounded-full border ${
+                      isActive ? 'bg-gray-900 border-gray-900' : 'bg-white border-gray-200'
+                    }`}
+                    onPress={() => {
+                      setSelectedStatus(filter.value);
+                      setPage(1);
+                    }}
+                  >
+                    <Text
+                      className={`text-xs font-semibold ${
+                        isActive ? 'text-white' : 'text-gray-600'
+                      }`}
+                    >
+                      {filter.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+
+        {/* Reports List */}
+        <FlatList
+          className="flex-1 w-full"
+          data={isLoadingReports ? [] : reports}
+          keyExtractor={(item) => item._id}
+          renderItem={renderReportItem}
+          showsVerticalScrollIndicator={Platform.OS === 'web'}
+          contentContainerStyle={{ padding: 16, paddingBottom: 60 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={false}
+              onRefresh={() => {
+                refetchReports();
+              }}
+              tintColor="#2563EB"
+              colors={['#2563EB']}
+            />
+          }
+          ListEmptyComponent={
+            isLoadingReports ? (
+              <ActivityIndicator size="large" color="#2563EB" className="mt-12" />
+            ) : (
+              <View className="w-full max-w-2xl self-center items-center py-16">
+                <Ionicons name="flag-outline" size={42} color="#9CA3AF" />
+                <Text className="text-base font-semibold text-gray-700 mt-3">
+                  No reports found
                 </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+                <Text className="text-xs text-gray-400 mt-1 text-center px-8">
+                  Reports you submit on listings, services, jobs, or profiles will appear here.
+                </Text>
+              </View>
+            )
+          }
+          ListFooterComponent={
+            pagination && pagination.totalPages > 1 ? (
+              <View className="w-full max-w-2xl self-center flex-row justify-between items-center mt-2 pt-3 border-t border-gray-200">
+                <TouchableOpacity
+                  className={`px-3.5 py-2 rounded-lg bg-white border border-gray-300 ${
+                    page <= 1 ? 'opacity-40' : ''
+                  }`}
+                  disabled={page <= 1}
+                  onPress={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  <Text className="text-xs font-semibold text-gray-900">Previous</Text>
+                </TouchableOpacity>
+
+                <Text className="text-xs font-semibold text-gray-600">
+                  Page {pagination.currentPage} of {pagination.totalPages}
+                </Text>
+
+                <TouchableOpacity
+                  className={`px-3.5 py-2 rounded-lg bg-white border border-gray-300 ${
+                    !pagination.hasNextPage ? 'opacity-40' : ''
+                  }`}
+                  disabled={!pagination.hasNextPage}
+                  onPress={() => setPage((p) => p + 1)}
+                >
+                  <Text className="text-xs font-semibold text-gray-900">Next</Text>
+                </TouchableOpacity>
+              </View>
+            ) : undefined
+          }
+        />
+
+        {/* Column Slide-Out Menu Drawer */}
+        <ProfileMenuDrawer
+          visible={isMenuOpen}
+          onClose={() => setIsMenuOpen(false)}
+          isAdmin={isAdmin}
+          unreadCount={unreadCount}
+          side="right"
+        />
       </View>
-
-      {/* Reports List */}
-      <FlatList
-        data={isLoadingReports ? [] : reports}
-        keyExtractor={(item) => item._id}
-        renderItem={renderReportItem}
-        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-               refreshControl={
-          <RefreshControl
-            refreshing={false}
-            onRefresh={() => {
-              refetchReports();
-            }}
-            tintColor="#2563EB"
-          />
-        }
-
-        ListEmptyComponent={
-          isLoadingReports ? (
-            <ActivityIndicator size="large" color="#2563EB" className="mt-12" />
-          ) : (
-            <View className="items-center py-16">
-              <Ionicons name="flag-outline" size={42} color="#9CA3AF" />
-              <Text className="text-base font-semibold text-gray-700 mt-3">
-                No reports found
-              </Text>
-              <Text className="text-xs text-gray-400 mt-1 text-center px-8">
-                Reports you submit on listings, services, jobs, or profiles will appear here.
-              </Text>
-            </View>
-          )
-        }
-               ListFooterComponent={
-          pagination && pagination.totalPages > 1 ? (
-            <View className="flex-row justify-between items-center mt-2 pt-3 border-t border-gray-200">
-              <TouchableOpacity
-                className={`px-3.5 py-2 rounded-lg bg-white border border-gray-300 ${
-                  page <= 1 ? 'opacity-40' : ''
-                }`}
-                disabled={page <= 1}
-                onPress={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                <Text className="text-xs font-semibold text-gray-900">Previous</Text>
-              </TouchableOpacity>
-
-              <Text className="text-xs font-semibold text-gray-600">
-                Page {pagination.currentPage} of {pagination.totalPages}
-              </Text>
-
-              <TouchableOpacity
-                className={`px-3.5 py-2 rounded-lg bg-white border border-gray-300 ${
-                  !pagination.hasNextPage ? 'opacity-40' : ''
-                }`}
-                disabled={!pagination.hasNextPage}
-                onPress={() => setPage((p) => p + 1)}
-              >
-                <Text className="text-xs font-semibold text-gray-900">Next</Text>
-              </TouchableOpacity>
-            </View>
-          ) : undefined
-        }
-
-      />
     </SafeScreen>
   );
 }

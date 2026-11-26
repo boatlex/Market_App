@@ -1,4 +1,4 @@
-import { View, Text, Alert, TouchableOpacity, ScrollView, Dimensions, Linking, Platform } from 'react-native';
+import { View, Text, Alert, TouchableOpacity, ScrollView, Dimensions, Linking, Platform, ActivityIndicator } from 'react-native';
 import React, { useState, useMemo } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useGetJobSeekerById } from '../../hooks/useGetJobSeekerById';
@@ -13,12 +13,14 @@ import { useReportModalStore } from '../../stores/useReportModalStore';
 import ItemReviewsSection from '../../components/reviews/ItemsReviewsSection';
 import RelatedJobSeekerCard from '../../components/lookForJob/RelatedJobseekerCard';
 import { useGetRelatedJobSeekers } from '../../hooks/useGetRelatedJobSeekers';
+import useFollow from '../../hooks/useFollow';
 
 const { width } = Dimensions.get("window");
 
 const SeekJobDetailsScreen = () => {
   const { id, jobSeekerId } = useLocalSearchParams<{ id: string; jobSeekerId: string }>();
   const { user } = useAuth();
+
 
   const { data: product, isError, isLoading } = useGetJobSeekerById(id);
 
@@ -38,10 +40,23 @@ const SeekJobDetailsScreen = () => {
   const profileUserId =
     typeof product?.user === 'object' ? (product.user as any)?._id : product?.user;
 
+
+
+  const targetCandidateUserId = profileUserId || parsedJobSeekerId;
+  const {
+    toggleFollow,
+    togglingUserId,
+    isFollowingUser,
+    followersCount: candidateFollowersCount,
+  } = useFollow(targetCandidateUserId);
   const owner =
     Boolean(currentUserId) &&
     (String(currentUserId) === String(parsedJobSeekerId) ||
       String(currentUserId) === String(profileUserId));
+
+
+  const isFollowingCandidate = isFollowingUser(targetCandidateUserId);
+  const isTogglingCandidate = togglingUserId === targetCandidateUserId;
 
   const relatedCandidates = useMemo(() => {
     if (!product) return [];
@@ -154,7 +169,7 @@ const SeekJobDetailsScreen = () => {
     const message = `Hello ${displayName}, I saw your job seeker profile (${product.professionalHeadline || product.category || 'Candidate'}) and would like to discuss a job opportunity.`;
     const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
 
-       if (Platform.OS === 'web') {
+    if (Platform.OS === 'web') {
       Linking.openURL(whatsappUrl);
       return;
     }
@@ -222,6 +237,9 @@ const SeekJobDetailsScreen = () => {
       month: 'short',
     });
   };
+
+
+
   return (
     <SafeScreen>
       {/* Absolute Header Overlay */}
@@ -390,7 +408,7 @@ const SeekJobDetailsScreen = () => {
             </View>
           ) : null}
 
-          {/* Skills */}
+                   {/* Skills */}
           {Array.isArray(product.skills) && product.skills.length > 0 ? (
             <View className='mb-5'>
               <Text className='text-sm font-extrabold text-gray-900 mb-2'>Skills & Expertise</Text>
@@ -403,6 +421,82 @@ const SeekJobDetailsScreen = () => {
               </View>
             </View>
           ) : null}
+
+          {/* Candidate Follow / Following Card */}
+          {!owner && Boolean(targetCandidateUserId) && (
+            <View className="flex-row items-center justify-between bg-gray-50 border border-gray-100 rounded-2xl p-3.5 my-4">
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() =>
+                  router.push({
+                    pathname: `/user/${targetCandidateUserId}` as any,
+                  })
+                }
+                className="flex-row items-center flex-1 pr-3"
+              >
+                <View className="w-11 h-11 rounded-full bg-gray-200 overflow-hidden items-center justify-center mr-3 shrink-0">
+                  {product?.profilePicture ? (
+                    <Image
+                      source={{ uri: product.profilePicture }}
+                      style={{ width: '100%', height: '100%' }}
+                      contentFit="cover"
+                    />
+                  ) : (
+                    <Ionicons name="person" size={20} color="#4B5563" />
+                  )}
+                </View>
+
+                <View className="flex-1">
+                  <Text className="text-sm font-bold text-gray-900" numberOfLines={1}>
+                    {displayName}
+                  </Text>
+                  <Text className="text-xs text-gray-500 mt-0.5">
+                    {candidateFollowersCount}{' '}
+                    {candidateFollowersCount === 1 ? 'Follower' : 'Followers'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.8}
+                disabled={isTogglingCandidate}
+                onPress={() => {
+                  if (!user) {
+                    router.push('/(auth)');
+                    return;
+                  }
+                  toggleFollow(targetCandidateUserId!);
+                }}
+                className={`px-4 py-2.5 rounded-xl border flex-row items-center gap-1.5 ${
+                  isFollowingCandidate
+                    ? 'bg-white border-gray-300'
+                    : 'bg-blue-600 border-blue-600'
+                }`}
+              >
+                {isTogglingCandidate ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={isFollowingCandidate ? '#111827' : '#FFFFFF'}
+                  />
+                ) : (
+                  <>
+                    <Ionicons
+                      name={isFollowingCandidate ? 'checkmark' : 'person-add-outline'}
+                      size={15}
+                      color={isFollowingCandidate ? '#111827' : '#FFFFFF'}
+                    />
+                    <Text
+                      className={`text-xs font-bold ${
+                        isFollowingCandidate ? 'text-gray-900' : 'text-white'
+                      }`}
+                    >
+                      {isFollowingCandidate ? 'Following' : 'Follow'}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Resume Download / Preview */}
           {product.resumeUrl ? (

@@ -7,6 +7,7 @@ import {
   ScrollView,
   Platform,
   useWindowDimensions,
+  ActivityIndicator,
 } from 'react-native';
 import React, { useMemo, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -26,10 +27,11 @@ import { useServiceProviderReviews } from '../../hooks/useServiceProviderReviews
 import RelatedServiceCard from '../../components/createService/RelatedServiceCard';
 import { ServiceProvider } from '../../types';
 import { WriteReviewModal } from '../../components/reviews/WriteReviewModal';
+import useFollow from '../../hooks/useFollow';
 
 const ServiceDetailsScreen = () => {
   const { serviceId } = useLocalSearchParams<{ serviceId: string }>();
-  const { width: windowWidth,  height: windowHeigh } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeigh } = useWindowDimensions();
 
   const { data: response, isError, isLoading } = useGetServiceProviderById(serviceId || "");
   const { data: providersData } = useSearchServiceProviders({ page: 1, limit: 30 });
@@ -47,9 +49,26 @@ const ServiceDetailsScreen = () => {
 
   const provider = response?.success ? response.data : null;
 
- const contentWidth = windowWidth;
 
- const carouselHeight =
+  const providerUserId =
+    typeof provider?.user === 'object' ? (provider.user as any)?._id : provider?.user;
+  const providerUserObj =
+    provider?.user && typeof provider.user === 'object' ? (provider.user as any) : null;
+  const {
+    toggleFollow,
+    togglingUserId,
+    isFollowingUser,
+    followersCount: providerFollowersCount,
+  } = useFollow(providerUserId);
+
+  const isFollowingProvider = isFollowingUser(providerUserId);
+  const isTogglingProvider = togglingUserId === providerUserId;
+
+
+  
+  const contentWidth = windowWidth;
+
+  const carouselHeight =
     Platform.OS === 'web' && windowWidth >= 768
       ? Math.min(Math.max(Math.round(windowWidth * 0.42), 420), Math.round(windowHeigh * 0.65), 620)
       : 350;
@@ -89,12 +108,12 @@ const ServiceDetailsScreen = () => {
         const getScore = (item: ServiceProvider) => {
           const catMatch =
             Boolean(normalizedCategory) &&
-            String(item.category || '').trim().toLowerCase() === normalizedCategory
+              String(item.category || '').trim().toLowerCase() === normalizedCategory
               ? 2
               : 0;
           const regMatch =
             Boolean(normalizedRegion) &&
-            String(item.region || '').trim().toLowerCase() === normalizedRegion
+              String(item.region || '').trim().toLowerCase() === normalizedRegion
               ? 1
               : 0;
           return catMatch + regMatch;
@@ -243,7 +262,7 @@ const ServiceDetailsScreen = () => {
               onRequestClose={() => setIsZoomVisible(false)}
             />
           </>
-                ) : (
+        ) : (
           <View style={{ width: contentWidth }} className="h-full items-center justify-center bg-gray-100">
             <Ionicons name="construct-outline" size={56} color="#9CA3AF" />
           </View>
@@ -303,6 +322,95 @@ const ServiceDetailsScreen = () => {
             <Text className="text-gray-600 font-medium text-sm">
               {[provider.location, provider.district, provider.region].filter(Boolean).join(', ')}
             </Text>
+          </View>
+        )}
+
+
+        {Boolean(provider.region || provider.district || provider.location) && (
+          <View className="flex-row items-center gap-1.5 mb-5">
+            <Ionicons name="location-outline" size={16} color="#6B7280" />
+            <Text className="text-gray-600 font-medium text-sm">
+              {[provider.location, provider.district, provider.region].filter(Boolean).join(', ')}
+            </Text>
+          </View>
+        )}
+
+        {/* Service Provider Follow / Following Card */}
+        {!isOwner && Boolean(providerUserId) && (
+          <View className="flex-row items-center justify-between bg-gray-50 border border-gray-100 rounded-2xl p-3.5 mb-5">
+            <TouchableOpacity
+              activeOpacity={0.75}
+              onPress={() =>
+                router.push({
+                  pathname: `/user/${providerUserId}` as any,
+                })
+              }
+              className="flex-row items-center flex-1 pr-3"
+            >
+              <View className="w-11 h-11 rounded-full bg-gray-200 overflow-hidden items-center justify-center mr-3 shrink-0">
+                {providerUserObj?.profilePicture || validImages[0] ? (
+                  <Image
+                    source={{ uri: providerUserObj?.profilePicture || validImages[0] }}
+                    style={{ width: '100%', height: '100%' }}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <Ionicons name="person" size={20} color="#4B5563" />
+                )}
+              </View>
+
+              <View className="flex-1">
+                <View className="flex-row items-center gap-1">
+                  <Text className="text-sm font-bold text-gray-900" numberOfLines={1}>
+                    {provider.businessName}
+                  </Text>
+                  {providerUserObj?.verified && (
+                    <Ionicons name="checkmark-circle" size={14} color="#2563EB" />
+                  )}
+                </View>
+                <Text className="text-xs text-gray-500 mt-0.5">
+                  {providerFollowersCount}{' '}
+                  {providerFollowersCount === 1 ? 'Follower' : 'Followers'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              disabled={isTogglingProvider}
+              onPress={() => {
+                if (!user) {
+                  router.push('/(auth)');
+                  return;
+                }
+                toggleFollow(providerUserId!);
+              }}
+              className={`px-4 py-2.5 rounded-xl border flex-row items-center gap-1.5 ${isFollowingProvider
+                  ? 'bg-white border-gray-300'
+                  : 'bg-blue-600 border-blue-600'
+                }`}
+            >
+              {isTogglingProvider ? (
+                <ActivityIndicator
+                  size="small"
+                  color={isFollowingProvider ? '#111827' : '#FFFFFF'}
+                />
+              ) : (
+                <>
+                  <Ionicons
+                    name={isFollowingProvider ? 'checkmark' : 'person-add-outline'}
+                    size={15}
+                    color={isFollowingProvider ? '#111827' : '#FFFFFF'}
+                  />
+                  <Text
+                    className={`text-xs font-bold ${isFollowingProvider ? 'text-gray-900' : 'text-white'
+                      }`}
+                  >
+                    {isFollowingProvider ? 'Following' : 'Follow'}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
         )}
 

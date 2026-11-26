@@ -76,8 +76,9 @@ const NotificationsScreen = () => {
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => handleNotificationPress(item)}
-          className={`flex-row items-start p-4 border-b border-gray-100 md:mx-4 md:first:mt-3 md:rounded-2xl ${item.isRead ? 'bg-white' : 'bg-blue-50/40'
-            }`}
+          className={`flex-row items-start p-4 border-b border-gray-100 md:mx-4 md:first:mt-3 md:rounded-2xl ${
+            item.isRead ? 'bg-white' : 'bg-blue-50/40'
+          }`}
         >
           {/* Dynamic Activity Icon or User Profile Circle */}
           <View
@@ -97,8 +98,9 @@ const NotificationsScreen = () => {
           {/* Text Details Area */}
           <View className="flex-1 mr-2">
             <Text
-              className={`text-sm text-gray-800 leading-5 ${!item.isRead ? 'font-semibold' : 'font-normal'
-                }`}
+              className={`text-sm text-gray-800 leading-5 ${
+                !item.isRead ? 'font-semibold' : 'font-normal'
+              }`}
             >
               {displayMessage}
             </Text>
@@ -191,14 +193,16 @@ const NotificationsScreen = () => {
             refreshControl={
               <RefreshControl
                 refreshing={isRefetching && !isLoading}
-                onRefresh={refetch}
-                tintColor="#2563EB" // iOS spinner color
-                colors={['#2563EB']} // Android spinner color
+                onRefresh={() => {
+                  refetch();
+                }}
+                tintColor="#2563EB"
+                colors={['#2563EB']}
               />
             }
             contentContainerStyle={{
               paddingTop: Platform.OS === 'web' ? 12 : 0,
-              paddingBottom: Platform.OS === 'ios' ? 40 : 40,
+              paddingBottom: 40,
             }}
             ListEmptyComponent={
               <View className="w-full max-w-2xl self-center flex-1 items-center justify-center pt-24 px-6">
@@ -206,7 +210,7 @@ const NotificationsScreen = () => {
                   <Ionicons name="notifications-off-outline" size={32} color="#9CA3AF" />
                 </View>
                 <Text className="text-sm font-medium text-gray-500 text-center">
-                  All caught up! You don't have any notifications right now.
+                  All caught up! You dont have any notifications right now.
                 </Text>
               </View>
             }

@@ -18,6 +18,7 @@ import OfferDialog from '../../components/dialogues/OfferDialogue'
 import ItemReviewsSection from '../../components/reviews/ItemsReviewsSection'
 import RelatedProductCard from '../../components/product/RelatedProductCard'
 import { useWindowDimensions } from 'react-native'
+import useFollow from '../../hooks/useFollow';
 
 // const { width } = Dimensions.get("window")
 
@@ -59,6 +60,25 @@ const ProductDetailsScreen = () => {
     Boolean(currentUserId) &&
     (String(currentUserId) === String(parsedSellerId) ||
       String(currentUserId) === String(productSellerId));
+
+
+
+const targetSellerId = productSellerId || parsedSellerId;
+const sellerObj =
+    product?.seller && typeof product.seller === 'object' ? product.seller : null;
+  const sellerDisplayName = sellerObj?.firstName
+    ? `${sellerObj.firstName} ${sellerObj.lastName || ''}`.trim()
+    : 'Seller';
+
+const {
+  toggleFollow,
+  togglingUserId,
+  isFollowingUser,
+  followersCount: sellerFollowersCount,
+} = useFollow(targetSellerId);
+
+const isFollowingSeller = isFollowingUser(targetSellerId);
+const isTogglingSeller = togglingUserId === targetSellerId;
 
 
   const relatedProducts = useMemo(() => {
@@ -385,6 +405,81 @@ const ProductDetailsScreen = () => {
               </Text>
             </View>
 
+
+            {/* Seller Info & Follow Button (Renders for non-owners) */}
+            {!owner && Boolean(targetSellerId) && (
+              <View className="flex-row items-center justify-between bg-gray-50 border border-gray-100 rounded-2xl p-3.5 mb-5">
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  onPress={() =>
+                    router.push({
+                      pathname: `/user/${targetSellerId}` as any,
+                    })
+                  }
+                  className="flex-row items-center flex-1 pr-3"
+                >
+                  <View className="w-11 h-11 rounded-full bg-gray-200 overflow-hidden items-center justify-center mr-3 shrink-0">
+                    {sellerObj?.profilePicture ? (
+                      <Image
+                        source={{ uri: sellerObj.profilePicture }}
+                        style={{ width: '100%', height: '100%' }}
+                        contentFit="cover"
+                      />
+                    ) : (
+                      <Ionicons name="person" size={20} color="#4B5563" />
+                    )}
+                  </View>
+
+                  <View className="flex-1">
+                    <View className="flex-row items-center gap-1">
+                      <Text className="text-sm font-bold text-gray-900" numberOfLines={1}>
+                        {sellerDisplayName}
+                      </Text>
+                      {sellerObj?.verified && (
+                        <Ionicons name="checkmark-circle" size={14} color="#2563EB" />
+                      )}
+                    </View>
+                    <Text className="text-xs text-gray-500 mt-0.5">
+                      {sellerFollowersCount}{' '}
+                      {sellerFollowersCount === 1 ? 'Follower' : 'Followers'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  disabled={isTogglingSeller}
+                  onPress={() => toggleFollow(targetSellerId!)}
+                  className={`px-4 py-2.5 rounded-xl border flex-row items-center gap-1.5 ${
+                    isFollowingSeller
+                      ? 'bg-white border-gray-300'
+                      : 'bg-blue-600 border-blue-600'
+                  }`}
+                >
+                  {isTogglingSeller ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={isFollowingSeller ? '#111827' : '#FFFFFF'}
+                    />
+                  ) : (
+                    <>
+                      <Ionicons
+                        name={isFollowingSeller ? 'checkmark' : 'person-add-outline'}
+                        size={15}
+                        color={isFollowingSeller ? '#111827' : '#FFFFFF'}
+                      />
+                      <Text
+                        className={`text-xs font-bold ${
+                          isFollowingSeller ? 'text-gray-900' : 'text-white'
+                        }`}
+                      >
+                        {isFollowingSeller ? 'Following' : 'Follow'}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Management Control Box (Renders conditionally for the item owner) */}
             {owner ? (

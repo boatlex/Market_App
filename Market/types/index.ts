@@ -285,9 +285,12 @@ export interface User {
     profilePicture: string;
     role: UserRole;
     wishList: string[];
+    followers?: (string | User)[];
+    following?: (string | User)[];
     createdAt: string;
     updatedAt: string;
 }
+
 export interface PaginationMeta {
     totalItems: number;
     currentPage: number;
