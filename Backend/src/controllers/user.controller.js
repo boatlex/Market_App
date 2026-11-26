@@ -5,6 +5,7 @@ import { ServiceProvider } from "../models/serviceprovider.model.js";
 import { JobSeekerProfile } from "../models/jobseekersprofile.model.js";
 import filterObj from "../utils/filterObjects.js";
 import cloudinary from "../config/cloudinary.js";
+import mongoose from "mongoose";
 
 
 const getCloudinaryPublicId = (url) => {
@@ -225,12 +226,14 @@ export const deleteMyAccount = async (req, res, next) => {
             if (j.jobImage) imageUrlsToDelete.push(j.jobImage);
         });
 
-        // 2. Delete all user-owned documents from MongoDB in parallel
+        // 2. Delete all user-owned documents and remove dangling follow references in parallel
         await Promise.all([
             Product.deleteMany({ seller: userId }),
             ServiceProvider.deleteMany({ user: userId }),
             Job.deleteMany({ employer: userId }),
             JobSeekerProfile.deleteMany({ user: userId }),
+            User.updateMany({ followers: userId }, { $pull: { followers: userId } }),
+            User.updateMany({ following: userId }, { $pull: { following: userId } }),
             User.findByIdAndDelete(userId),
         ]);
 
@@ -266,6 +269,107 @@ export const deleteMyAccount = async (req, res, next) => {
         next(error);
     }
 };
+
+export const getUserConnections = async (req, res, next) => {
+    try {
+        const { userId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({
+                status: "fail",
+                message: "Invalid user ID",
+            });
+        }
+
+        const user = await User.findById(userId)
+            .select("followers following")
+            .populate("followers", "firstName lastName email profilePicture verified role")
+            .populate("following", "firstName lastName email profilePicture verified role")
+            .lean();
+
+        if (!user) {
+            return res.status(404).json({
+                status: "fail",
+                message: "User not found",
+            });
+        }
+
+        return res.status(200).json({
+            status: "success",
+            followers: user.followers || [],
+            following: user.following || [],
+        });
+    } catch (error) {
+        console.error("Error fetching user connections:", error);
+        next(error);
+    }
+};
+
+export const toggleFollowUser = async (req, res, next) => {
+    try {
+        const currentUserId = req.user._id;
+        const { targetUserId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
+            return res.status(400).json({
+                status: "fail",
+                message: "Invalid target user ID",
+            });
+        }
+
+        if (String(currentUserId) === String(targetUserId)) {
+            return res.status(400).json({
+                status: "fail",
+                message: "You cannot follow yourself",
+            });
+        }
+
+        const [currentUser, targetUser] = await Promise.all([
+            User.findById(currentUserId).select("following"),
+            User.findById(targetUserId).select("_id"),
+        ]);
+
+        if (!currentUser || !targetUser) {
+            return res.status(404).json({
+                status: "fail",
+                message: "User not found",
+            });
+        }
+
+        const isAlreadyFollowing = currentUser.following?.some(
+            (id) => String(id) === String(targetUserId)
+        );
+
+        if (isAlreadyFollowing) {
+            await Promise.all([
+                User.findByIdAndUpdate(currentUserId, { $pull: { following: targetUserId } }),
+                User.findByIdAndUpdate(targetUserId, { $pull: { followers: currentUserId } }),
+            ]);
+
+            return res.status(200).json({
+                status: "success",
+                isFollowing: false,
+                message: "Unfollowed user successfully",
+            });
+        } else {
+            await Promise.all([
+                User.findByIdAndUpdate(currentUserId, { $addToSet: { following: targetUserId } }),
+                User.findByIdAndUpdate(targetUserId, { $addToSet: { followers: currentUserId } }),
+            ]);
+
+            return res.status(200).json({
+                status: "success",
+                isFollowing: true,
+                message: "Followed user successfully",
+            });
+        }
+    } catch (error) {
+        console.error("Error toggling follow:", error);
+        next(error);
+    }
+};
+
+
 
 
 
