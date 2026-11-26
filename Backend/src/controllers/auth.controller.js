@@ -300,7 +300,7 @@ export const forgotPassword = async (req, res, next) => {
 
     // 📱 DEVELOPMENT DEEP LINK METHOD:
     // Uses the local computer IP matching your React Native Axios setup
-    const devIP = "10.251.38.151"; 
+    const devIP = "192.168.0.4"; 
     const resetUrl = `exp://${devIP}:8081/--/reset-password/${resetToken}`;
 
     const mailOptions = {
