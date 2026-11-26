@@ -368,6 +368,100 @@ export const toggleFollowUser = async (req, res, next) => {
         next(error);
     }
 };
+export const getMyAllListings = async (req, res, next) => {
+    try {
+        const userId = req.user._id;
+
+        const [products, services, jobs, seekingJobs] = await Promise.all([
+            Product.find({ seller: userId }).sort({ createdAt: -1 }).lean(),
+            ServiceProvider.find({ user: userId }).sort({ createdAt: -1 }).lean(),
+            Job.find({ employer: userId }).sort({ createdAt: -1 }).lean(),
+            JobSeekerProfile.find({ user: userId }).sort({ createdAt: -1 }).lean(),
+        ]);
+
+        const normalizedServices = services.map((s) => ({
+            ...s,
+            listingType: "service",
+            name: s.businessName,
+            price: s.pricing?.rate,
+            images: s.portfolioImages || [],
+            isAvailable: s.availabilityStatus === "Available",
+        }));
+
+        const normalizedSeeking = seekingJobs.map((js) => ({
+            ...js,
+            listingType: "seeking_job",
+            seekerId: js.user,
+            title: js.professionalHeadline || js.category || "Job Seeker",
+            applicantName: `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim(),
+            avatar: js.profilePicture,
+            expectedSalary: js.expectedSalary?.min,
+            isAvailable: js.isSearchingForJob,
+        }));
+
+        const combined = [...products, ...normalizedServices, ...jobs, ...normalizedSeeking].sort(
+            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        );
+
+        return res.status(200).json({
+            status: "success",
+            listings: combined,
+        });
+    } catch (error) {
+        console.error("Error fetching user unified listings:", error);
+        next(error);
+    }
+};
+export const getPublicUserProfile = async (req, res, next) => {
+    try {
+        const { userId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({
+                status: "fail",
+                message: "Invalid user ID",
+            });
+        }
+
+        const user = await User.findById(userId)
+            .select("firstName lastName profilePicture verified role followers following createdAt")
+            .lean();
+
+        if (!user) {
+            return res.status(404).json({
+                status: "fail",
+                message: "User not found",
+            });
+        }
+
+        const [products, services, jobs, jobSeekerProfile] = await Promise.all([
+            Product.find({ seller: userId, isAvailable: true })
+                .sort({ createdAt: -1 })
+                .lean(),
+            ServiceProvider.find({ user: userId })
+                .sort({ createdAt: -1 })
+                .lean(),
+            Job.find({ employer: userId, isOpen: true })
+                .sort({ createdAt: -1 })
+                .lean(),
+            JobSeekerProfile.findOne({ user: userId }).lean(),
+        ]);
+
+        return res.status(200).json({
+            status: "success",
+            data: {
+                user,
+                products,
+                services,
+                jobs,
+                jobSeekerProfile,
+            },
+        });
+    } catch (error) {
+        console.error("Error fetching public user profile:", error);
+        next(error);
+    }
+};
 
 
 
