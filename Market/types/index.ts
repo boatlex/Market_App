@@ -158,9 +158,11 @@ export interface Message {
     attachment?: string;
     messageType: 'text' | 'image' | 'voice';
     voiceDuration?: number;
+    read?: boolean;
     createdAt: string;
     updatedAt: string;
 }
+
 
 
 export interface Notification {

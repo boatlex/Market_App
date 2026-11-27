@@ -1,32 +1,55 @@
-import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import { User, Message } from '../types'; // 👈 Import your actual global entities
+import { getSocket } from '../sockets/sockets';
 
-// 1. Extend the native server type to represent what the controller formats
 export interface ActiveConversation {
   _id: string;
-  unreadCount?: number;
-  lastMessage: Pick<Message, 'content' | 'senderId' | 'createdAt'> | null;
-  user: Pick<User, '_id' | 'firstName' | 'lastName' | 'profilePicture'>;
-}
-
-interface ConversationsResponse {
-  success: boolean;
-  conversations: ActiveConversation[];
+  user: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+    profilePicture: string | null;
+  };
+  lastMessage: {
+    content: string;
+    createdAt: string;
+    senderId: string;
+  } | null;
+  unreadCount: number;
 }
 
 export const useConversations = () => {
-  const { data: conversations, isLoading, isError, refetch } = useQuery<ActiveConversation[]>({
+  const queryClient = useQueryClient();
+  const socketInstance = getSocket();
+  const socket = socketInstance?.socket || socketInstance;
+
+  const { data, isLoading, isError, refetch } = useQuery<ActiveConversation[]>({
     queryKey: ['conversations'],
     queryFn: async () => {
-      const { data } = await api.get<ConversationsResponse>('/messages/conversations');
-      return data.conversations;
+      const { data } = await api.get('/messages/conversations');
+      return data.conversations || [];
     },
   });
 
- 
+  useEffect(() => {
+    if (!socket) return;
+
+    const refreshInbox = () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    };
+
+    socket.on('newMessage', refreshInbox);
+    socket.on('messageDeleted', refreshInbox);
+
+    return () => {
+      socket.off('newMessage', refreshInbox);
+      socket.off('messageDeleted', refreshInbox);
+    };
+  }, [socket, queryClient]);
+
   return {
-    conversations: conversations || [],
+    conversations: data || [],
     isLoading,
     isError,
     refetch,

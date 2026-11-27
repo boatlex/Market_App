@@ -31,14 +31,16 @@ export const useMessages = (userToChatId: string) => {
   const isValidTarget = Boolean(userToChatId) && userToChatId !== 'undefined';
 
   // 1. Fetch Conversations History
-  const { data: messages, isLoading, isError, refetch } = useQuery<Message[]>({
+    const { data: messages, isLoading, isError, refetch } = useQuery<Message[]>({
     queryKey,
     queryFn: async () => {
       const { data } = await api.get<MessagesResponse>(`/messages/${userToChatId}`);
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
       return data.messages || [];
     },
     enabled: isValidTarget,
   });
+
 
   // 2. Multi-Format Messaging Dispatch Mutation Layer
   const sendMessageMutation = useMutation({
@@ -82,13 +84,11 @@ export const useMessages = (userToChatId: string) => {
         const { data } = await api.post<SendMessageResponse>(
           `/messages/send/${userToChatId}`,
           formData,
-          Platform.OS === 'web'
-            ? undefined
-            : {
-                headers: {
-                  'Content-Type': 'multipart/form-data',
-                },
-              }
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          }
         );
         return data.message;
       }
@@ -115,6 +115,24 @@ export const useMessages = (userToChatId: string) => {
     },
   });
 
+    const deleteMessageMutation = useMutation({
+    mutationFn: async (messageId: string) => {
+      await api.delete(`/messages/${messageId}`);
+      return messageId;
+    },
+    onSuccess: (deletedId) => {
+      queryClient.setQueryData<Message[]>(queryKey, (oldMessages) =>
+        oldMessages ? oldMessages.filter((msg) => msg._id !== deletedId) : []
+      );
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+    onError: (error: any) => {
+      console.error('Delete message failed:', error?.response?.data || error?.message);
+    },
+  });
+
+
+
   return {
     messages: messages || [],
     isLoading,
@@ -122,5 +140,8 @@ export const useMessages = (userToChatId: string) => {
     refetch,
     sendMessage: sendMessageMutation.mutate,
     isSending: sendMessageMutation.isPending,
+
+    deleteMessage: deleteMessageMutation.mutate,
+    isDeleting: deleteMessageMutation.isPending,
   };
 };

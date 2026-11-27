@@ -63,5 +63,51 @@ export const formatDate =(dateString:string)=>{
     const date = new Date(dateString)
     return date.toLocaleDateString("en-US",{month:"short", day:"numeric", year:"numeric"})
 }
+export const formatMessageTime = (dateString?: string) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return '';
+
+  return date.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+export const isSameDay = (dateA?: string, dateB?: string) => {
+  if (!dateA || !dateB) return false;
+  const a = new Date(dateA);
+  const b = new Date(dateB);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return false;
+
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+};
+
+export const formatChatDateHeader = (dateString?: string) => {
+  if (!dateString) return '';
+  const target = new Date(dateString);
+  if (Number.isNaN(target.getTime())) return '';
+
+  const now = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(now.getDate() - 1);
+
+  if (isSameDay(target.toISOString(), now.toISOString())) {
+    return 'Today';
+  }
+  if (isSameDay(target.toISOString(), yesterday.toISOString())) {
+    return 'Yesterday';
+  }
+
+  return target.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+};
 
 

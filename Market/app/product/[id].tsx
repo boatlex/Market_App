@@ -25,7 +25,9 @@ import useFollow from '../../hooks/useFollow';
 const ProductDetailsScreen = () => {
   const { id, sellerID } = useLocalSearchParams<{ id: string; sellerID: string }>();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-  const socket = getSocket()
+  const socketInstance = getSocket();
+  const socket = socketInstance?.socket || socketInstance;
+
 
   const { data: product, isError, isLoading } = useProduct(id)
   const { results: allProducts = [] } = useProducts({ limit: 30 });
@@ -44,7 +46,7 @@ const ProductDetailsScreen = () => {
 
   const parsedSellerId = Array.isArray(sellerID) ? sellerID[0] : sellerID;
 
-    
+
   const galleryWidth = Math.max(windowWidth - 16, 200);
   const galleryHeight =
     Platform.OS === 'web' && windowWidth >= 768
@@ -63,22 +65,22 @@ const ProductDetailsScreen = () => {
 
 
 
-const targetSellerId = productSellerId || parsedSellerId;
-const sellerObj =
+  const targetSellerId = productSellerId || parsedSellerId;
+  const sellerObj =
     product?.seller && typeof product.seller === 'object' ? product.seller : null;
   const sellerDisplayName = sellerObj?.firstName
     ? `${sellerObj.firstName} ${sellerObj.lastName || ''}`.trim()
     : 'Seller';
 
-const {
-  toggleFollow,
-  togglingUserId,
-  isFollowingUser,
-  followersCount: sellerFollowersCount,
-} = useFollow(targetSellerId);
+  const {
+    toggleFollow,
+    togglingUserId,
+    isFollowingUser,
+    followersCount: sellerFollowersCount,
+  } = useFollow(targetSellerId);
 
-const isFollowingSeller = isFollowingUser(targetSellerId);
-const isTogglingSeller = togglingUserId === targetSellerId;
+  const isFollowingSeller = isFollowingUser(targetSellerId);
+  const isTogglingSeller = togglingUserId === targetSellerId;
 
 
   const relatedProducts = useMemo(() => {
@@ -212,24 +214,25 @@ const isTogglingSeller = togglingUserId === targetSellerId;
       }
     });
   }
-
-
   const handleCallMeBackEmit = () => {
     if (!socket || !socket.connected) {
       Alert.alert("Connection Error", "You are currently offline.");
       return;
     }
 
+    if (!targetSellerId) {
+      Alert.alert("Error", "Seller information is unavailable.");
+      return;
+    }
+
     socket.emit("requestCallMeBack", {
-      sellerId: parsedSellerId,
+      sellerId: targetSellerId,
       productId: id,
       itemDetails: `Requested callback regarding product: "${product?.name}"`
     });
 
     Alert.alert("Request Sent", "The seller has been instantly notified to contact you back.");
   };
-
-
 
   const handleOfferPrompt = () => {
     if (!socket || !socket.connected) {
@@ -269,8 +272,8 @@ const isTogglingSeller = togglingUserId === targetSellerId;
   return (
     <SafeScreen>
       <KeyboardAvoidingView
-         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-         enabled={Platform.OS !== 'web'}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        enabled={Platform.OS !== 'web'}
         className="flex-1 bg-white"
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
@@ -296,7 +299,7 @@ const isTogglingSeller = togglingUserId === targetSellerId;
           <View className='relative bg-gray-100 m-2' >
             {validImages.length > 0 ? (
               <>
-                  <ScrollView
+                <ScrollView
                   horizontal
                   pagingEnabled
                   showsHorizontalScrollIndicator={Platform.OS === 'web'}
@@ -307,7 +310,7 @@ const isTogglingSeller = togglingUserId === targetSellerId;
                   scrollEventThrottle={16}
                 >
                   {validImages.map((image: string, index: number) => (
-                   <TouchableOpacity
+                    <TouchableOpacity
                       key={index}
                       activeOpacity={0.9}
                       style={{ width: galleryWidth, height: galleryHeight }}
@@ -316,7 +319,7 @@ const isTogglingSeller = togglingUserId === targetSellerId;
                         setIsZoomVisible(true);
                       }}
                     >
-                        <Image
+                      <Image
                         source={{ uri: image }}
                         style={{ width: galleryWidth, height: galleryHeight }}
                         contentFit='cover'
@@ -451,11 +454,10 @@ const isTogglingSeller = togglingUserId === targetSellerId;
                   activeOpacity={0.8}
                   disabled={isTogglingSeller}
                   onPress={() => toggleFollow(targetSellerId!)}
-                  className={`px-4 py-2.5 rounded-xl border flex-row items-center gap-1.5 ${
-                    isFollowingSeller
-                      ? 'bg-white border-gray-300'
-                      : 'bg-blue-600 border-blue-600'
-                  }`}
+                  className={`px-4 py-2.5 rounded-xl border flex-row items-center gap-1.5 ${isFollowingSeller
+                    ? 'bg-white border-gray-300'
+                    : 'bg-blue-600 border-blue-600'
+                    }`}
                 >
                   {isTogglingSeller ? (
                     <ActivityIndicator
@@ -470,9 +472,8 @@ const isTogglingSeller = togglingUserId === targetSellerId;
                         color={isFollowingSeller ? '#111827' : '#FFFFFF'}
                       />
                       <Text
-                        className={`text-xs font-bold ${
-                          isFollowingSeller ? 'text-gray-900' : 'text-white'
-                        }`}
+                        className={`text-xs font-bold ${isFollowingSeller ? 'text-gray-900' : 'text-white'
+                          }`}
                       >
                         {isFollowingSeller ? 'Following' : 'Follow'}
                       </Text>
@@ -516,13 +517,20 @@ const isTogglingSeller = togglingUserId === targetSellerId;
               <View className="gap-3 mb-6">
                 {/* Primary Action: Direct App Chat */}
                 <TouchableOpacity
-                  onPress={() => router.push({ pathname: "/chat" as any, params: { userId: parsedSellerId } })}
+                  onPress={() => {
+                    if (!targetSellerId) {
+                      Alert.alert("Error", "Seller information is unavailable.");
+                      return;
+                    }
+                    router.push({ pathname: "/chat" as any, params: { userId: String(targetSellerId) } });
+                  }}
                   activeOpacity={0.8}
                   className="h-12 bg-blue-600 rounded-xl flex-row items-center justify-center gap-2"
                 >
                   <Ionicons name="chatbubble-ellipses-outline" size={18} color="#FFFFFF" />
                   <Text className="text-white font-bold text-sm">Chat with Seller</Text>
                 </TouchableOpacity>
+
 
                 {/* Secondary Actions: Quick Triggers */}
                 <View className="flex-row items-center gap-3">
