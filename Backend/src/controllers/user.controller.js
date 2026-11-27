@@ -6,6 +6,8 @@ import { JobSeekerProfile } from "../models/jobseekersprofile.model.js";
 import filterObj from "../utils/filterObjects.js";
 import cloudinary from "../config/cloudinary.js";
 import mongoose from "mongoose";
+import Conversation from "../models/conversation.model.js";
+import Message from "../models/message.model.js";
 
 
 const getCloudinaryPublicId = (url) => {
@@ -184,6 +186,7 @@ export const removeFromWishList = async (req, res, next) => {
         next(error); 
     }
 };
+
 export const deleteMyAccount = async (req, res, next) => {
     try {
         const userId = req.user._id;
@@ -203,13 +206,30 @@ export const deleteMyAccount = async (req, res, next) => {
             });
         }
 
-        // 1. Gather all user-owned records that hold Cloudinary files
-        const [userProducts, userProviders, userJobs, userSeekerProfile] = await Promise.all([
+        // 1. Gather all user-owned records and chat conversations that hold Cloudinary files
+        const [
+            userProducts,
+            userProviders,
+            userJobs,
+            userSeekerProfile,
+            userConversations,
+        ] = await Promise.all([
             Product.find({ seller: userId }).select("images"),
             ServiceProvider.find({ user: userId }).select("portfolioImages"),
             Job.find({ employer: userId }).select("jobImage"),
             JobSeekerProfile.findOne({ user: userId }).select("profilePicture resumeUrl"),
+            Conversation.find({ participants: userId }).select("_id"),
         ]);
+
+        const conversationIds = userConversations.map((c) => c._id);
+
+        // Fetch all chat messages with Cloudinary attachments across the user's conversations
+        const chatMediaMessages = conversationIds.length > 0
+            ? await Message.find({
+                  conversationId: { $in: conversationIds },
+                  attachment: { $ne: null },
+              }).select("attachment messageType")
+            : [];
 
         // Collect all Cloudinary image URLs
         const imageUrlsToDelete = [];
@@ -226,27 +246,52 @@ export const deleteMyAccount = async (req, res, next) => {
             if (j.jobImage) imageUrlsToDelete.push(j.jobImage);
         });
 
-        // 2. Delete all user-owned documents and remove dangling follow references in parallel
+        // Separate chat image URLs vs. chat voice note URLs (Cloudinary stores audio under resource_type: "video")
+        const voiceUrlsToDelete = [];
+        chatMediaMessages.forEach((msg) => {
+            if (!msg.attachment) return;
+            if (msg.messageType === "voice") {
+                voiceUrlsToDelete.push(msg.attachment);
+            } else if (msg.messageType === "image") {
+                imageUrlsToDelete.push(msg.attachment);
+            }
+        });
+
+        // 2. Delete all user-owned documents, conversations, messages, and dangling references in parallel
         await Promise.all([
             Product.deleteMany({ seller: userId }),
             ServiceProvider.deleteMany({ user: userId }),
             Job.deleteMany({ employer: userId }),
             JobSeekerProfile.deleteMany({ user: userId }),
+            ...(conversationIds.length > 0
+                ? [
+                      Message.deleteMany({ conversationId: { $in: conversationIds } }),
+                      Conversation.deleteMany({ _id: { $in: conversationIds } }),
+                  ]
+                : []),
             User.updateMany({ followers: userId }, { $pull: { followers: userId } }),
             User.updateMany({ following: userId }, { $pull: { following: userId } }),
             User.findByIdAndDelete(userId),
         ]);
 
-        // 3. Non-blocking Cloudinary cleanup (images + raw resume file if applicable)
+        // 3. Non-blocking Cloudinary cleanup (images, voice notes, and raw resume file)
         const cleanupTasks = imageUrlsToDelete.map((url) => {
             const publicId = getCloudinaryPublicId(url);
             return publicId ? cloudinary.uploader.destroy(publicId) : Promise.resolve();
         });
 
+        voiceUrlsToDelete.forEach((url) => {
+            const publicId = getCloudinaryPublicId(url);
+            if (publicId) {
+                cleanupTasks.push(
+                    cloudinary.uploader.destroy(publicId, { resource_type: "video" })
+                );
+            }
+        });
+
         if (userSeekerProfile?.resumeUrl) {
             const resumePublicId = getCloudinaryPublicId(userSeekerProfile.resumeUrl);
             if (resumePublicId) {
-                // Resumes uploaded as PDF/DOCX on Cloudinary are often stored under resource_type: "raw" or "image"
                 cleanupTasks.push(
                     cloudinary.uploader.destroy(resumePublicId, { resource_type: "raw" }),
                     cloudinary.uploader.destroy(resumePublicId, { resource_type: "image" })
@@ -269,6 +314,7 @@ export const deleteMyAccount = async (req, res, next) => {
         next(error);
     }
 };
+;
 
 export const getUserConnections = async (req, res, next) => {
     try {

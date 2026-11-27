@@ -32,7 +32,8 @@ const messageSchema = new mongoose.Schema({
   voiceDuration: {
     type: Number,
     default: 0
-  }
+  },
+  read: { type: Boolean, default: false },
 }, { timestamps: true });
 
 const Message = mongoose.model("Message", messageSchema);
