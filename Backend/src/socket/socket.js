@@ -44,8 +44,14 @@ export const initializeSocket = (httpServer) => {
       }
       userSocketMap[userId].add(socket.id);
     }
-
+     
+    // Broadcast updated list to all connected clients
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
+
+      // Respond immediately when a newly mounted screen requests the current list
+    socket.on("requestOnlineUsers", () => {
+      socket.emit("getOnlineUsers", Object.keys(userSocketMap));
+    });
 
     // --- Typing Events ---
     socket.on("typing", ({ receiverId }) => {

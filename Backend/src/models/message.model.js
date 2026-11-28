@@ -34,6 +34,10 @@ const messageSchema = new mongoose.Schema({
     default: 0
   },
   read: { type: Boolean, default: false },
+   replyTo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Message",
+    default: null,},
 }, { timestamps: true });
 
 const Message = mongoose.model("Message", messageSchema);

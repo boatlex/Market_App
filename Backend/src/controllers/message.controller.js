@@ -2,6 +2,7 @@ import Conversation from "../models/conversation.model.js";
 import Message from "../models/message.model.js";
 import { getReceiverSocketIds } from "../socket/socket.js";
 import cloudinary from "cloudinary";
+import { encryptText, decryptText } from "../utils/encription.js";
 
 const getCloudinaryPublicId = (url) => {
   if (!url) return null;
@@ -17,7 +18,6 @@ const getCloudinaryPublicId = (url) => {
     return null;
   }
 };
-
 const emitMessagesRead = (req, senderId, readerId) => {
   const io = req.app.get("io");
   if (!io) return;
@@ -29,9 +29,10 @@ const emitMessagesRead = (req, senderId, readerId) => {
     });
   });
 };
+
 export const sendMessage = async (req, res, next) => {
   try {
-    const { content, messageType, voiceDuration } = req.body;
+    const { content, messageType, voiceDuration, replyTo } = req.body;
     const { id: receiverId } = req.params;
     const senderId = req.user._id;
 
@@ -46,7 +47,6 @@ export const sendMessage = async (req, res, next) => {
           folder: "marketplace_chat_attachments"
         };
 
-        // Cloudinary processes raw audio recordings (.mp3, .m4a) under the 'video' resource flag
         if (activeType === "voice") {
           uploadOptions.resource_type = "video";
         } else if (activeType === "image") {
@@ -61,15 +61,13 @@ export const sendMessage = async (req, res, next) => {
       }
     }
 
-
     if (activeType === "text" && !content?.trim()) {
       return res.status(400).json({ success: false, message: "Text content parameter field cannot be empty." });
     }
 
     if ((activeType === "image" || activeType === "voice") && !uploadedAttachmentUrl) {
-      return res.status(400).json({ success: false, message: `Missing required file file parameter for: ${activeType}` });
+      return res.status(400).json({ success: false, message: `Missing required file parameter for: ${activeType}` });
     }
-
 
     let conversation = await Conversation.findOne({
       participants: { $all: [senderId, receiverId], $size: 2 }
@@ -81,33 +79,54 @@ export const sendMessage = async (req, res, next) => {
         createdBy: senderId
       });
     }
-        // set all message to read when conversation is open
+
     const updateResult = await Message.updateMany(
       {
         conversationId: conversation._id,
-        senderId: userToChatId,
+        senderId: receiverId,
         read: false,
       },
       { $set: { read: true } }
     );
 
     if (updateResult.modifiedCount > 0) {
-      emitMessagesRead(req, userToChatId, senderId);
+      emitMessagesRead(req, receiverId, senderId);
     }
 
+    // 1. Encrypt text content before saving to MongoDB
+    const rawContent = activeType === "text" ? content : (content || undefined);
+    const encryptedContent = rawContent ? encryptText(rawContent) : undefined;
 
     const newMessage = new Message({
       conversationId: conversation._id,
       senderId,
-      content: activeType === "text" ? content : (content || undefined),
+      content: encryptedContent, 
       attachment: uploadedAttachmentUrl,
       messageType: activeType,
-      voiceDuration: activeType === "voice" ? (Number(voiceDuration) || 0) : 0
+      voiceDuration: activeType === "voice" ? (Number(voiceDuration) || 0) : 0,
+      replyTo: replyTo || null
     });
 
     conversation.lastMessage = newMessage._id;
 
     await Promise.all([conversation.save(), newMessage.save()]);
+
+    if (newMessage.replyTo) {
+      await newMessage.populate({
+        path: "replyTo",
+        select: "content messageType attachment senderId",
+        populate: { path: "senderId", select: "firstName lastName" }
+      });
+    }
+
+    // 2. Convert to plain object and decrypt for Socket.io & HTTP response
+    const messagePayload = newMessage.toObject();
+    if (messagePayload.content) {
+      messagePayload.content = decryptText(messagePayload.content);
+    }
+    if (messagePayload.replyTo?.content) {
+      messagePayload.replyTo.content = decryptText(messagePayload.replyTo.content);
+    }
 
     // --- SOCKET.IO REAL-TIME LOGIC ---
     const io = req.app.get("io");
@@ -116,14 +135,13 @@ export const sendMessage = async (req, res, next) => {
 
       if (receiverSocketIds && receiverSocketIds.length > 0) {
         receiverSocketIds.forEach(socketId => {
-          // Relays full structural object with all type properties attached
-          io.to(socketId).emit("newMessage", newMessage);
+          io.to(socketId).emit("newMessage", messagePayload);
         });
       }
     }
     // ---------------------------------
 
-    return res.status(201).json({ success: true, message: newMessage });
+    return res.status(201).json({ success: true, message: messagePayload });
 
   } catch (error) {
     console.error("Error in sendMessage controller:", error.message);
@@ -146,11 +164,28 @@ export const getMessages = async (req, res, next) => {
 
     const messages = await Message.find({
       conversationId: conversation._id
-    }).sort({ createdAt: 1 });
+    })
+      .populate({
+        path: "replyTo",
+        select: "content messageType attachment senderId",
+        populate: { path: "senderId", select: "firstName lastName" }
+      })
+      .sort({ createdAt: 1 });
+
+    const decryptedMessages = messages.map((msg) => {
+      const obj = msg.toObject();
+      if (obj.content) {
+        obj.content = decryptText(obj.content);
+      }
+      if (obj.replyTo?.content) {
+        obj.replyTo.content = decryptText(obj.replyTo.content);
+      }
+      return obj;
+    });
 
     return res.status(200).json({
       success: true,
-      messages: messages
+      messages: decryptedMessages
     });
 
   } catch (error) {
@@ -191,14 +226,19 @@ export const getConversations = async (req, res, next) => {
 
         let previewText = "No messages yet";
         if (conversation.lastMessage) {
+          // Decrypt lastMessage content first so meme checks and text previews work properly
+          const decryptedContent = conversation.lastMessage.content
+            ? decryptText(conversation.lastMessage.content)
+            : "";
+
           if (conversation.lastMessage.messageType === "image") {
             previewText = "📷 Photo message";
           } else if (conversation.lastMessage.messageType === "voice") {
             previewText = "🎙️ Voice note";
-          } else if (conversation.lastMessage.content?.startsWith("[MEME]|")) {
+          } else if (decryptedContent.startsWith("[MEME]|")) {
             previewText = "😄 Meme";
           } else {
-            previewText = conversation.lastMessage.content || "";
+            previewText = decryptedContent;
           }
         }
 
@@ -231,6 +271,7 @@ export const getConversations = async (req, res, next) => {
     next(error);
   }
 };
+
 
 export const deleteMessage = async (req, res, next) => {
   try {

@@ -16,6 +16,8 @@ export const ENV = {
     CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
     
     
-    IS_VERCEL: process.env.VERCEL ? true : false 
+    IS_VERCEL: process.env.VERCEL ? true : false, 
+
+    MESSAGE_ENCRYPTION_KEY:process.env.MESSAGE_ENCRYPTION_KEY
 };
 
