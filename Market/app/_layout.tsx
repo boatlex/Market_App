@@ -1,16 +1,15 @@
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import "../global.css";
 import React, { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from "expo-router";
 import { ClerkProvider } from '@clerk/expo';
 import { tokenCache } from '@clerk/expo/token-cache'; 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from "../contexts/authContext"; 
 import RootApp from "../lib/utils"; 
 import { connectSocket, disconnectSocket } from "../sockets/sockets"; 
 import GlobalReportModal from "../components/reports/GlobalReportsModal"; 
-
-// IMPORT: Added GestureHandlerRootView to establish native responder context
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
@@ -63,14 +62,13 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <GestureHandlerRootView style={{ flex: 1 }}>
+            <StatusBar hidden={false} style="dark" />
           
             <RootApp />
 
             <NavigationGuard />
             
-            
             <GlobalReportModal />
-            
           </GestureHandlerRootView>
         </AuthProvider>
       </QueryClientProvider>

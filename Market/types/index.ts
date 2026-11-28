@@ -150,6 +150,18 @@ export interface JobSeekerProfile {
 }
 
 
+export interface ReplyMessage {
+    _id: string;
+    content?: string;
+    attachment?: string;
+    messageType: 'text' | 'image' | 'voice';
+    senderId: {
+        _id: string;
+        firstName?: string;
+        lastName?: string;
+    } | string;
+}
+
 export interface Message {
     _id: string;
     conversationId: string;
@@ -159,11 +171,10 @@ export interface Message {
     messageType: 'text' | 'image' | 'voice';
     voiceDuration?: number;
     read?: boolean;
+    replyTo?: ReplyMessage | null;
     createdAt: string;
     updatedAt: string;
 }
-
-
 
 export interface Notification {
     _id: string;

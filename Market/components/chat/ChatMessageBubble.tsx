@@ -11,6 +11,7 @@ interface ChatMessageBubbleProps {
   isMe: boolean;
   showDateHeader: boolean;
   onLongPress?: (item: any) => void;
+  onPressReplyQuote?: (replyMessageId: string) => void;
 }
 
 export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
@@ -18,6 +19,7 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
   isMe,
   showDateHeader,
   onLongPress,
+  onPressReplyQuote,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const timeLabel = formatMessageTime(item.createdAt);
@@ -68,6 +70,56 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
     );
   };
 
+  const renderReplyQuote = (forceDarkCard = false) => {
+    const reply = item.replyTo;
+    if (!reply || typeof reply !== 'object') return null;
+
+    const senderObj = typeof reply.senderId === 'object' ? reply.senderId : null;
+    const senderName = senderObj
+      ? `${senderObj.firstName || ''} ${senderObj.lastName || ''}`.trim() || 'User'
+      : 'Message';
+
+    let previewText = reply.content || '';
+    if (reply.messageType === 'image') {
+      previewText = reply.content ? `📷 ${reply.content}` : '📷 Photo';
+    } else if (reply.messageType === 'voice') {
+      previewText = '🎤 Voice message';
+    } else if (reply.content?.startsWith('[MEME]|')) {
+      previewText = '🎭 Meme';
+    }
+
+    const useLightOnDark = isMe || forceDarkCard;
+
+    return (
+      <TouchableOpacity
+        activeOpacity={0.75}
+        onPress={() => reply._id && onPressReplyQuote?.(reply._id)}
+        className={`mb-1.5 px-2.5 py-1.5 rounded-lg border-l-4 ${
+          useLightOnDark
+            ? 'bg-black/15 border-l-white/90'
+            : 'bg-black/5 border-l-blue-600'
+        }`}
+      >
+        <Text
+          numberOfLines={1}
+          className={`text-[11px] font-bold ${
+            useLightOnDark ? 'text-blue-100' : 'text-blue-700'
+          }`}
+        >
+          {senderName}
+        </Text>
+        <Text
+          numberOfLines={1}
+          className={`text-xs mt-0.5 ${
+            useLightOnDark ? 'text-white/90' : 'text-gray-600'
+          }`}
+        >
+          {previewText}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
   const wrapWithWebRow = (bubbleContent: React.ReactNode) => (
     <View>
       {showDateHeader && <ChatDateHeader dateString={item.createdAt} />}
@@ -102,6 +154,7 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
           isMe ? 'bg-blue-600 rounded-br-sm' : 'bg-gray-100 rounded-bl-sm'
         }`}
       >
+        {renderReplyQuote()}
         <ChatAudioMessage
           fileUrl={item.attachment}
           duration={item.voiceDuration || 0}
@@ -136,6 +189,7 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
           isMe ? 'bg-blue-600 rounded-br-sm' : 'bg-gray-200 rounded-bl-sm'
         }`}
       >
+        {renderReplyQuote()}
         <ChatImageMessage
           uri={item.attachment}
           onLongPress={handleOpenActions}
@@ -179,6 +233,7 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
         style={{ backgroundColor: bgColor || '#1e293b' }}
         className="p-4 rounded-2xl max-w-[75%] items-center shadow-sm"
       >
+        <View className="w-full">{renderReplyQuote(true)}</View>
         {topText ? (
           <Text
             style={{ color: textColor || '#ffffff' }}
@@ -223,6 +278,7 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
         isMe ? 'bg-blue-600 rounded-br-sm' : 'bg-gray-200 rounded-bl-sm'
       }`}
     >
+      {renderReplyQuote()}
       <Text className={isMe ? 'text-white text-base' : 'text-gray-900 text-base'}>
         {item.content || ''}
       </Text>

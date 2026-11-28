@@ -22,6 +22,7 @@ export interface SendMessagePayload {
   fileName?: string;
   fileType?: string;
   duration?: number;
+  replyTo?: string; // Added optional replyTo message ID
 }
 
 export const useMessages = (userToChatId: string) => {
@@ -31,7 +32,7 @@ export const useMessages = (userToChatId: string) => {
   const isValidTarget = Boolean(userToChatId) && userToChatId !== 'undefined';
 
   // 1. Fetch Conversations History
-    const { data: messages, isLoading, isError, refetch } = useQuery<Message[]>({
+  const { data: messages, isLoading, isError, refetch } = useQuery<Message[]>({
     queryKey,
     queryFn: async () => {
       const { data } = await api.get<MessagesResponse>(`/messages/${userToChatId}`);
@@ -40,7 +41,6 @@ export const useMessages = (userToChatId: string) => {
     },
     enabled: isValidTarget,
   });
-
 
   // 2. Multi-Format Messaging Dispatch Mutation Layer
   const sendMessageMutation = useMutation({
@@ -59,6 +59,11 @@ export const useMessages = (userToChatId: string) => {
 
         if (payload.duration) {
           formData.append('voiceDuration', String(payload.duration));
+        }
+
+        // Attach replyTo to FormData if replying to a message
+        if (payload.replyTo) {
+          formData.append('replyTo', payload.replyTo);
         }
 
         if (payload.fileUri) {
@@ -93,11 +98,13 @@ export const useMessages = (userToChatId: string) => {
         return data.message;
       }
 
+      // Attach replyTo to JSON payload for text messages
       const { data } = await api.post<SendMessageResponse>(
         `/messages/send/${userToChatId}`,
         {
           content: payload.content,
           messageType: 'text',
+          ...(payload.replyTo && { replyTo: payload.replyTo }),
         }
       );
       return data.message;
@@ -115,7 +122,7 @@ export const useMessages = (userToChatId: string) => {
     },
   });
 
-    const deleteMessageMutation = useMutation({
+  const deleteMessageMutation = useMutation({
     mutationFn: async (messageId: string) => {
       await api.delete(`/messages/${messageId}`);
       return messageId;
@@ -130,8 +137,6 @@ export const useMessages = (userToChatId: string) => {
       console.error('Delete message failed:', error?.response?.data || error?.message);
     },
   });
-
-
 
   return {
     messages: messages || [],

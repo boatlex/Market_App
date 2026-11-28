@@ -10,7 +10,7 @@ export const useOnlineUsers = () => {
 
     const handleGetOnlineUsers = (userIds: string[]) => {
       if (!isMounted || !Array.isArray(userIds)) return;
-      setOnlineUserIds(new Set(userIds.map((id) => String(id))));
+      setOnlineUserIds(new Set(userIds.map((id) => String(id).trim())));
     };
 
     const handleConnect = () => {
@@ -18,7 +18,8 @@ export const useOnlineUsers = () => {
     };
 
     const attachListeners = () => {
-      const socket = getSocket();
+      const socketInstance = getSocket();
+      const socket = socketInstance?.socket || socketInstance;
       if (!socket || attachedSocket === socket) return Boolean(socket);
 
       attachedSocket = socket;
@@ -54,7 +55,7 @@ export const useOnlineUsers = () => {
 
   const isUserOnline = (userId?: string | null) => {
     if (!userId) return false;
-    return onlineUserIds.has(String(userId));
+    return onlineUserIds.has(String(userId).trim());
   };
 
   return { onlineUserIds, isUserOnline };

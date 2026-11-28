@@ -18,6 +18,7 @@ interface MessageActionsSheetProps {
   isMe: boolean;
   onClose: () => void;
   onDelete: (messageId: string) => void;
+  onReply?: (message: any) => void;
 }
 
 export const MessageActionsSheet: React.FC<MessageActionsSheetProps> = ({
@@ -26,6 +27,7 @@ export const MessageActionsSheet: React.FC<MessageActionsSheetProps> = ({
   isMe,
   onClose,
   onDelete,
+  onReply,
 }) => {
   if (!message) return null;
 
@@ -42,6 +44,11 @@ export const MessageActionsSheet: React.FC<MessageActionsSheetProps> = ({
   const readableText = extractReadableText();
   const copyablePayload = readableText || message.attachment || '';
   const shareablePayload = copyablePayload;
+
+  const handleReply = () => {
+    onClose();
+    onReply?.(message);
+  };
 
   const handleCopy = async () => {
     if (!copyablePayload) return;
@@ -90,6 +97,9 @@ export const MessageActionsSheet: React.FC<MessageActionsSheetProps> = ({
     );
   };
 
+  const hasActionsBelowReply =
+    Boolean(copyablePayload) || Boolean(shareablePayload) || isMe;
+
   return (
     <Modal
       visible={visible}
@@ -106,11 +116,28 @@ export const MessageActionsSheet: React.FC<MessageActionsSheetProps> = ({
           onPress={(e) => e.stopPropagation()}
           className="w-[210px] bg-white rounded-2xl py-1.5 shadow-xl border border-gray-100 overflow-hidden"
         >
+          {Boolean(onReply) && (
+            <TouchableOpacity
+              onPress={handleReply}
+              activeOpacity={0.7}
+              className={`flex-row items-center px-3.5 py-2.5 active:bg-gray-50 ${
+                hasActionsBelowReply ? 'border-b border-gray-100' : ''
+              }`}
+            >
+              <Ionicons name="arrow-undo-outline" size={17} color="#111827" />
+              <Text className="text-sm font-semibold text-gray-900 ml-2.5">
+                Reply
+              </Text>
+            </TouchableOpacity>
+          )}
+
           {Boolean(copyablePayload) && (
             <TouchableOpacity
               onPress={handleCopy}
               activeOpacity={0.7}
-              className="flex-row items-center px-3.5 py-2.5 border-b border-gray-100 active:bg-gray-50"
+              className={`flex-row items-center px-3.5 py-2.5 active:bg-gray-50 ${
+                Boolean(shareablePayload) || isMe ? 'border-b border-gray-100' : ''
+              }`}
             >
               <Ionicons name="copy-outline" size={17} color="#111827" />
               <Text className="text-sm font-semibold text-gray-900 ml-2.5">
